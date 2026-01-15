@@ -3,8 +3,8 @@ function love.conf(t)
     t.version = "11.4"
 
     t.window.title = "Dice Game"
-    t.window.width = 1280
-    t.window.height = 720
+    t.window.width = 1920
+    t.window.height = 1080
     t.window.resizable = true
     t.window.vsync = 1
     t.window.minwidth = 1280

@@ -14,6 +14,7 @@ local Scaling = {
     offsetX = 0,
     offsetY = 0,
     initialized = false,
+    showDebug = false,
 }
 
 -- Calculate scaling to fit window while maintaining aspect ratio
@@ -38,12 +39,21 @@ local function calculateScale()
 end
 
 -- Convert screen coordinates to game coordinates
+-- Returns nil, nil if coordinates are outside the viewport (in letterbox/pillarbox area)
 local function screenToGame(screenX, screenY)
     if not Scaling.initialized then
         return screenX or 0, screenY or 0
     end
     local gameX = ((screenX or 0) - Scaling.offsetX) / Scaling.scale
     local gameY = ((screenY or 0) - Scaling.offsetY) / Scaling.scale
+    
+    -- Check if coordinates are within the virtual viewport
+    local baseWidth = Theme.screen.width
+    local baseHeight = Theme.screen.height
+    if gameX < 0 or gameX >= baseWidth or gameY < 0 or gameY >= baseHeight then
+        return nil, nil
+    end
+    
     return gameX, gameY
 end
 
@@ -106,7 +116,7 @@ function love.draw()
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(Scaling.canvas, Scaling.offsetX, Scaling.offsetY, 0, Scaling.scale, Scaling.scale)
 
-    -- Optional: Draw black bars if needed (letterboxing)
+    -- Draw black bars if needed (letterboxing/pillarboxing)
     love.graphics.setColor(0, 0, 0, 1)
     if Scaling.offsetX > 0 then
         love.graphics.rectangle("fill", 0, 0, Scaling.offsetX, love.graphics.getHeight())
@@ -117,21 +127,54 @@ function love.draw()
         love.graphics.rectangle("fill", 0, love.graphics.getHeight() - Scaling.offsetY, love.graphics.getWidth(), Scaling.offsetY)
     end
     love.graphics.setColor(1, 1, 1, 1)
+    
+    -- Debug overlay (F3 to toggle)
+    if Scaling.showDebug then
+        local mx, my = love.mouse.getPosition()
+        local vx, vy = screenToGame(mx, my)
+        local inViewport = vx ~= nil
+        
+        love.graphics.setColor(0, 0, 0, 0.7)
+        love.graphics.rectangle("fill", 10, 10, 280, 130)
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setFont(Theme.fonts.small)
+        love.graphics.print("=== DEBUG (F3 to hide) ===", 20, 20)
+        love.graphics.print(string.format("Window: %dx%d", love.graphics.getWidth(), love.graphics.getHeight()), 20, 40)
+        love.graphics.print(string.format("Virtual: %dx%d", Theme.screen.width, Theme.screen.height), 20, 60)
+        love.graphics.print(string.format("Scale: %.2f", Scaling.scale), 20, 80)
+        love.graphics.print(string.format("Offset: %.0f, %.0f", Scaling.offsetX, Scaling.offsetY), 20, 100)
+        if inViewport then
+            love.graphics.setColor(0.3, 1, 0.3, 1)
+            love.graphics.print(string.format("Mouse: %.0f, %.0f (in viewport)", vx, vy), 20, 120)
+        else
+            love.graphics.setColor(1, 0.3, 0.3, 1)
+            love.graphics.print("Mouse: outside viewport", 20, 120)
+        end
+        love.graphics.setColor(1, 1, 1, 1)
+    end
 end
 
 function love.mousepressed(x, y, button)
     local gameX, gameY = screenToGame(x, y)
-    stateMachine:mousepressed(gameX, gameY, button)
+    if gameX and gameY then
+        stateMachine:mousepressed(gameX, gameY, button)
+    end
 end
 
 function love.mousereleased(x, y, button)
     local gameX, gameY = screenToGame(x, y)
-    stateMachine:mousereleased(gameX, gameY, button)
+    if gameX and gameY then
+        stateMachine:mousereleased(gameX, gameY, button)
+    end
 end
 
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
+    elseif key == "f3" then
+        Scaling.showDebug = not Scaling.showDebug
+    elseif key == "f11" then
+        love.window.setFullscreen(not love.window.getFullscreen())
     end
     stateMachine:keypressed(key)
 end

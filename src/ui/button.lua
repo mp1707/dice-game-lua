@@ -59,6 +59,11 @@ function Button:update(dt)
     if _G.screenToGame then
         mx, my = _G.screenToGame(mx, my)
     end
+    -- If mouse is outside viewport (nil values), don't hover
+    if mx == nil or my == nil then
+        self.isHovered = false
+        return
+    end
     self.isHovered = self:containsPoint(mx, my) and self.enabled
 end
 
