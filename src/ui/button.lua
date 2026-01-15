@@ -50,7 +50,7 @@ end
 
 function Button:containsPoint(px, py)
     return px >= self.x and px < self.x + self.width and
-           py >= self.y and py < self.y + self.height
+        py >= self.y and py < self.y + self.height
 end
 
 function Button:update(dt)
@@ -105,7 +105,7 @@ function Button:draw()
     end
 
     -- Draw 9-slice background
-    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor)
+    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
 
     -- Draw text centered
     love.graphics.setFont(self.font)

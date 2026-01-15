@@ -85,7 +85,7 @@ function PlayState:initHandButtons()
     -- All 12 hands in 2-column layout
     local allHands = Hands.definitions
     local startX = panelX + padding
-    local startY = panelY + 50  -- Space for title
+    local startY = panelY + 50 -- Space for title
 
     for i, handDef in ipairs(allHands) do
         local col = (i - 1) % 2
@@ -305,96 +305,132 @@ function PlayState:drawLeftPanel()
     local y = layout.leftPanelY
     local w = layout.leftPanelWidth
     local h = layout.leftPanelHeight
+    local innerW = w - 40 -- content width (w - 32 for panels, w - 40 for text)
+    local panelW = w - 32
 
     -- Panel background
-    self.nineSlice:draw(x, y, w, h, Theme.colors.surface)
+    self.nineSlice:draw(x, y, w, h, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     local contentX = x + 20
     local contentY = y + 20
+    local panelX = contentX - 4
 
-    -- Level section
-    love.graphics.setFont(Theme.fonts.small)
+    -- Level section (label left, number right on same line)
+    love.graphics.setFont(Theme.fonts.large)
     love.graphics.setColor(Theme.colors.textMuted)
     love.graphics.print("LEVEL", contentX, contentY)
 
+    local levelText = tostring(GameState.currentLevel)
+    local levelWidth = Theme.fonts.display:getWidth(levelText)
     love.graphics.setFont(Theme.fonts.display)
     love.graphics.setColor(Theme.colors.text)
-    love.graphics.print(tostring(GameState.currentLevel), contentX, contentY + 16)
+    love.graphics.print(levelText, contentX + innerW - levelWidth, contentY - 8)
 
     -- Divider
-    contentY = contentY + 80
+    contentY = contentY + 60
     love.graphics.setColor(Theme.colors.border)
-    love.graphics.rectangle("fill", contentX, contentY, w - 40, 2)
-    contentY = contentY + 20
+    love.graphics.rectangle("fill", contentX, contentY, innerW, 2)
+    contentY = contentY + 16
 
-    -- Goal panel
-    self.nineSlice:draw(contentX - 4, contentY, w - 32, 70, Theme.colors.surface2)
-    love.graphics.setFont(Theme.fonts.small)
+    -- Goal panel (label left, value right in container)
+    local panelHeight = 55
+    self.nineSlice:draw(panelX, contentY, panelW, panelHeight, Theme.colors.surface2, Theme.nineSlice.borderScale)
+
+    love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("ZIEL", contentX + 8, contentY + 8)
+    local labelY = contentY + (panelHeight - Theme.fonts.normal:getHeight()) / 2
+    love.graphics.print("ZIEL", contentX + 8, labelY)
 
+    local goalText = tostring(GameState:getCurrentGoal())
+    local goalWidth = Theme.fonts.huge:getWidth(goalText)
     love.graphics.setFont(Theme.fonts.huge)
     love.graphics.setColor(Theme.colors.coral)
-    local goalText = tostring(GameState:getCurrentGoal())
-    love.graphics.print(goalText, contentX + 8, contentY + 28)
+    local valueY = contentY + (panelHeight - Theme.fonts.huge:getHeight()) / 2
+    love.graphics.print(goalText, panelX + panelW - goalWidth - 12, valueY)
 
-    contentY = contentY + 85
+    contentY = contentY + panelHeight + 8
 
-    -- Score panel
-    self.nineSlice:draw(contentX - 4, contentY, w - 32, 70, Theme.colors.surface2)
-    love.graphics.setFont(Theme.fonts.small)
+    -- Score panel (label left, value right in container)
+    self.nineSlice:draw(panelX, contentY, panelW, panelHeight, Theme.colors.surface2, Theme.nineSlice.borderScale)
+
+    love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("PUNKTE", contentX + 8, contentY + 8)
+    labelY = contentY + (panelHeight - Theme.fonts.normal:getHeight()) / 2
+    love.graphics.print("PUNKTE", contentX + 8, labelY)
 
-    love.graphics.setFont(Theme.fonts.huge)
+    local scoreText = tostring(GameState.currentScore)
+    local scoreWidth = Theme.fonts.huge:getWidth(scoreText)
     local scoreColor = GameState:hasReachedGoal() and Theme.colors.mint or Theme.colors.text
+    love.graphics.setFont(Theme.fonts.huge)
     love.graphics.setColor(scoreColor)
-    love.graphics.print(tostring(GameState.currentScore), contentX + 8, contentY + 28)
+    valueY = contentY + (panelHeight - Theme.fonts.huge:getHeight()) / 2
+    love.graphics.print(scoreText, panelX + panelW - scoreWidth - 12, valueY)
 
-    contentY = contentY + 85
+    contentY = contentY + panelHeight + 16
 
     -- Divider
     love.graphics.setColor(Theme.colors.border)
-    love.graphics.rectangle("fill", contentX, contentY, w - 40, 2)
-    contentY = contentY + 20
+    love.graphics.rectangle("fill", contentX, contentY, innerW, 2)
+    contentY = contentY + 16
 
-    -- Hands remaining
-    self.nineSlice:draw(contentX - 4, contentY, w - 32, 55, Theme.colors.surface2)
-    love.graphics.setFont(Theme.fonts.small)
+    -- Hands remaining (label left, value right in container)
+    local smallPanelHeight = 45
+    self.nineSlice:draw(panelX, contentY, panelW, smallPanelHeight, Theme.colors.surface2, Theme.nineSlice.borderScale)
+
+    love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("HÄNDE", contentX + 8, contentY + 8)
+    labelY = contentY + (smallPanelHeight - Theme.fonts.normal:getHeight()) / 2
+    love.graphics.print("HÄNDE", contentX + 8, labelY)
+
+    local handsText = tostring(GameState.handsRemaining)
+    local handsWidth = Theme.fonts.large:getWidth(handsText)
     love.graphics.setFont(Theme.fonts.large)
     love.graphics.setColor(Theme.colors.mint)
-    love.graphics.print(tostring(GameState.handsRemaining), contentX + 8, contentY + 26)
+    valueY = contentY + (smallPanelHeight - Theme.fonts.large:getHeight()) / 2
+    love.graphics.print(handsText, panelX + panelW - handsWidth - 12, valueY)
 
-    contentY = contentY + 65
+    contentY = contentY + smallPanelHeight + 8
 
-    -- Rolls remaining
-    self.nineSlice:draw(contentX - 4, contentY, w - 32, 55, Theme.colors.surface2)
-    love.graphics.setFont(Theme.fonts.small)
+    -- Rolls remaining (label left, value right in container)
+    self.nineSlice:draw(panelX, contentY, panelW, smallPanelHeight, Theme.colors.surface2, Theme.nineSlice.borderScale)
+
+    love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("WÜRFE", contentX + 8, contentY + 8)
+    labelY = contentY + (smallPanelHeight - Theme.fonts.normal:getHeight()) / 2
+    love.graphics.print("WÜRFE", contentX + 8, labelY)
+
+    local rollsText = tostring(GameState.rollsRemaining)
+    local rollsWidth = Theme.fonts.large:getWidth(rollsText)
     love.graphics.setFont(Theme.fonts.large)
     love.graphics.setColor(Theme.colors.cyan)
-    love.graphics.print(tostring(GameState.rollsRemaining), contentX + 8, contentY + 26)
+    valueY = contentY + (smallPanelHeight - Theme.fonts.large:getHeight()) / 2
+    love.graphics.print(rollsText, panelX + panelW - rollsWidth - 12, valueY)
 
-    contentY = contentY + 75
+    contentY = contentY + smallPanelHeight + 16
 
     -- Divider
     love.graphics.setColor(Theme.colors.border)
-    love.graphics.rectangle("fill", contentX, contentY, w - 40, 2)
-    contentY = contentY + 20
+    love.graphics.rectangle("fill", contentX, contentY, innerW, 2)
+    contentY = contentY + 16
 
-    -- Money
+    -- Money (right aligned with coin and text vertically centered)
+    local coinSize = 28
+    love.graphics.setFont(Theme.fonts.large)
+    local moneyText = tostring(GameState.money)
+    local moneyWidth = Theme.fonts.large:getWidth(moneyText)
+    local moneyHeight = Theme.fonts.large:getHeight()
+
+    -- Position from right edge
+    local moneyX = panelX + panelW - moneyWidth - 12
+    local coinX = moneyX - coinSize - 8
+
     love.graphics.setColor(Theme.colors.gold)
     if Theme.images.coin then
-        local coinScale = 24 / 512
-        love.graphics.draw(Theme.images.coin, contentX, contentY, 0, coinScale, coinScale)
-        love.graphics.setFont(Theme.fonts.large)
-        love.graphics.print(tostring(GameState.money), contentX + 32, contentY + 2)
+        local coinScale = coinSize / 512
+        love.graphics.draw(Theme.images.coin, coinX, contentY, 0, coinScale, coinScale)
+        love.graphics.print(moneyText, moneyX, contentY + (coinSize - moneyHeight) / 2)
     else
-        love.graphics.setFont(Theme.fonts.large)
-        love.graphics.print("$" .. tostring(GameState.money), contentX, contentY)
+        love.graphics.print("$" .. moneyText, moneyX, contentY)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -409,7 +445,7 @@ function PlayState:drawCenterArea()
     local titleW = layout.centerWidth
     local titleH = layout.topBarHeight
 
-    self.nineSlice:draw(titleX, titleY, titleW, titleH, Theme.colors.surface)
+    self.nineSlice:draw(titleX, titleY, titleW, titleH, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     love.graphics.setFont(Theme.fonts.large)
     love.graphics.setColor(Theme.colors.text)
@@ -453,7 +489,7 @@ function PlayState:drawScorePreview()
     local previewW = layout.previewWidth
     local previewH = layout.previewHeight
 
-    self.nineSlice:draw(previewX, previewY, previewW, previewH, Theme.colors.surface2)
+    self.nineSlice:draw(previewX, previewY, previewW, previewH, Theme.colors.surface2, Theme.nineSlice.borderScale)
 
     -- Hand name
     love.graphics.setFont(Theme.fonts.normal)
@@ -502,7 +538,7 @@ function PlayState:drawRightPanel()
     local h = layout.rightPanelHeight
 
     -- Panel background
-    self.nineSlice:draw(x, y, w, h, Theme.colors.surface)
+    self.nineSlice:draw(x, y, w, h, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
     love.graphics.setFont(Theme.fonts.normal)

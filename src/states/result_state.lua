@@ -103,7 +103,7 @@ function ResultState:draw()
     local panelX = (screenWidth - panelWidth) / 2
     local panelY = 80
 
-    self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface)
+    self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
     local titleText = self.won and "LEVEL GESCHAFFT!" or "VERLOREN!"
@@ -134,7 +134,8 @@ function ResultState:draw()
         local rewardPanelWidth = panelWidth - 80
         local rewardPanelHeight = 160
 
-        self.nineSlice:draw(rewardPanelX, rewardPanelY, rewardPanelWidth, rewardPanelHeight, Theme.colors.surface2)
+        self.nineSlice:draw(rewardPanelX, rewardPanelY, rewardPanelWidth, rewardPanelHeight, Theme.colors.surface2,
+            Theme.nineSlice.borderScale)
 
         -- Title
         love.graphics.setFont(Theme.fonts.normal)

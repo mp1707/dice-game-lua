@@ -68,7 +68,8 @@ Theme.screen = {
 -- 9-slice configuration
 Theme.nineSlice = {
     cornerSize = 24,
-    image = nil, -- Loaded in Theme:load()
+    borderScale = 0.5, -- Scale factor for 9-slice borders (0.5 = half size)
+    image = nil,       -- Loaded in Theme:load()
 }
 
 -- Fonts
@@ -124,10 +125,10 @@ Theme.layout = {
     rightPanelHeight = 1032, -- was 688
 
     -- Hand buttons (2 columns in right panel)
-    handButtonWidth = 180,  -- was 120
-    handButtonHeight = 75,  -- was 50
+    handButtonWidth = 185,  -- was 120
+    handButtonHeight = 55,  -- was 50
     handButtonSpacing = 12, -- was 8
-    handRowSpacing = 12,    -- was 8
+    handRowSpacing = 8,     -- was 8
     handPanelPadding = 18,  -- was 12
 
     -- Top bar in center (Level indicator)

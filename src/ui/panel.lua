@@ -43,7 +43,7 @@ function Panel:getInnerBounds()
 end
 
 function Panel:draw()
-    self.nineSlice:draw(self.x, self.y, self.width, self.height, self.bgColor)
+    self.nineSlice:draw(self.x, self.y, self.width, self.height, self.bgColor, Theme.nineSlice.borderScale)
 end
 
 return Panel

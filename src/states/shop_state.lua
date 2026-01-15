@@ -85,7 +85,7 @@ function ShopState:draw()
     local panelX = (screenWidth - panelWidth) / 2
     local panelY = 60
 
-    self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface)
+    self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
     love.graphics.setFont(Theme.fonts.display)
@@ -107,7 +107,8 @@ function ShopState:draw()
     local shopPanelWidth = panelWidth - 80
     local shopPanelHeight = 200
 
-    self.nineSlice:draw(shopPanelX, shopPanelY, shopPanelWidth, shopPanelHeight, Theme.colors.surface2)
+    self.nineSlice:draw(shopPanelX, shopPanelY, shopPanelWidth, shopPanelHeight, Theme.colors.surface2,
+        Theme.nineSlice.borderScale)
 
     -- Empty message
     love.graphics.setFont(Theme.fonts.large)

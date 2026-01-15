@@ -76,7 +76,7 @@ end
 
 function HandButton:containsPoint(px, py)
     return px >= self.x and px < self.x + self.width and
-           py >= self.y and py < self.y + self.height
+        py >= self.y and py < self.y + self.height
 end
 
 function HandButton:update(dt)
@@ -139,8 +139,8 @@ function HandButton:draw()
         bgColor = Theme.colors.surface
     end
 
-    -- Draw background with 0.5 scale for appropriate borders
-    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor, 0.5)
+    -- Draw background with theme's border scale
+    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
 
     -- Draw border for valid/selected hands
     if selected then
@@ -154,10 +154,10 @@ function HandButton:draw()
     end
 
     -- Horizontal layout: Icon | Name | Score
-    local contentY = self.y + (self.height - 20) / 2
+    local iconSize = 28 -- Sized for button height
+    local iconPadding = 8
 
     -- Draw Icon (left side)
-    local iconX = self.x + 8
     if self.icon then
         love.graphics.setColor(1, 1, 1, 1)
         if used then
@@ -167,13 +167,13 @@ function HandButton:draw()
         end
 
         local iw, ih = self.icon:getDimensions()
-        local targetSize = 20
-        local scale = targetSize / math.max(iw, ih)
-        local iy = self.y + (self.height - ih * scale) / 2
-        love.graphics.draw(self.icon, iconX, iy, 0, scale, scale)
+        local scale = iconSize / math.max(iw, ih)
+        local iconX = self.x + iconPadding
+        local iconY = self.y + (self.height - ih * scale) / 2
+        love.graphics.draw(self.icon, iconX, iconY, 0, scale, scale)
     end
 
-    -- Draw hand name (center)
+    -- Draw hand name (after icon)
     local textColor
     if selected then
         textColor = Theme.colors.textDark
@@ -187,7 +187,8 @@ function HandButton:draw()
     love.graphics.setFont(Theme.fonts.small)
 
     local name = self.handDef.shortName
-    love.graphics.print(name, self.x + 32, contentY + 2)
+    local textY = self.y + (self.height - Theme.fonts.small:getHeight()) / 2
+    love.graphics.print(name, self.x + iconPadding + iconSize + 6, textY)
 
     -- Draw score (right side) if rolled and valid
     if hasRolled and score > 0 and not used then
@@ -199,7 +200,7 @@ function HandButton:draw()
         else
             love.graphics.setColor(Theme.colors.gold)
         end
-        love.graphics.print(scoreText, self.x + self.width - scoreWidth - 8, contentY + 2)
+        love.graphics.print(scoreText, self.x + self.width - scoreWidth - 8, textY)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

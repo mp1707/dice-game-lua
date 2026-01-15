@@ -40,7 +40,7 @@ end
 
 function DiceDisplay:containsPoint(px, py)
     return px >= self.x and px < self.x + self.size and
-           py >= self.y and py < self.y + self.size
+        py >= self.y and py < self.y + self.size
 end
 
 function DiceDisplay:startRollAnimation(duration)
@@ -82,7 +82,7 @@ function DiceDisplay:draw()
     local bgColor = locked and Theme.colors.cyan or Theme.colors.surface2
 
     -- Draw background
-    self.nineSlice:draw(self.x, self.y, self.size, self.size, bgColor)
+    self.nineSlice:draw(self.x, self.y, self.size, self.size, bgColor, Theme.nineSlice.borderScale)
 
     -- Draw border if locked
     if locked then
