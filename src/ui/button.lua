@@ -55,6 +55,10 @@ end
 
 function Button:update(dt)
     local mx, my = love.mouse.getPosition()
+    -- Use global screenToGame if available for proper scaling
+    if _G.screenToGame then
+        mx, my = _G.screenToGame(mx, my)
+    end
     self.isHovered = self:containsPoint(mx, my) and self.enabled
 end
 

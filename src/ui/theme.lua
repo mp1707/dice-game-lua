@@ -61,8 +61,8 @@ Theme.dimensions = {
 
 -- Screen dimensions
 Theme.screen = {
-    width = 400,
-    height = 700,
+    width = 1280,
+    height = 720,
 }
 
 -- 9-slice configuration
@@ -85,34 +85,54 @@ Theme.images = {
     coin = nil,
 }
 
--- Layout constants for UI positioning
+-- Layout constants for Balatro-style 3-column UI
 Theme.layout = {
-    -- Padding
-    screenPadding = 8,
-    panelPadding = 12,
+    -- Screen padding
+    screenPadding = 16,
+    panelPadding = 16,
 
-    -- Top bar
-    topBarY = 8,
-    topBarHeight = 100,
+    -- Left Panel (Info/Stats)
+    leftPanelX = 16,
+    leftPanelY = 16,
+    leftPanelWidth = 260,
+    leftPanelHeight = 688,
 
-    -- Dice area
-    diceAreaY = 120,
-    diceAreaHeight = 120,
-    diceSize = 56,
-    diceSpacing = 12,
+    -- Center Area (Dice + Action)
+    centerX = 292,
+    centerWidth = 680,
 
-    -- Hands panel
-    handsPanelY = 260,
-    handButtonWidth = 58,
-    handButtonHeightUpper = 65,
-    handButtonHeightLower = 60,
-    handButtonSpacing = 6,
+    -- Dice area (in center)
+    diceAreaY = 200,
+    diceAreaHeight = 160,
+    diceSize = 80,
+    diceSpacing = 20,
+
+    -- Action button (in center, below dice)
+    actionButtonY = 420,
+    actionButtonWidth = 280,
+    actionButtonHeight = 60,
+
+    -- Score preview (in center, below action)
+    previewY = 500,
+    previewWidth = 400,
+    previewHeight = 80,
+
+    -- Right Panel (Hand Selection)
+    rightPanelX = 988,
+    rightPanelY = 16,
+    rightPanelWidth = 276,
+    rightPanelHeight = 688,
+
+    -- Hand buttons (2 columns in right panel)
+    handButtonWidth = 120,
+    handButtonHeight = 50,
+    handButtonSpacing = 8,
     handRowSpacing = 8,
+    handPanelPadding = 12,
 
-    -- Action button
-    actionButtonY = 630,
-    actionButtonWidth = 380,
-    actionButtonHeight = 54,
+    -- Top bar in center (Level indicator)
+    topBarY = 16,
+    topBarHeight = 60,
 }
 
 function Theme:load()

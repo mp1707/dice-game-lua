@@ -3,12 +3,12 @@ function love.conf(t)
     t.version = "11.4"
 
     t.window.title = "Dice Game"
-    t.window.width = 400
-    t.window.height = 700
-    t.window.resizable = false
+    t.window.width = 1280
+    t.window.height = 720
+    t.window.resizable = true
     t.window.vsync = 1
-    t.window.minwidth = 400
-    t.window.minheight = 700
+    t.window.minwidth = 1280
+    t.window.minheight = 720
 
     -- Disable unused modules
     t.modules.joystick = false

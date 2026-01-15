@@ -1,5 +1,5 @@
--- Play State - Main gameplay
--- Rolling dice, selecting hands, scoring
+-- Play State - Main gameplay with Balatro-style 3-column layout
+-- Left: Info panel | Center: Dice + Action | Right: Hand selection
 
 local Theme = require("src.ui.theme")
 local Timer = require("src.core.timer")
@@ -52,12 +52,14 @@ function PlayState:initDiceDisplays()
     local diceSize = layout.diceSize
     local spacing = layout.diceSpacing
     local totalWidth = (diceSize * 5) + (spacing * 4)
-    local startX = (Theme.screen.width - totalWidth) / 2
+
+    -- Center dice in the center column
+    local centerX = layout.centerX + (layout.centerWidth - totalWidth) / 2
 
     for i = 1, 5 do
         self.diceDisplays[i] = DiceDisplay.new({
-            x = startX + (i - 1) * (diceSize + spacing),
-            y = layout.diceAreaY + 30,
+            x = centerX + (i - 1) * (diceSize + spacing),
+            y = layout.diceAreaY,
             size = diceSize,
             index = i,
             getDiceData = function()
@@ -72,91 +74,31 @@ end
 
 function PlayState:initHandButtons()
     local layout = Theme.layout
-    local screenPadding = layout.screenPadding
+    local panelX = layout.rightPanelX
+    local panelY = layout.rightPanelY
     local buttonWidth = layout.handButtonWidth
-    local buttonHeightUpper = layout.handButtonHeightUpper
-    local buttonHeightLower = layout.handButtonHeightLower
+    local buttonHeight = layout.handButtonHeight
     local spacing = layout.handButtonSpacing
     local rowSpacing = layout.handRowSpacing
+    local padding = layout.handPanelPadding
 
-    -- Upper row (6 buttons)
-    local upperHands = Hands:getUpper()
-    local upperTotalWidth = (buttonWidth * 6) + (spacing * 5)
-    local upperStartX = (Theme.screen.width - upperTotalWidth) / 2
+    -- All 12 hands in 2-column layout
+    local allHands = Hands.definitions
+    local startX = panelX + padding
+    local startY = panelY + 50  -- Space for title
 
-    for i, handDef in ipairs(upperHands) do
+    for i, handDef in ipairs(allHands) do
+        local col = (i - 1) % 2
+        local row = math.floor((i - 1) / 2)
+
+        local x = startX + col * (buttonWidth + spacing)
+        local y = startY + row * (buttonHeight + rowSpacing)
+
         self.handButtons[handDef.id] = HandButton.new({
-            x = upperStartX + (i - 1) * (buttonWidth + spacing),
-            y = layout.handsPanelY,
+            x = x,
+            y = y,
             width = buttonWidth,
-            height = buttonHeightUpper,
-            handDef = handDef,
-            isUsed = function()
-                return GameState:isHandUsed(handDef.id)
-            end,
-            isSelected = function()
-                return GameState.selectedHandId == handDef.id
-            end,
-            getScore = function()
-                return Scoring.calculateScore(handDef.id, GameState.dice)
-            end,
-            isValidHand = function()
-                return Scoring.isValidHand(handDef.id, GameState.dice)
-            end,
-            hasRolled = function()
-                return GameState.hasRolledThisHand
-            end,
-            onClick = function(id)
-                self:onHandClick(id)
-            end,
-        })
-    end
-
-    -- Lower rows (6 buttons in 2 rows of 3)
-    local lowerHands = Hands:getLower()
-    local lowerTotalWidth = (buttonWidth * 3) + (spacing * 2)
-    local lowerStartX = (Theme.screen.width - lowerTotalWidth) / 2
-    local lowerY1 = layout.handsPanelY + buttonHeightUpper + rowSpacing
-    local lowerY2 = lowerY1 + buttonHeightLower + rowSpacing
-
-    -- First lower row: 3ofKind, 4ofKind, Yahtzee
-    local row1Hands = {lowerHands[1], lowerHands[2], lowerHands[3]}
-    for i, handDef in ipairs(row1Hands) do
-        self.handButtons[handDef.id] = HandButton.new({
-            x = lowerStartX + (i - 1) * (buttonWidth + spacing),
-            y = lowerY1,
-            width = buttonWidth,
-            height = buttonHeightLower,
-            handDef = handDef,
-            isUsed = function()
-                return GameState:isHandUsed(handDef.id)
-            end,
-            isSelected = function()
-                return GameState.selectedHandId == handDef.id
-            end,
-            getScore = function()
-                return Scoring.calculateScore(handDef.id, GameState.dice)
-            end,
-            isValidHand = function()
-                return Scoring.isValidHand(handDef.id, GameState.dice)
-            end,
-            hasRolled = function()
-                return GameState.hasRolledThisHand
-            end,
-            onClick = function(id)
-                self:onHandClick(id)
-            end,
-        })
-    end
-
-    -- Second lower row: FullHouse, SmallStraight, LargeStraight
-    local row2Hands = {lowerHands[4], lowerHands[5], lowerHands[6]}
-    for i, handDef in ipairs(row2Hands) do
-        self.handButtons[handDef.id] = HandButton.new({
-            x = lowerStartX + (i - 1) * (buttonWidth + spacing),
-            y = lowerY2,
-            width = buttonWidth,
-            height = buttonHeightLower,
+            height = buttonHeight,
             handDef = handDef,
             isUsed = function()
                 return GameState:isHandUsed(handDef.id)
@@ -183,12 +125,15 @@ end
 function PlayState:initActionButton()
     local layout = Theme.layout
 
+    -- Center the action button in the center column
+    local buttonX = layout.centerX + (layout.centerWidth - layout.actionButtonWidth) / 2
+
     self.actionButton = Button.new({
-        x = (Theme.screen.width - layout.actionButtonWidth) / 2,
+        x = buttonX,
         y = layout.actionButtonY,
         width = layout.actionButtonWidth,
         height = layout.actionButtonHeight,
-        text = "WURFELN",
+        text = "WÜRFELN",
         bgColor = Theme.colors.cyan,
         textColor = Theme.colors.textDark,
         hoverBgColor = Theme.colors.cyan,
@@ -223,7 +168,6 @@ function PlayState:onActionButtonClick()
 
     -- Check if we should cash out
     if GameState:hasReachedGoal() and GameState.hasRolledThisHand and not GameState.selectedHandId then
-        -- Cash out
         self:cashOut()
         return
     end
@@ -256,8 +200,6 @@ function PlayState:rollDice()
     end
 
     -- Actually roll after animation
-    -- NOTE: Must set isRolling = false BEFORE calling GameState:rollDice()
-    -- because rollDice() checks canRoll() which requires isRolling = false
     self.timer:after(maxDuration + 0.1, function()
         GameState.isRolling = false
         GameState:rollDice()
@@ -273,13 +215,11 @@ function PlayState:acceptHand()
 
     -- Check end conditions
     if GameState:hasLostLevel() then
-        -- Lost - go to result with loss
         self.stateMachine:change("result", {
             won = false,
             stateMachine = self.stateMachine,
         })
     elseif GameState:allHandsUsed() then
-        -- All hands used - check if won
         if GameState:hasReachedGoal() then
             self:cashOut()
         else
@@ -337,175 +277,244 @@ function PlayState:updateActionButton()
         self.actionButton:setEnabled(true)
         self.actionButton.bgColor = Theme.colors.mint
     elseif canRoll then
-        self.actionButton:setText("WURFELN")
+        self.actionButton:setText("WÜRFELN")
         self.actionButton:setEnabled(true)
         self.actionButton.bgColor = Theme.colors.cyan
     else
         -- No rolls left, must select hand
-        self.actionButton:setText("HAND WAHLEN")
+        self.actionButton:setText("HAND WÄHLEN")
         self.actionButton:setEnabled(false)
         self.actionButton.bgColor = Theme.colors.surface
     end
 end
 
 function PlayState:draw()
-    -- Draw top bar
-    self:drawTopBar()
+    -- Draw left panel (info/stats)
+    self:drawLeftPanel()
 
-    -- Draw dice area
-    self:drawDiceArea()
+    -- Draw center area (dice + action)
+    self:drawCenterArea()
 
-    -- Draw hand buttons
-    self:drawHandButtons()
-
-    -- Draw action button
-    self.actionButton:draw()
+    -- Draw right panel (hand selection)
+    self:drawRightPanel()
 end
 
-function PlayState:drawTopBar()
+function PlayState:drawLeftPanel()
     local layout = Theme.layout
-    local padding = layout.screenPadding
-    local panelWidth = Theme.screen.width - padding * 2
+    local x = layout.leftPanelX
+    local y = layout.leftPanelY
+    local w = layout.leftPanelWidth
+    local h = layout.leftPanelHeight
 
-    -- Main panel background
-    self.nineSlice:draw(padding, layout.topBarY, panelWidth, layout.topBarHeight, Theme.colors.surface)
+    -- Panel background
+    self.nineSlice:draw(x, y, w, h, Theme.colors.surface)
 
-    -- Left side info
-    local leftX = padding + 12
-    local topY = layout.topBarY + 10
+    local contentX = x + 20
+    local contentY = y + 20
 
-    -- Level
+    -- Level section
     love.graphics.setFont(Theme.fonts.small)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("LEVEL", leftX, topY)
+    love.graphics.print("LEVEL", contentX, contentY)
 
-    love.graphics.setFont(Theme.fonts.huge)
+    love.graphics.setFont(Theme.fonts.display)
     love.graphics.setColor(Theme.colors.text)
-    love.graphics.print(tostring(GameState.currentLevel), leftX, topY + 14)
+    love.graphics.print(tostring(GameState.currentLevel), contentX, contentY + 16)
 
-    -- Hands remaining
-    local handsX = leftX + 70
-    love.graphics.setFont(Theme.fonts.small)
-    love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("HANDE", handsX, topY)
-
-    love.graphics.setFont(Theme.fonts.large)
-    love.graphics.setColor(Theme.colors.mint)
-    love.graphics.print(tostring(GameState.handsRemaining), handsX, topY + 16)
-
-    -- Rolls remaining
-    local rollsX = handsX + 60
-    love.graphics.setFont(Theme.fonts.small)
-    love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("WURFE", rollsX, topY)
-
-    love.graphics.setFont(Theme.fonts.large)
-    love.graphics.setColor(Theme.colors.cyan)
-    love.graphics.print(tostring(GameState.rollsRemaining), rollsX, topY + 16)
-
-    -- Money (top right of left section)
-    local moneyX = leftX + 150
-    love.graphics.setColor(Theme.colors.gold)
-    if Theme.images.coin then
-        -- Coin is 512x512, scale to 16px
-        local coinScale = 16 / 512
-        love.graphics.draw(Theme.images.coin, moneyX, topY + 2, 0, coinScale, coinScale)
-        love.graphics.setFont(Theme.fonts.normal)
-        love.graphics.print(tostring(GameState.money), moneyX + 20, topY + 2)
-    else
-        love.graphics.setFont(Theme.fonts.normal)
-        love.graphics.print("$" .. tostring(GameState.money), moneyX, topY + 2)
-    end
-
-    -- Right side - Goal and Score
-    local rightX = Theme.screen.width - padding - 110
+    -- Divider
+    contentY = contentY + 80
+    love.graphics.setColor(Theme.colors.border)
+    love.graphics.rectangle("fill", contentX, contentY, w - 40, 2)
+    contentY = contentY + 20
 
     -- Goal panel
-    self.nineSlice:draw(rightX, layout.topBarY + 8, 100, 40, Theme.colors.surface2)
+    self.nineSlice:draw(contentX - 4, contentY, w - 32, 70, Theme.colors.surface2)
     love.graphics.setFont(Theme.fonts.small)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("ZIEL", rightX + 10, layout.topBarY + 12)
+    love.graphics.print("ZIEL", contentX + 8, contentY + 8)
 
-    love.graphics.setFont(Theme.fonts.large)
+    love.graphics.setFont(Theme.fonts.huge)
     love.graphics.setColor(Theme.colors.coral)
     local goalText = tostring(GameState:getCurrentGoal())
-    local goalWidth = Theme.fonts.large:getWidth(goalText)
-    love.graphics.print(goalText, rightX + 90 - goalWidth, layout.topBarY + 22)
+    love.graphics.print(goalText, contentX + 8, contentY + 28)
+
+    contentY = contentY + 85
 
     -- Score panel
-    self.nineSlice:draw(rightX, layout.topBarY + 52, 100, 40, Theme.colors.surface2)
+    self.nineSlice:draw(contentX - 4, contentY, w - 32, 70, Theme.colors.surface2)
     love.graphics.setFont(Theme.fonts.small)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("PUNKTE", rightX + 10, layout.topBarY + 56)
+    love.graphics.print("PUNKTE", contentX + 8, contentY + 8)
 
-    love.graphics.setFont(Theme.fonts.large)
+    love.graphics.setFont(Theme.fonts.huge)
     local scoreColor = GameState:hasReachedGoal() and Theme.colors.mint or Theme.colors.text
     love.graphics.setColor(scoreColor)
-    local scoreText = tostring(GameState.currentScore)
-    local scoreWidth = Theme.fonts.large:getWidth(scoreText)
-    love.graphics.print(scoreText, rightX + 90 - scoreWidth, layout.topBarY + 66)
+    love.graphics.print(tostring(GameState.currentScore), contentX + 8, contentY + 28)
 
-    -- Selected hand preview (middle bottom of top bar)
-    if GameState.selectedHandId then
-        local handDef = Hands:get(GameState.selectedHandId)
-        local breakdown = Scoring.getBreakdown(GameState.selectedHandId, GameState.dice)
+    contentY = contentY + 85
 
-        local previewX = padding + 12
-        local previewY = layout.topBarY + 58
+    -- Divider
+    love.graphics.setColor(Theme.colors.border)
+    love.graphics.rectangle("fill", contentX, contentY, w - 40, 2)
+    contentY = contentY + 20
 
-        love.graphics.setFont(Theme.fonts.small)
-        love.graphics.setColor(Theme.colors.textMuted)
-        love.graphics.print(handDef.name, previewX, previewY)
+    -- Hands remaining
+    self.nineSlice:draw(contentX - 4, contentY, w - 32, 55, Theme.colors.surface2)
+    love.graphics.setFont(Theme.fonts.small)
+    love.graphics.setColor(Theme.colors.textMuted)
+    love.graphics.print("HÄNDE", contentX + 8, contentY + 8)
+    love.graphics.setFont(Theme.fonts.large)
+    love.graphics.setColor(Theme.colors.mint)
+    love.graphics.print(tostring(GameState.handsRemaining), contentX + 8, contentY + 26)
 
-        -- Score breakdown: (base + pips) x mult
-        local baseText = tostring(breakdown.basePoints + breakdown.pips)
-        local multText = tostring(breakdown.mult)
+    contentY = contentY + 65
 
-        love.graphics.setFont(Theme.fonts.normal)
-        love.graphics.setColor(Theme.colors.cyan)
-        love.graphics.print(baseText, previewX, previewY + 16)
+    -- Rolls remaining
+    self.nineSlice:draw(contentX - 4, contentY, w - 32, 55, Theme.colors.surface2)
+    love.graphics.setFont(Theme.fonts.small)
+    love.graphics.setColor(Theme.colors.textMuted)
+    love.graphics.print("WÜRFE", contentX + 8, contentY + 8)
+    love.graphics.setFont(Theme.fonts.large)
+    love.graphics.setColor(Theme.colors.cyan)
+    love.graphics.print(tostring(GameState.rollsRemaining), contentX + 8, contentY + 26)
 
-        love.graphics.setColor(Theme.colors.textMuted)
-        love.graphics.print(" x ", previewX + Theme.fonts.normal:getWidth(baseText), previewY + 16)
+    contentY = contentY + 75
 
-        love.graphics.setColor(Theme.colors.coral)
-        love.graphics.print(multText, previewX + Theme.fonts.normal:getWidth(baseText .. " x "), previewY + 16)
+    -- Divider
+    love.graphics.setColor(Theme.colors.border)
+    love.graphics.rectangle("fill", contentX, contentY, w - 40, 2)
+    contentY = contentY + 20
 
-        love.graphics.setColor(Theme.colors.textMuted)
-        love.graphics.print(" = ", previewX + Theme.fonts.normal:getWidth(baseText .. " x " .. multText), previewY + 16)
-
-        love.graphics.setColor(Theme.colors.gold)
-        love.graphics.print(tostring(breakdown.total), previewX + Theme.fonts.normal:getWidth(baseText .. " x " .. multText .. " = "), previewY + 16)
+    -- Money
+    love.graphics.setColor(Theme.colors.gold)
+    if Theme.images.coin then
+        local coinScale = 24 / 512
+        love.graphics.draw(Theme.images.coin, contentX, contentY, 0, coinScale, coinScale)
+        love.graphics.setFont(Theme.fonts.large)
+        love.graphics.print(tostring(GameState.money), contentX + 32, contentY + 2)
+    else
+        love.graphics.setFont(Theme.fonts.large)
+        love.graphics.print("$" .. tostring(GameState.money), contentX, contentY)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function PlayState:drawDiceArea()
+function PlayState:drawCenterArea()
     local layout = Theme.layout
 
-    -- Draw label
-    love.graphics.setFont(Theme.fonts.small)
+    -- Title bar
+    local titleX = layout.centerX
+    local titleY = layout.topBarY
+    local titleW = layout.centerWidth
+    local titleH = layout.topBarHeight
+
+    self.nineSlice:draw(titleX, titleY, titleW, titleH, Theme.colors.surface)
+
+    love.graphics.setFont(Theme.fonts.large)
+    love.graphics.setColor(Theme.colors.text)
+    local title = "DICE GAME - Level " .. tostring(GameState.currentLevel)
+    local titleWidth = Theme.fonts.large:getWidth(title)
+    love.graphics.print(title, titleX + (titleW - titleWidth) / 2, titleY + 18)
+
+    -- Draw label above dice
+    love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(Theme.colors.textMuted)
     local labelText = "KLICKE UM ZU SPERREN"
     if not GameState.hasRolledThisHand then
-        labelText = "WURFLE ZUERST"
+        labelText = "WÜRFLE ZUERST"
     end
-    local labelWidth = Theme.fonts.small:getWidth(labelText)
-    love.graphics.print(labelText, (Theme.screen.width - labelWidth) / 2, layout.diceAreaY + 8)
+    local labelWidth = Theme.fonts.normal:getWidth(labelText)
+    love.graphics.print(labelText, layout.centerX + (layout.centerWidth - labelWidth) / 2, layout.diceAreaY - 30)
 
     -- Draw dice
     for _, display in ipairs(self.diceDisplays) do
         display:draw()
     end
 
+    -- Draw action button
+    self.actionButton:draw()
+
+    -- Draw selected hand preview (below action button)
+    if GameState.selectedHandId then
+        self:drawScorePreview()
+    end
+
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function PlayState:drawHandButtons()
+function PlayState:drawScorePreview()
+    local layout = Theme.layout
+    local handDef = Hands:get(GameState.selectedHandId)
+    local breakdown = Scoring.getBreakdown(GameState.selectedHandId, GameState.dice)
+
+    local previewX = layout.centerX + (layout.centerWidth - layout.previewWidth) / 2
+    local previewY = layout.previewY
+    local previewW = layout.previewWidth
+    local previewH = layout.previewHeight
+
+    self.nineSlice:draw(previewX, previewY, previewW, previewH, Theme.colors.surface2)
+
+    -- Hand name
+    love.graphics.setFont(Theme.fonts.normal)
+    love.graphics.setColor(Theme.colors.textMuted)
+    love.graphics.print(handDef.name, previewX + 16, previewY + 12)
+
+    -- Score formula: (base + pips) x mult = total
+    local baseText = tostring(breakdown.basePoints + breakdown.pips)
+    local multText = tostring(breakdown.mult)
+    local totalText = tostring(breakdown.total)
+
+    local formulaY = previewY + 40
+
+    love.graphics.setFont(Theme.fonts.huge)
+
+    -- Base (cyan)
+    love.graphics.setColor(Theme.colors.cyan)
+    love.graphics.print(baseText, previewX + 16, formulaY)
+    local baseWidth = Theme.fonts.huge:getWidth(baseText)
+
+    -- × (muted)
+    love.graphics.setColor(Theme.colors.textMuted)
+    love.graphics.print(" × ", previewX + 16 + baseWidth, formulaY)
+    local xWidth = Theme.fonts.huge:getWidth(" × ")
+
+    -- Mult (coral)
+    love.graphics.setColor(Theme.colors.coral)
+    love.graphics.print(multText, previewX + 16 + baseWidth + xWidth, formulaY)
+    local multWidth = Theme.fonts.huge:getWidth(multText)
+
+    -- = (muted)
+    love.graphics.setColor(Theme.colors.textMuted)
+    love.graphics.print(" = ", previewX + 16 + baseWidth + xWidth + multWidth, formulaY)
+    local eqWidth = Theme.fonts.huge:getWidth(" = ")
+
+    -- Total (gold)
+    love.graphics.setColor(Theme.colors.gold)
+    love.graphics.print(totalText, previewX + 16 + baseWidth + xWidth + multWidth + eqWidth, formulaY)
+end
+
+function PlayState:drawRightPanel()
+    local layout = Theme.layout
+    local x = layout.rightPanelX
+    local y = layout.rightPanelY
+    local w = layout.rightPanelWidth
+    local h = layout.rightPanelHeight
+
+    -- Panel background
+    self.nineSlice:draw(x, y, w, h, Theme.colors.surface)
+
+    -- Title
+    love.graphics.setFont(Theme.fonts.normal)
+    love.graphics.setColor(Theme.colors.textMuted)
+    love.graphics.print("HAND AUSWAHL", x + layout.handPanelPadding, y + 16)
+
+    -- Draw hand buttons
     for _, button in pairs(self.handButtons) do
         button:draw()
     end
+
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function PlayState:mousepressed(x, y, button)
