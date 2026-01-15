@@ -134,7 +134,7 @@ function Theme:load()
     end
 
     -- Load images
-    self.images.coin = love.graphics.newImage("assets/icons/coin.png")
+    self.images.coin = love.graphics.newImage("assets/icons/ui/coin.png")
     self.images.coin:setFilter("nearest", "nearest")
 end
 

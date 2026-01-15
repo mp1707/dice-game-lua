@@ -42,8 +42,9 @@ function NineSlice.new(image, cornerSize)
     return self
 end
 
-function NineSlice:draw(x, y, width, height, color)
-    local cs = self.cornerSize
+function NineSlice:draw(x, y, width, height, color, scale)
+    local s = scale or 1
+    local cs = self.cornerSize * s
     local img = self.image
     local q = self.quads
 
@@ -57,24 +58,29 @@ function NineSlice:draw(x, y, width, height, color)
     -- Calculate center dimensions
     local centerW = width - cs * 2
     local centerH = height - cs * 2
+    
+    -- Ensure we don't overlapping if too small
+    if centerW < 0 then centerW = 0 end
+    if centerH < 0 then centerH = 0 end
 
-    -- Scale factors for center pieces
+    -- Scale factors for center pieces (stretching to fill the gap)
+    -- We want the texture to stretch from source_size to target_size
     local scaleX = centerW / self.sourceCenter.w
     local scaleY = centerH / self.sourceCenter.h
 
-    -- Draw corners (no scaling)
-    love.graphics.draw(img, q[1], x, y)                                    -- top-left
-    love.graphics.draw(img, q[3], x + width - cs, y)                       -- top-right
-    love.graphics.draw(img, q[7], x, y + height - cs)                      -- bot-left
-    love.graphics.draw(img, q[9], x + width - cs, y + height - cs)         -- bot-right
+    -- Draw corners (scaled by s)
+    love.graphics.draw(img, q[1], x, y, 0, s, s)                                    -- top-left
+    love.graphics.draw(img, q[3], x + width - cs, y, 0, s, s)                       -- top-right
+    love.graphics.draw(img, q[7], x, y + height - cs, 0, s, s)                      -- bot-left
+    love.graphics.draw(img, q[9], x + width - cs, y + height - cs, 0, s, s)         -- bot-right
 
-    -- Draw edges (scale one axis)
-    love.graphics.draw(img, q[2], x + cs, y, 0, scaleX, 1)                 -- top
-    love.graphics.draw(img, q[8], x + cs, y + height - cs, 0, scaleX, 1)   -- bottom
-    love.graphics.draw(img, q[4], x, y + cs, 0, 1, scaleY)                 -- left
-    love.graphics.draw(img, q[6], x + width - cs, y + cs, 0, 1, scaleY)    -- right
+    -- Draw edges (one axis stretches to size, other axis scales by s to match corners)
+    love.graphics.draw(img, q[2], x + cs, y, 0, scaleX, s)                 -- top
+    love.graphics.draw(img, q[8], x + cs, y + height - cs, 0, scaleX, s)   -- bottom
+    love.graphics.draw(img, q[4], x, y + cs, 0, s, scaleY)                 -- left
+    love.graphics.draw(img, q[6], x + width - cs, y + cs, 0, s, scaleY)    -- right
 
-    -- Draw center (scale both axes)
+    -- Draw center (stretch both)
     love.graphics.draw(img, q[5], x + cs, y + cs, 0, scaleX, scaleY)
 
     -- Reset color

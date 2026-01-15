@@ -7,6 +7,25 @@ local NineSlice = require("src.ui.nine_slice")
 local HandButton = {}
 HandButton.__index = HandButton
 
+-- Icon mapping
+local IconMapping = {
+    ones = "1die.png",
+    twos = "2die.png",
+    threes = "3die.png",
+    fours = "4die.png",
+    fives = "5die.png",
+    sixes = "6die.png",
+    threeOfKind = "3x.png",
+    fourOfKind = "4x.png",
+    yahtzee = "5x.png",
+    fullHouse = "fullHouse.png",
+    smallStraight = "smStraight.png",
+    largeStraight = "lgStraight.png",
+}
+
+-- Cache for loaded images
+local IconCache = {}
+
 function HandButton.new(config)
     local self = setmetatable({}, HandButton)
 
@@ -16,6 +35,22 @@ function HandButton.new(config)
     self.height = config.height or 65
     self.handDef = config.handDef
     self.onClick = config.onClick or function() end
+
+    -- Load icon if not cached
+    local iconName = IconMapping[self.handDef.id]
+    if iconName then
+        if not IconCache[iconName] then
+            local path = "assets/icons/hands/" .. iconName
+            local success, img = pcall(love.graphics.newImage, path)
+            if success then
+                img:setFilter("nearest", "nearest")
+                IconCache[iconName] = img
+            else
+                print("Failed to load icon: " .. path)
+            end
+        end
+        self.icon = IconCache[iconName]
+    end
 
     -- State callbacks
     self.isUsed = config.isUsed or function() return false end
@@ -96,8 +131,8 @@ function HandButton:draw()
         bgColor = Theme.colors.surface
     end
 
-    -- Draw background
-    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor)
+    -- Draw background with 0.33 scale for thinner borders
+    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor, 0.33)
 
     -- Draw border for valid/selected hands
     if selected then
@@ -110,7 +145,33 @@ function HandButton:draw()
         love.graphics.rectangle("line", self.x + 2, self.y + 2, self.width - 4, self.height - 4, 8)
     end
 
-    -- Draw hand name
+    -- Draw Icon
+    if self.icon then
+        love.graphics.setColor(1, 1, 1, 1)
+        if used then
+             love.graphics.setColor(1, 1, 1, 0.5) -- Dim used icons
+        elseif selected then
+             love.graphics.setColor(0, 0, 0, 1) -- Black icon on cyan selection? Or just keep white?
+             -- Screenshot shows white icons usually on dark. If background is cyan (bright), maybe dark icon is better.
+             -- Theme.colors.textDark is dark.
+             -- Let's stick to valid/active logic.
+             love.graphics.setColor(Theme.colors.textDark)
+        end
+        
+        -- Fit icon to center
+        local iw, ih = self.icon:getDimensions()
+        local targetSize = 24 -- Target size for icon
+        local scale = targetSize / math.max(iw, ih)
+        
+        local ix = self.x + (self.width - iw * scale) / 2
+        local iy = self.y + (self.height - ih * scale) / 2 - 4 -- Slight nudge up for text space
+        
+        love.graphics.draw(self.icon, ix, iy, 0, scale, scale)
+    else
+        -- Fallback if no icon
+    end
+
+    -- Draw hand name (Moved to bottom)
     local textColor
     if selected then
         textColor = Theme.colors.textDark
@@ -125,49 +186,17 @@ function HandButton:draw()
 
     local name = self.handDef.shortName
     local nameWidth = Theme.fonts.small:getWidth(name)
-    love.graphics.print(name, math.floor(self.x + (self.width - nameWidth) / 2), self.y + 6)
+    love.graphics.print(name, math.floor(self.x + (self.width - nameWidth) / 2), self.y + self.height - 14)
 
-    -- Draw score or state indicator
-    if used then
-        -- Show checkmark or "USED"
-        love.graphics.setColor(Theme.colors.gold)
-        love.graphics.setFont(Theme.fonts.normal)
-        local usedText = "OK"
-        local usedWidth = Theme.fonts.normal:getWidth(usedText)
-        love.graphics.print(usedText, math.floor(self.x + (self.width - usedWidth) / 2), self.y + 24)
-    elseif hasRolled then
-        -- Show potential score
-        local scoreText = tostring(score)
-        local scoreColor
-        if selected then
-            scoreColor = Theme.colors.textDark
-        elseif valid and score > 0 then
-            scoreColor = Theme.colors.gold
-        else
-            scoreColor = Theme.colors.textMuted
-        end
-
-        love.graphics.setColor(scoreColor)
-        love.graphics.setFont(Theme.fonts.large)
-        local scoreWidth = Theme.fonts.large:getWidth(scoreText)
-        love.graphics.print(scoreText, math.floor(self.x + (self.width - scoreWidth) / 2), self.y + 24)
-
-        -- Draw multiplier indicator
-        love.graphics.setFont(Theme.fonts.small)
-        local multText = self.handDef.mult .. "x"
-        local multWidth = Theme.fonts.small:getWidth(multText)
-        local multColor = selected and Theme.colors.textDark or Theme.colors.textMuted
-        love.graphics.setColor(multColor)
-        love.graphics.print(multText, math.floor(self.x + (self.width - multWidth) / 2), self.y + self.height - 18)
-    else
-        -- Not rolled yet - show dash
-        love.graphics.setColor(Theme.colors.textMuted)
-        love.graphics.setFont(Theme.fonts.large)
-        local dashText = "-"
-        local dashWidth = Theme.fonts.large:getWidth(dashText)
-        love.graphics.print(dashText, math.floor(self.x + (self.width - dashWidth) / 2), self.y + 24)
-    end
-
+    -- Draw LV indicator (Top Right) or Score if relevant?
+    -- Screenshot has "LV 1" in top left/right.
+    -- We'll put Score there if rolled?
+    -- For now just minimal changes to match "Use proper icons".
+    
+    -- Draw Level/Score small in top right corner if needed, or if we want to show potential points.
+    -- The user requested updating icons and scaling.
+    -- I will remove the big center score rendering as the icon replaces it.
+    
     love.graphics.setColor(1, 1, 1, 1)
 end
 
