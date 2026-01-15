@@ -4,10 +4,11 @@
 local Theme = require("src.ui.theme")
 local StateMachine = require("src.core.state_machine")
 local GameState = require("src.game.game_state")
+local HotReload = require("src.core.hot_reload")
 
 local stateMachine
 
--- Scaling state (global table for accessibility)
+-- Scaling state
 local Scaling = {
     canvas = nil,
     scale = 1,
@@ -23,15 +24,12 @@ local function calculateScale()
     local baseWidth = Theme.screen.width
     local baseHeight = Theme.screen.height
 
-    -- Calculate scale to fit
     local scaleX = windowWidth / baseWidth
     local scaleY = windowHeight / baseHeight
     Scaling.scale = math.min(scaleX, scaleY)
 
-    -- Ensure scale is never zero
     if Scaling.scale <= 0 then Scaling.scale = 1 end
 
-    -- Center the game in the window
     local scaledWidth = baseWidth * Scaling.scale
     local scaledHeight = baseHeight * Scaling.scale
     Scaling.offsetX = (windowWidth - scaledWidth) / 2
@@ -39,62 +37,72 @@ local function calculateScale()
 end
 
 -- Convert screen coordinates to game coordinates
--- Returns nil, nil if coordinates are outside the viewport (in letterbox/pillarbox area)
 local function screenToGame(screenX, screenY)
     if not Scaling.initialized then
         return screenX or 0, screenY or 0
     end
     local gameX = ((screenX or 0) - Scaling.offsetX) / Scaling.scale
     local gameY = ((screenY or 0) - Scaling.offsetY) / Scaling.scale
-    
-    -- Check if coordinates are within the virtual viewport
+
     local baseWidth = Theme.screen.width
     local baseHeight = Theme.screen.height
     if gameX < 0 or gameX >= baseWidth or gameY < 0 or gameY >= baseHeight then
         return nil, nil
     end
-    
+
     return gameX, gameY
 end
 
--- Make screenToGame accessible globally for UI components
 _G.screenToGame = screenToGame
 
-function love.load()
-    -- Pixel-perfect rendering
-    love.graphics.setDefaultFilter("nearest", "nearest")
+-- Hot reload callbacks
+HotReload.getState = function()
+    return {
+        currentLevel = GameState.currentLevel,
+        money = GameState.money,
+        currentScore = GameState.currentScore,
+        handsRemaining = GameState.handsRemaining,
+        rollsRemaining = GameState.rollsRemaining,
+        hasRolledThisHand = GameState.hasRolledThisHand,
+        dice = GameState.dice,
+        usedHands = GameState.usedHands,
+        selectedHandId = GameState.selectedHandId,
+        isRolling = GameState.isRolling,
+    }
+end
 
-    -- Load theme assets (fonts, images)
+HotReload.setState = function(state)
+    for k, v in pairs(state) do
+        GameState[k] = v
+    end
+end
+
+HotReload.onReload = function()
+    Theme = require("src.ui.theme")
+    GameState = require("src.game.game_state")
+    StateMachine = require("src.core.state_machine")
+    love.load()
+end
+
+function love.load()
+    love.graphics.setDefaultFilter("nearest", "nearest")
     Theme:load()
 
-    -- Create canvas for resolution-independent rendering
     Scaling.canvas = love.graphics.newCanvas(Theme.screen.width, Theme.screen.height)
     Scaling.canvas:setFilter("nearest", "nearest")
 
-    -- Calculate initial scale
     calculateScale()
     Scaling.initialized = true
 
-    -- Initialize game state
     GameState:reset()
 
-    -- Create state machine with lazy state loading
     stateMachine = StateMachine.new({
-        play = function()
-            return require("src.states.play_state").new()
-        end,
-        result = function()
-            return require("src.states.result_state").new()
-        end,
-        shop = function()
-            return require("src.states.shop_state").new()
-        end,
+        play = function() return require("src.states.play_state").new() end,
+        result = function() return require("src.states.result_state").new() end,
+        shop = function() return require("src.states.shop_state").new() end,
     })
 
-    -- Start with play state
-    stateMachine:change("play", {
-        stateMachine = stateMachine,
-    })
+    stateMachine:change("play", { stateMachine = stateMachine })
 end
 
 function love.resize(w, h)
@@ -102,38 +110,45 @@ function love.resize(w, h)
 end
 
 function love.update(dt)
+    HotReload:update(dt)
     stateMachine:update(dt)
 end
 
 function love.draw()
-    -- Render game to canvas at base resolution
+    -- Render to canvas
     love.graphics.setCanvas(Scaling.canvas)
     love.graphics.clear(Theme.colors.bg)
     stateMachine:draw()
     love.graphics.setCanvas()
 
-    -- Draw canvas scaled to window
+    -- Draw scaled canvas
     love.graphics.setColor(1, 1, 1, 1)
     love.graphics.draw(Scaling.canvas, Scaling.offsetX, Scaling.offsetY, 0, Scaling.scale, Scaling.scale)
 
-    -- Draw black bars if needed (letterboxing/pillarboxing)
+    -- Letterboxing
     love.graphics.setColor(0, 0, 0, 1)
     if Scaling.offsetX > 0 then
         love.graphics.rectangle("fill", 0, 0, Scaling.offsetX, love.graphics.getHeight())
-        love.graphics.rectangle("fill", love.graphics.getWidth() - Scaling.offsetX, 0, Scaling.offsetX, love.graphics.getHeight())
+        love.graphics.rectangle("fill", love.graphics.getWidth() - Scaling.offsetX, 0, Scaling.offsetX,
+            love.graphics.getHeight())
     end
     if Scaling.offsetY > 0 then
         love.graphics.rectangle("fill", 0, 0, love.graphics.getWidth(), Scaling.offsetY)
-        love.graphics.rectangle("fill", 0, love.graphics.getHeight() - Scaling.offsetY, love.graphics.getWidth(), Scaling.offsetY)
+        love.graphics.rectangle("fill", 0, love.graphics.getHeight() - Scaling.offsetY, love.graphics.getWidth(),
+            Scaling.offsetY)
     end
     love.graphics.setColor(1, 1, 1, 1)
-    
-    -- Debug overlay (F3 to toggle)
+
+    -- Hot reload notification
+    love.graphics.setFont(Theme.fonts.normal)
+    HotReload:draw()
+
+    -- Debug overlay
     if Scaling.showDebug then
         local mx, my = love.mouse.getPosition()
         local vx, vy = screenToGame(mx, my)
         local inViewport = vx ~= nil
-        
+
         love.graphics.setColor(0, 0, 0, 0.7)
         love.graphics.rectangle("fill", 10, 10, 280, 130)
         love.graphics.setColor(1, 1, 1, 1)
@@ -171,9 +186,11 @@ end
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()
+    elseif key == "r" then
+        HotReload:reload()
     elseif key == "f3" then
         Scaling.showDebug = not Scaling.showDebug
-    elseif key == "f11" then
+    elseif key == "f10" then
         love.window.setFullscreen(not love.window.getFullscreen())
     end
     stateMachine:keypressed(key)

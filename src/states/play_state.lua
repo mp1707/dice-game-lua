@@ -219,15 +219,15 @@ function PlayState:acceptHand()
             won = false,
             stateMachine = self.stateMachine,
         })
+    elseif GameState:hasReachedGoal() then
+        -- Goal reached! Immediately cash out
+        self:cashOut()
     elseif GameState:allHandsUsed() then
-        if GameState:hasReachedGoal() then
-            self:cashOut()
-        else
-            self.stateMachine:change("result", {
-                won = false,
-                stateMachine = self.stateMachine,
-            })
-        end
+        -- All hands used but goal not reached
+        self.stateMachine:change("result", {
+            won = false,
+            stateMachine = self.stateMachine,
+        })
     else
         -- Continue playing - reset for next hand
         GameState:resetForHand()

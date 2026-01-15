@@ -87,6 +87,10 @@ function Button:mousereleased(x, y, button)
 end
 
 function Button:draw()
+    -- 3D shadow offset
+    local shadowOffset = 4
+    local pressOffset = self.isPressed and shadowOffset or 0
+
     -- Determine colors based on state
     local bgColor, textColor
 
@@ -94,7 +98,7 @@ function Button:draw()
         bgColor = self.disabledBgColor
         textColor = self.disabledTextColor
     elseif self.isPressed then
-        bgColor = Theme.colors.surface
+        bgColor = self.bgColor -- Keep same color when pressed, just moved
         textColor = self.textColor
     elseif self.isHovered then
         bgColor = self.hoverBgColor
@@ -104,17 +108,21 @@ function Button:draw()
         textColor = self.textColor
     end
 
-    -- Draw 9-slice background
-    self.nineSlice:draw(self.x, self.y, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
+    -- Draw shadow (darker version of bg, offset down)
+    local shadowColor = { 0, 0, 0, 0.4 }
+    self.nineSlice:draw(self.x, self.y + shadowOffset, self.width, self.height, shadowColor, Theme.nineSlice.borderScale)
 
-    -- Draw text centered
+    -- Draw 9-slice background (offset when pressed)
+    self.nineSlice:draw(self.x, self.y + pressOffset, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
+
+    -- Draw text centered (offset when pressed)
     love.graphics.setFont(self.font)
     love.graphics.setColor(textColor)
 
     local textWidth = self.font:getWidth(self.text)
     local textHeight = self.font:getHeight()
     local textX = self.x + (self.width - textWidth) / 2
-    local textY = self.y + (self.height - textHeight) / 2
+    local textY = self.y + pressOffset + (self.height - textHeight) / 2
 
     love.graphics.print(self.text, math.floor(textX), math.floor(textY))
     love.graphics.setColor(1, 1, 1, 1)
