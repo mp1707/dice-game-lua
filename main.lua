@@ -10,6 +10,7 @@ local stateMachine
 
 -- Scaling state
 local Scaling = {
+    ---@type table|nil Canvas object (from love.graphics.newCanvas)
     canvas = nil,
     scale = 1,
     offsetX = 0,
