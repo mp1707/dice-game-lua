@@ -31,7 +31,7 @@ function InfoPanel.new(config)
 
     -- Action button callbacks
     self.onActionClick = config.onActionClick or function() end
-    self.getActionText = config.getActionText or function() return "WURFELN" end
+    self.getActionText = config.getActionText or function() return "WÜRFELN" end
     self.getActionEnabled = config.getActionEnabled or function() return true end
     self.getActionColor = config.getActionColor or function() return Theme.colors.cyan end
 
@@ -54,12 +54,13 @@ function InfoPanel.new(config)
         y = self.y + self.height - buttonHeight - self.padding,
         width = buttonWidth,
         height = buttonHeight,
-        text = "WURFELN",
+        text = "WÜRFELN",
         bgColor = Theme.colors.cyan,
         textColor = Theme.colors.textDark,
         onClick = function()
             self.onActionClick()
         end,
+        disabledBgColor = Theme.colors.surfaceHighlight,
     })
 
     return self
@@ -140,13 +141,13 @@ function InfoPanel:draw()
     end
 
     -- Hands remaining counter
-    self:drawCounter(contentX, contentY, contentW, "Hands", self.getHandsRemaining(), Theme.images.glove,
+    self:drawCounter(contentX, contentY, contentW, "Hände", self.getHandsRemaining(), Theme.images.glove,
         Theme.colors.mint)
     contentY = contentY + 50
 
     -- Rolls remaining counter
-    self:drawCounter(contentX, contentY, contentW, "Wurfe", self.getRollsRemaining(), Theme.images.die, Theme.colors
-    .cyan)
+    self:drawCounter(contentX, contentY, contentW, "Würfe", self.getRollsRemaining(), Theme.images.die, Theme.colors
+        .cyan)
 
     -- Action button
     self.actionButton:draw()

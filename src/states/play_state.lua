@@ -67,13 +67,13 @@ function PlayState:initLooseDicePositions()
     local diceSize = layout.diceSize
 
     -- Calculate centered positions with stagger
-    local totalWidth = 5 * diceSize + 4 * 40  -- wider spacing for scattered look
+    local totalWidth = 5 * diceSize + 4 * 40 -- wider spacing for scattered look
     local startX = centerX - totalWidth / 2
 
     self.looseDicePositions = {
-        { x = startX,             y = baseY + 40 },
-        { x = startX + diceSize + 60,  y = baseY + 80 },
-        { x = startX + (diceSize + 40) * 2, y = baseY },
+        { x = startX,                            y = baseY + 40 },
+        { x = startX + diceSize + 60,            y = baseY + 80 },
+        { x = startX + (diceSize + 40) * 2,      y = baseY },
         { x = startX + (diceSize + 40) * 3 - 20, y = baseY + 60 },
         { x = startX + (diceSize + 40) * 4 - 40, y = baseY + 30 },
     }
@@ -211,7 +211,7 @@ function PlayState:getActionButtonText()
     elseif GameState:hasReachedGoal() and GameState.hasRolledThisHand then
         return "CASH OUT"
     elseif GameState:canRoll() then
-        return "WURFELN"
+        return "WÜRFELN"
     else
         return "HAND WAHLEN"
     end
@@ -286,7 +286,7 @@ function PlayState:onHandClick(handId)
         if breakdown then
             self.infoPanel:updateFormula(
                 handDef.name,
-                1,  -- level (could be upgraded later)
+                1, -- level (could be upgraded later)
                 breakdown.basePoints + breakdown.pips,
                 breakdown.mult
             )
@@ -318,6 +318,10 @@ end
 function PlayState:rollDice()
     if not GameState:canRoll() then return end
 
+    -- Roll immediately so the new values are ready when animation ends
+    -- This prevents the glitch where the old value is shown briefly
+    if not GameState:rollDice() then return end
+
     GameState.isRolling = true
 
     -- Start animations for unlocked dice
@@ -330,10 +334,9 @@ function PlayState:rollDice()
         end
     end
 
-    -- Actually roll after animation
+    -- Finish rolling state after animation
     self.timer:after(maxDuration + 0.1, function()
         GameState.isRolling = false
-        GameState:rollDice()
     end)
 end
 

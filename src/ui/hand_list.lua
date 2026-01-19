@@ -1,5 +1,5 @@
 -- Hand List component
--- Single-column vertical list for hand selection
+-- Single-column vertical list for hand selection with icons
 
 local Theme = require("src.ui.theme")
 local NineSlice = require("src.ui.nine_slice")
@@ -7,6 +7,22 @@ local Hands = require("src.game.hands")
 
 local HandList = {}
 HandList.__index = HandList
+
+-- Map hand IDs to icon filenames
+local iconMap = {
+    ones = "1die.png",
+    twos = "2die.png",
+    threes = "3die.png",
+    fours = "4die.png",
+    fives = "5die.png",
+    sixes = "6die.png",
+    threeOfKind = "3x.png",
+    fourOfKind = "4x.png",
+    yahtzee = "5x.png",
+    fullHouse = "fullHouse.png",
+    smallStraight = "smStraight.png",
+    largeStraight = "lgStraight.png",
+}
 
 function HandList.new(config)
     local self = setmetatable({}, HandList)
@@ -19,6 +35,9 @@ function HandList.new(config)
     self.itemHeight = config.itemHeight or Theme.layout.handListItemHeight
     self.itemSpacing = config.itemSpacing or Theme.layout.handListItemSpacing
 
+    -- Icon settings
+    self.iconSize = 52  -- Size to display icons at (nice big icons)
+
     -- Callbacks
     self.isUsed = config.isUsed or function(handId) return false end
     self.isSelected = config.isSelected or function(handId) return false end
@@ -30,6 +49,17 @@ function HandList.new(config)
     -- Internal state
     self.hoveredHandId = nil
     self.nineSlice = NineSlice.getInstance()
+
+    -- Load icons
+    self.icons = {}
+    for handId, filename in pairs(iconMap) do
+        local path = "assets/icons/hands/" .. filename
+        local success, img = pcall(love.graphics.newImage, path)
+        if success then
+            img:setFilter("nearest", "nearest")
+            self.icons[handId] = img
+        end
+    end
 
     -- Pre-calculate item positions
     self.items = {}
@@ -103,7 +133,7 @@ function HandList:draw()
     -- Title
     love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("HANDE", self.x + self.padding, self.y + self.padding)
+    love.graphics.print("HÄNDE", self.x + self.padding, self.y + self.padding)
 
     -- Draw each hand item
     for _, item in ipairs(self.items) do
@@ -152,6 +182,20 @@ function HandList:drawItem(item)
         love.graphics.rectangle("line", item.x + 2, item.y + 2, item.width - 4, item.height - 4, 6)
     end
 
+    -- Draw icon
+    local icon = self.icons[handId]
+    local iconX = item.x + 8
+    local iconY = item.y + (item.height - self.iconSize) / 2
+
+    if icon then
+        -- Determine icon opacity
+        local iconAlpha = isUsed and 0.4 or 1.0
+        love.graphics.setColor(1, 1, 1, iconAlpha)
+
+        local iconScale = self.iconSize / icon:getWidth()
+        love.graphics.draw(icon, iconX, iconY, 0, iconScale, iconScale)
+    end
+
     -- Determine text color
     local textColor
     if isUsed then
@@ -162,13 +206,14 @@ function HandList:drawItem(item)
         textColor = Theme.colors.text
     end
 
-    -- Draw hand name
+    -- Draw hand name (offset by icon)
+    local textX = iconX + self.iconSize + 10
     love.graphics.setFont(Theme.fonts.normal)
     love.graphics.setColor(textColor)
     local textY = item.y + (item.height - Theme.fonts.normal:getHeight()) / 2
-    love.graphics.print(handDef.name, item.x + 12, textY)
+    love.graphics.print(handDef.name, textX, textY)
 
-    -- Draw score if valid and rolled
+    -- Draw score if valid and rolled (right aligned)
     if hasRolled and isValid and not isUsed then
         local score = self.getScore(handId)
         if score > 0 then
