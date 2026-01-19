@@ -99,7 +99,7 @@ Theme.layout = {
     -- Left Panel (Hand Selection) - NOW ON LEFT
     leftPanelX = 24,
     leftPanelY = 24,
-    leftPanelWidth = 220,    -- narrower for text-only hand list
+    leftPanelWidth = 220, -- narrower for text-only hand list
     leftPanelHeight = 1032,
 
     -- Hand list (single column in left panel)
@@ -108,8 +108,8 @@ Theme.layout = {
     handListPadding = 12,
 
     -- Center Area (Item Strip + Held Tray + Loose Dice + Action)
-    centerX = 268,        -- 24 + 220 + 24
-    centerWidth = 1248,   -- wider center area
+    centerX = 268,      -- 24 + 220 + 24
+    centerWidth = 1248, -- wider center area
 
     -- Item strip (top center) - 7 empty slots
     itemStripY = 24,
@@ -137,7 +137,7 @@ Theme.layout = {
     actionButtonHeight = 80,
 
     -- Right Panel (Info/Stats) - NOW ON RIGHT
-    rightPanelX = 1540,      -- 1920 - 24 - 356
+    rightPanelX = 1540, -- 1920 - 24 - 356
     rightPanelY = 24,
     rightPanelWidth = 356,
     rightPanelHeight = 1032,

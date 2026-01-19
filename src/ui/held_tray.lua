@@ -25,7 +25,7 @@ function HeldTray.new(config)
         }
     end
 
-    self.label = "HELD"
+    self.label = "HALTEN"
     self.nineSlice = NineSlice.getInstance()
 
     return self

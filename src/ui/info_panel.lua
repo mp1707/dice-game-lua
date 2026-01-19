@@ -42,7 +42,7 @@ function InfoPanel.new(config)
     local contentX = self.x + self.padding
     self.handFormula = HandFormula.new({
         x = contentX,
-        y = self.y + 340,  -- positioned after score section
+        y = self.y + 340, -- positioned after score section
         width = self.width - self.padding * 2,
     })
 
@@ -140,11 +140,13 @@ function InfoPanel:draw()
     end
 
     -- Hands remaining counter
-    self:drawCounter(contentX, contentY, contentW, "Hands", self.getHandsRemaining(), Theme.images.glove, Theme.colors.mint)
+    self:drawCounter(contentX, contentY, contentW, "Hands", self.getHandsRemaining(), Theme.images.glove,
+        Theme.colors.mint)
     contentY = contentY + 50
 
     -- Rolls remaining counter
-    self:drawCounter(contentX, contentY, contentW, "Wurfe", self.getRollsRemaining(), Theme.images.die, Theme.colors.cyan)
+    self:drawCounter(contentX, contentY, contentW, "Wurfe", self.getRollsRemaining(), Theme.images.die, Theme.colors
+    .cyan)
 
     -- Action button
     self.actionButton:draw()
@@ -190,7 +192,7 @@ function InfoPanel:drawGoalBox(x, y, width)
     -- Goal value (large, centered)
     local goal = self.getGoal()
     love.graphics.setFont(Theme.fonts.display)
-    love.graphics.setColor(Theme.colors.gold)
+    love.graphics.setColor(Theme.colors.text)
     local goalText = tostring(goal)
     local goalWidth = Theme.fonts.display:getWidth(goalText)
     local goalX = x + (width - goalWidth) / 2
