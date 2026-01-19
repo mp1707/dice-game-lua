@@ -103,7 +103,7 @@ Theme.layout = {
     leftPanelHeight = 1032,
 
     -- Hand list (single column in left panel)
-    handListItemHeight = 70, -- taller for bigger icons
+    handListItemHeight = 77, -- fills vertical space perfectly (12 items fit panel)
     handListItemSpacing = 4,
     handListPadding = 10,
 

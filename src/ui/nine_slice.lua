@@ -87,6 +87,50 @@ function NineSlice:draw(x, y, width, height, color, scale)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
+function NineSlice:drawBorder(x, y, width, height, color, scale, thickness)
+    local s = scale or 1
+    local cs = self.cornerSize * s
+    local img = self.image
+    local q = self.quads
+    local t = thickness or 0
+
+    -- Set color (defaults to white for no tint)
+    if color then
+        love.graphics.setColor(color)
+    else
+        love.graphics.setColor(1, 1, 1, 1)
+    end
+
+    -- Calculate center dimensions
+    local centerW = width - cs * 2
+    local centerH = height - cs * 2
+
+    -- Ensure we don't overlap if too small
+    if centerW < 0 then centerW = 0 end
+    if centerH < 0 then centerH = 0 end
+
+    -- Scale factors for edge pieces (stretching to fill the gap)
+    local scaleX = centerW / self.sourceCenter.w
+    local scaleY = centerH / self.sourceCenter.h
+
+    -- Draw corners (scaled by s)
+    love.graphics.draw(img, q[1], x, y, 0, s, s)                                    -- top-left
+    love.graphics.draw(img, q[3], x + width - cs, y, 0, s, s)                       -- top-right
+    love.graphics.draw(img, q[7], x, y + height - cs, 0, s, s)                      -- bot-left
+    love.graphics.draw(img, q[9], x + width - cs, y + height - cs, 0, s, s)         -- bot-right
+
+    -- Draw edges (one axis stretches to size, other axis scales by s to match corners)
+    love.graphics.draw(img, q[2], x + cs, y, 0, scaleX, s)                 -- top
+    love.graphics.draw(img, q[8], x + cs, y + height - cs, 0, scaleX, s)   -- bottom
+    love.graphics.draw(img, q[4], x, y + cs, 0, s, scaleY)                 -- left
+    love.graphics.draw(img, q[6], x + width - cs, y + cs, 0, s, scaleY)    -- right
+
+    -- Note: Center piece (quad[5]) is intentionally skipped to create border-only effect
+
+    -- Reset color
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
 -- Singleton instance for convenience
 local _instance = nil
 

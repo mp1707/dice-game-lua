@@ -66,8 +66,31 @@ function HandFormula:draw()
 
     -- Calculate box widths based on text
     love.graphics.setFont(Theme.fonts.large)
-    local chipsWidth = math.max(self.boxWidth, Theme.fonts.large:getWidth(chipsText) + 24)
-    local multWidth = math.max(self.boxWidth, Theme.fonts.large:getWidth(multText) + 24)
+
+    -- Calculate available width for boxes
+    -- Space structure: [Box 1] (12px) [x] (12px) [Box 2]
+    local xWidth = Theme.fonts.large:getWidth("x")
+    local spacing = 12
+    local totalFixedSpace = (spacing * 2) + xWidth
+
+    -- Calculate dynamic width (split remaining space equally)
+    local dynamicBoxWidth = (self.width - totalFixedSpace) / 2
+
+    -- Ensure we don't shrink below minimum or text size if the panel is somehow very narrow
+    -- But prioritize filling the space as requested
+    local chipsRequired = Theme.fonts.large:getWidth(chipsText) + 24
+    local multRequired = Theme.fonts.large:getWidth(multText) + 24
+
+    local chipsWidth = math.max(self.boxWidth, dynamicBoxWidth)
+    local multWidth = math.max(self.boxWidth, dynamicBoxWidth)
+
+    -- Make them equal size (the larger of the two required or the dynamic width)
+    -- User requested "both the same size" and "grow to use horizontal space"
+    local finalBoxWidth = math.max(chipsWidth, multWidth)
+
+    chipsWidth = finalBoxWidth
+    multWidth = finalBoxWidth
+
     local boxHeight = self.boxHeight
 
     -- Chips box (blue)
@@ -86,7 +109,6 @@ function HandFormula:draw()
     love.graphics.setFont(Theme.fonts.large)
     love.graphics.setColor(Theme.colors.textMuted)
     love.graphics.print("x", xSymbolX, textY)
-    local xWidth = Theme.fonts.large:getWidth("x")
 
     -- Mult box (red)
     local multBoxX = xSymbolX + xWidth + 12

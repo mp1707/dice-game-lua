@@ -156,13 +156,21 @@ function HandList:drawItem(item)
     -- Determine background color
     local bgColor
     if isUsed then
-        bgColor = Theme.colors.surface
+        bgColor = Theme.colors.surface  -- Dark purple (used)
     elseif isSelected then
-        bgColor = Theme.colors.cyan
-    elseif isHovered and hasRolled and not isUsed then
-        bgColor = Theme.colors.surfaceHighlight
+        bgColor = Theme.colors.cyan  -- Bright cyan (selected)
+    elseif isValid and hasRolled then
+        if isHovered then
+            bgColor = Theme.colors.surfaceHighlight  -- Light purple hover
+        else
+            bgColor = Theme.colors.surface2  -- Medium purple (PLAYABLE)
+        end
     else
-        bgColor = Theme.colors.surface2
+        if isHovered and hasRolled then
+            bgColor = Theme.colors.surfaceHighlight  -- Light purple hover
+        else
+            bgColor = Theme.colors.bg2  -- Darker purple (DISABLED)
+        end
     end
 
     -- Draw item background
@@ -174,13 +182,6 @@ function HandList:drawItem(item)
         bgColor,
         Theme.nineSlice.borderScale
     )
-
-    -- Draw valid hand indicator (cyan border)
-    if isValid and hasRolled and not isSelected and not isUsed then
-        love.graphics.setColor(Theme.colors.cyan[1], Theme.colors.cyan[2], Theme.colors.cyan[3], 0.6)
-        love.graphics.setLineWidth(2)
-        love.graphics.rectangle("line", item.x + 2, item.y + 2, item.width - 4, item.height - 4, 6)
-    end
 
     -- Draw icon
     local icon = self.icons[handId]
@@ -213,18 +214,13 @@ function HandList:drawItem(item)
     local textY = item.y + (item.height - Theme.fonts.normal:getHeight()) / 2
     love.graphics.print(handDef.name, textX, textY)
 
-    -- Draw score if valid and rolled (right aligned)
-    if hasRolled and isValid and not isUsed then
-        local score = self.getScore(handId)
-        if score > 0 then
-            love.graphics.setFont(Theme.fonts.normal)
-            local scoreText = tostring(score)
-            local scoreWidth = Theme.fonts.normal:getWidth(scoreText)
-            local scoreColor = isSelected and Theme.colors.textDark or Theme.colors.gold
-            love.graphics.setColor(scoreColor)
-            love.graphics.print(scoreText, item.x + item.width - scoreWidth - 12, textY)
-        end
-    end
+    -- Draw level (right aligned, same color as hand name)
+    local level = handDef.level or 1
+    local levelText = "LV " .. tostring(level)
+    love.graphics.setFont(Theme.fonts.normal)
+    local levelWidth = Theme.fonts.normal:getWidth(levelText)
+    love.graphics.setColor(textColor)
+    love.graphics.print(levelText, item.x + item.width - levelWidth - 12, textY)
 
     love.graphics.setColor(1, 1, 1, 1)
 end
