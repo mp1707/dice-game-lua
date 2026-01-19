@@ -128,13 +128,6 @@ function HeldTray:draw()
             bgColor,
             Theme.nineSlice.borderScale
         )
-
-        -- Draw subtle inner border for empty slots
-        if not isOccupied then
-            love.graphics.setColor(Theme.colors.border[1], Theme.colors.border[2], Theme.colors.border[3], 0.3)
-            love.graphics.setLineWidth(2)
-            love.graphics.rectangle("line", bounds.x + 6, bounds.y + 6, bounds.width - 12, bounds.height - 12, 6)
-        end
     end
 
     -- Draw "HELD" label below the tray

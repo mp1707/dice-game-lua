@@ -44,11 +44,6 @@ function ItemStrip:draw()
             Theme.colors.surface,
             Theme.nineSlice.borderScale
         )
-
-        -- Draw subtle inner border
-        love.graphics.setColor(Theme.colors.border[1], Theme.colors.border[2], Theme.colors.border[3], 0.5)
-        love.graphics.setLineWidth(1)
-        love.graphics.rectangle("line", slotX + 4, slotY + 4, self.slotSize - 8, self.slotSize - 8, 4)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

@@ -87,6 +87,7 @@ Theme.images = {
     glove = nil,
     die = nil,
     lock = nil,
+    diceFaces = {},  -- Array for dice faces 1-6
 }
 
 -- Layout constants for Balatro-style 3-column UI (1080p)
@@ -177,6 +178,13 @@ function Theme:load()
 
     self.images.lock = love.graphics.newImage("assets/icons/ui/lock.png")
     self.images.lock:setFilter("nearest", "nearest")
+
+    -- Load dice face images
+    for i = 1, 6 do
+        local path = "assets/icons/hands/" .. i .. "die.png"
+        self.images.diceFaces[i] = love.graphics.newImage(path)
+        self.images.diceFaces[i]:setFilter("nearest", "nearest")
+    end
 end
 
 -- Helper function to draw text centered

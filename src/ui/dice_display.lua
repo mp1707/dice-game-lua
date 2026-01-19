@@ -26,7 +26,18 @@ function DiceDisplay.new(config)
     self.isAnimating = false
     self.animValue = 1
     self.animTimer = 0
-    self.animDuration = 0.5
+    self.animDuration = 0.8
+
+    -- Throw & bounce animation state
+    self.throwHeight = 0          -- Current Y offset (negative = up)
+    self.throwVelocity = 0        -- Vertical velocity
+    self.bounceCount = 0          -- Number of bounces completed
+    self.maxBounces = 3           -- Total bounces before settling
+    self.faceChangeTimer = 0      -- Timer for face changes
+    self.faceChangeInterval = 0.08 -- ~12fps face changes (slower)
+    self.rotation = 0             -- Current rotation
+    self.rotationSpeed = 0        -- Rotation velocity
+    self.squash = 1.0             -- Squash/stretch factor
 
     -- Position animation state
     self.targetX = nil
@@ -70,7 +81,16 @@ end
 function DiceDisplay:startRollAnimation(duration)
     self.isAnimating = true
     self.animTimer = 0
-    self.animDuration = duration or 0.5
+    self.animDuration = duration or 0.8
+
+    -- Initialize throw physics
+    self.throwHeight = 0
+    self.throwVelocity = -400 - math.random() * 200  -- Random upward velocity
+    self.bounceCount = 0
+    self.rotation = 0
+    self.rotationSpeed = (math.random() - 0.5) * 15  -- Random spin direction
+    self.squash = 1.0
+    self.faceChangeTimer = 0
 end
 
 function DiceDisplay:stopAnimation()
@@ -129,15 +149,53 @@ function DiceDisplay:snapTo(x, y)
 end
 
 function DiceDisplay:update(dt)
-    -- Roll animation
+    -- Roll animation with throw & bounce physics
     if self.isAnimating then
-        self.animTimer = self.animTimer + dt
-        -- Rapidly change display value during animation
-        self.animValue = math.random(1, 6)
+        local gravity = 2000  -- pixels/sec²
 
-        if self.animTimer >= self.animDuration then
-            self.isAnimating = false
+        -- Update throw height with gravity
+        self.throwVelocity = self.throwVelocity + gravity * dt
+        self.throwHeight = self.throwHeight + self.throwVelocity * dt
+
+        -- Rotation during flight
+        self.rotation = self.rotation + self.rotationSpeed * dt
+
+        -- Face changes at controlled rate (not every frame)
+        self.faceChangeTimer = self.faceChangeTimer + dt
+        if self.faceChangeTimer >= self.faceChangeInterval then
+            self.faceChangeTimer = 0
+            self.animValue = math.random(1, 6)
         end
+
+        -- Bounce when hitting ground
+        if self.throwHeight >= 0 then
+            self.throwHeight = 0
+            self.bounceCount = self.bounceCount + 1
+
+            -- Squash on impact
+            self.squash = 0.7
+
+            -- Decreasing bounce height each time
+            local bounciness = 0.6
+            self.throwVelocity = -math.abs(self.throwVelocity) * bounciness * (1 - self.bounceCount / self.maxBounces)
+
+            -- Slow down rotation on bounce
+            self.rotationSpeed = self.rotationSpeed * 0.5
+
+            -- Change face on each bounce
+            self.animValue = math.random(1, 6)
+
+            -- End animation after max bounces
+            if self.bounceCount >= self.maxBounces then
+                self.isAnimating = false
+                self.throwHeight = 0
+                self.rotation = 0
+                self.squash = 1.0
+            end
+        end
+
+        -- Recover squash over time
+        self.squash = self.squash + (1.0 - self.squash) * dt * 15
     end
 
     -- Position animation (lerp towards target)
@@ -175,45 +233,49 @@ function DiceDisplay:draw()
     local value = self.isAnimating and self.animValue or data.value
     local locked = data.locked
 
-    -- Background color based on lock state
-    local bgColor = locked and Theme.colors.cyan or Theme.colors.surface2
+    -- Calculate draw position with throw offset
+    local drawY = self.y + self.throwHeight
 
-    -- Draw highlight when dragging
-    if self.isDragging then
-        love.graphics.setColor(Theme.colors.cyan[1], Theme.colors.cyan[2], Theme.colors.cyan[3], 0.3)
-        love.graphics.rectangle("fill", self.x - 6, self.y - 6, self.size + 12, self.size + 12, 14)
+    -- Draw shadow on ground (spreads when dice is higher)
+    local shadowScale = 1.0 + math.abs(self.throwHeight) / 200
+    local shadowAlpha = 0.4 - math.abs(self.throwHeight) / 400
+    if shadowAlpha > 0 then
+        love.graphics.setColor(0, 0, 0, shadowAlpha)
+        local shadowW = self.size * 0.6 * shadowScale
+        local shadowH = self.size * 0.15
+        love.graphics.ellipse("fill",
+            self.x + self.size / 2,
+            self.y + self.size - 5,
+            shadowW / 2, shadowH / 2)
     end
 
-    -- Draw background
-    self.nineSlice:draw(self.x, self.y, self.size, self.size, bgColor, Theme.nineSlice.borderScale)
+    -- Draw dice face image
+    local diceImage = Theme.images.diceFaces[value]
+    if diceImage then
+        local iw, ih = diceImage:getDimensions()
+        local baseScale = self.size / math.max(iw, ih)
 
-    -- Draw border if locked
-    if locked then
-        love.graphics.setColor(Theme.colors.text)
-        love.graphics.setLineWidth(3)
-        love.graphics.rectangle("line", self.x + 2, self.y + 2, self.size - 4, self.size - 4, 8)
-    end
+        -- Apply squash (compress Y, expand X)
+        local scaleX = baseScale * (2 - self.squash)
+        local scaleY = baseScale * self.squash
 
-    -- Draw value
-    local textColor = locked and Theme.colors.textDark or Theme.colors.text
-    love.graphics.setColor(textColor)
-    love.graphics.setFont(Theme.fonts.huge)
+        local centerX = self.x + self.size / 2
+        local centerY = drawY + self.size / 2
 
-    local text = tostring(value)
-    local textWidth = Theme.fonts.huge:getWidth(text)
-    local textHeight = Theme.fonts.huge:getHeight()
-    local textX = self.x + (self.size - textWidth) / 2
-    local textY = self.y + (self.size - textHeight) / 2
+        -- Tint for locked state
+        if locked then
+            love.graphics.setColor(0.7, 0.9, 1.0, 1)
+        else
+            love.graphics.setColor(1, 1, 1, 1)
+        end
 
-    love.graphics.print(text, math.floor(textX), math.floor(textY))
-
-    -- Draw lock indicator text
-    if locked then
-        love.graphics.setFont(Theme.fonts.small)
-        love.graphics.setColor(Theme.colors.textDark)
-        local lockText = "LOCK"
-        local lockWidth = Theme.fonts.small:getWidth(lockText)
-        love.graphics.print(lockText, self.x + (self.size - lockWidth) / 2, self.y + self.size - 20)
+        love.graphics.draw(
+            diceImage,
+            centerX, centerY,
+            self.rotation,
+            scaleX, scaleY,
+            iw / 2, ih / 2
+        )
     end
 
     love.graphics.setColor(1, 1, 1, 1)
