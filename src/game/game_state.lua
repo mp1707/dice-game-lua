@@ -95,6 +95,33 @@ function GameState:toggleLock(index)
     self.dice[index].locked = not self.dice[index].locked
 end
 
+-- Explicitly lock a die
+function GameState:lockDice(index)
+    if not self.hasRolledThisHand then return end
+    if index < 1 or index > 5 then return end
+
+    self.dice[index].locked = true
+end
+
+-- Explicitly unlock a die
+function GameState:unlockDice(index)
+    if not self.hasRolledThisHand then return end
+    if index < 1 or index > 5 then return end
+
+    self.dice[index].locked = false
+end
+
+-- Get count of locked dice
+function GameState:getLockedCount()
+    local count = 0
+    for _, die in ipairs(self.dice) do
+        if die.locked then
+            count = count + 1
+        end
+    end
+    return count
+end
+
 -- Check if can roll
 function GameState:canRoll()
     return self.rollsRemaining > 0 and not self.isRolling

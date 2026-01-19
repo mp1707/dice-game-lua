@@ -73,6 +73,13 @@ function love.mousereleased(x, y, button)
     end
 end
 
+function love.mousemoved(x, y)
+    local gameX, gameY = Scaling.screenToGame(x, y)
+    if gameX and gameY then
+        stateMachine:mousemoved(gameX, gameY)
+    end
+end
+
 function love.keypressed(key)
     if key == "escape" then
         love.event.quit()

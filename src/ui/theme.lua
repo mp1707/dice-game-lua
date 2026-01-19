@@ -84,56 +84,67 @@ Theme.fonts = {
 -- Images
 Theme.images = {
     coin = nil,
+    glove = nil,
+    die = nil,
+    lock = nil,
 }
 
 -- Layout constants for Balatro-style 3-column UI (1080p)
+-- NEW LAYOUT: Hands on LEFT, Info on RIGHT, Center has item strip + held tray + loose dice
 Theme.layout = {
     -- Screen padding
-    screenPadding = 24, -- was 16
-    panelPadding = 24,  -- was 16
+    screenPadding = 24,
+    panelPadding = 24,
 
-    -- Left Panel (Info/Stats)
-    leftPanelX = 24,        -- was 16
-    leftPanelY = 24,        -- was 16
-    leftPanelWidth = 390,   -- was 260
-    leftPanelHeight = 1032, -- was 688
+    -- Left Panel (Hand Selection) - NOW ON LEFT
+    leftPanelX = 24,
+    leftPanelY = 24,
+    leftPanelWidth = 220,    -- narrower for text-only hand list
+    leftPanelHeight = 1032,
 
-    -- Center Area (Dice + Action)
-    centerX = 438,      -- was 292
-    centerWidth = 1020, -- was 680
+    -- Hand list (single column in left panel)
+    handListItemHeight = 60,
+    handListItemSpacing = 6,
+    handListPadding = 12,
 
-    -- Dice area (in center)
-    diceAreaY = 300,      -- was 200
-    diceAreaHeight = 240, -- was 160
-    diceSize = 120,       -- was 80
-    diceSpacing = 30,     -- was 20
+    -- Center Area (Item Strip + Held Tray + Loose Dice + Action)
+    centerX = 268,        -- 24 + 220 + 24
+    centerWidth = 1248,   -- wider center area
 
-    -- Action button (in center, below dice)
-    actionButtonY = 630,     -- was 420
-    actionButtonWidth = 420, -- was 280
-    actionButtonHeight = 90, -- was 60
+    -- Item strip (top center) - 7 empty slots
+    itemStripY = 24,
+    itemStripHeight = 80,
+    itemSlotSize = 70,
+    itemSlotSpacing = 12,
+    itemSlotCount = 7,
 
-    -- Score preview (in center, below action)
-    previewY = 750,      -- was 500
-    previewWidth = 600,  -- was 400
-    previewHeight = 120, -- was 80
+    -- Held tray (middle center) - 5 slots for locked dice
+    heldTrayY = 380,
+    heldTrayHeight = 160,
+    heldSlotSize = 120,
+    heldSlotSpacing = 20,
+    heldSlotCount = 5,
 
-    -- Right Panel (Hand Selection)
-    rightPanelX = 1482,      -- was 988
-    rightPanelY = 24,        -- was 16
-    rightPanelWidth = 414,   -- was 276
-    rightPanelHeight = 1032, -- was 688
+    -- Loose dice area (below held tray)
+    looseDiceY = 580,
+    looseDiceHeight = 300,
+    diceSize = 120,
+    diceSpacing = 30,
 
-    -- Hand buttons (2 columns in right panel)
-    handButtonWidth = 185,  -- was 120
-    handButtonHeight = 55,  -- was 50
-    handButtonSpacing = 12, -- was 8
-    handRowSpacing = 8,     -- was 8
-    handPanelPadding = 18,  -- was 12
+    -- Action button (in info panel now, but keep for reference)
+    actionButtonY = 920,
+    actionButtonWidth = 300,
+    actionButtonHeight = 80,
 
-    -- Top bar in center (Level indicator)
-    topBarY = 24,      -- was 16
-    topBarHeight = 90, -- was 60
+    -- Right Panel (Info/Stats) - NOW ON RIGHT
+    rightPanelX = 1540,      -- 1920 - 24 - 356
+    rightPanelY = 24,
+    rightPanelWidth = 356,
+    rightPanelHeight = 1032,
+
+    -- Top bar in center (Level indicator) - removed, level now in info panel
+    topBarY = 24,
+    topBarHeight = 90,
 }
 
 function Theme:load()
@@ -157,6 +168,15 @@ function Theme:load()
     -- Load images
     self.images.coin = love.graphics.newImage("assets/icons/ui/coin.png")
     self.images.coin:setFilter("nearest", "nearest")
+
+    self.images.glove = love.graphics.newImage("assets/icons/ui/Glove.png")
+    self.images.glove:setFilter("nearest", "nearest")
+
+    self.images.die = love.graphics.newImage("assets/icons/ui/die.png")
+    self.images.die:setFilter("nearest", "nearest")
+
+    self.images.lock = love.graphics.newImage("assets/icons/ui/lock.png")
+    self.images.lock:setFilter("nearest", "nearest")
 end
 
 -- Helper function to draw text centered

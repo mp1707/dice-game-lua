@@ -12,6 +12,7 @@ local emptyState = {
     draw = function() end,
     mousepressed = function() end,
     mousereleased = function() end,
+    mousemoved = function() end,
     keypressed = function() end,
 }
 
@@ -54,6 +55,12 @@ end
 function StateMachine:mousereleased(x, y, button)
     if self.current.mousereleased then
         self.current:mousereleased(x, y, button)
+    end
+end
+
+function StateMachine:mousemoved(x, y)
+    if self.current.mousemoved then
+        self.current:mousemoved(x, y)
     end
 end
 
