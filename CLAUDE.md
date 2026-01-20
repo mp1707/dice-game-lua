@@ -14,11 +14,17 @@ love .
 
 Requires Love2D 11.4+ installed on the system.
 
-## Keyboard Shortcuts
+## Controls
 
+### Mouse
+- **Left-click dice** - Select for Zahlen (upper section hands 1-6)
+- **Right-click dice** - Select for Kombinationen (lower section pattern hands)
+- **Click selected dice** - Remove from selection
+
+### Keyboard
 - **R** - Hot reload (reloads all src/ modules)
-- **Space** - Trigger action button (roll/accept hand)
-- **1-5** - Toggle lock on dice 1-5
+- **Space** - Roll dice or play hand (context-dependent)
+- **1-5** - Select dice for Zahlen
 - **F3** - Toggle scaling debug
 - **F10** - Toggle fullscreen
 - **Escape** - Quit
@@ -43,6 +49,30 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
                          GameState (singleton)
 ```
 
+### UI Layout (1920x1080)
+
+```
+┌─────────────────────────────────────────────────────┐
+│  LEFT PANEL        │        CENTER AREA             │
+│  (Info Panel)      │  ┌─────────────────────────┐  │
+│  - Level + Round   │  │  Item Strip (5+2 slots) │  │
+│  - Goal            │  └─────────────────────────┘  │
+│  - Score           │  ┌──────────┐  ┌──────────┐  │
+│  - Hand Preview    │  │ Zahlen   │  │Kombis    │  │
+│  - Hände + Würfe   │  │(L-click) │  │(R-click) │  │
+│  - Money           │  └──────────┘  └──────────┘  │
+│  - Settings/Info   │     [Dice Home Area]         │
+│                    │  [Hand spielen] [Würfeln]    │
+└─────────────────────────────────────────────────────┘
+```
+
+### Selection Mechanics
+
+- **Zahlen (Left-click)**: Selects dice for upper section hands (1-6). Highest face value among selected dice determines the hand.
+- **Kombinationen (Right-click)**: Selects dice for lower section pattern hands. Best valid pattern is automatically detected (priority: Yahtzee > Large Straight > Small Straight > Full House > 4ofKind > 3ofKind).
+- **Mutual exclusivity**: Only one selection type can be active. Selecting in one clears the other.
+- **Rolling**: Selected dice stay locked, unselected dice get re-rolled.
+
 ### Dice Animation System
 
 Located in `src/dice/`, see `src/dice/CLAUDE.md` for detailed documentation. Key components:
@@ -60,9 +90,10 @@ All in `src/ui/`:
 - **nine_slice.lua**: Singleton for drawing panel backgrounds
 - **panel.lua**, **button.lua**: Basic UI primitives
 - **dice_display.lua**: Wraps Die with drag-and-drop
-- **hand_list.lua**: Left panel showing 12 Yahtzee hands
-- **info_panel.lua**: Right panel with score, rolls, action button
-- **held_tray.lua**: 5 slots for locked dice
+- **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
+- **selection_panel.lua**: Dice selection areas for Zahlen (upper hands) and Kombinationen (lower hands)
+- **dual_cta.lua**: Two action buttons - "Hand spielen" and "Würfeln"
+- **item_strip.lua**: 5+2 item slots at top center
 
 ### Scoring System
 
@@ -72,6 +103,8 @@ All in `src/ui/`:
 - `Scoring.isValidHand(handId, dice)` - Check if pattern matches
 - `Scoring.calculateScore(handId, dice)` - Returns `(basePoints + pips) * mult`
 - `Scoring.getBreakdown(handId, dice)` - Detailed breakdown for UI
+- `Scoring.detectZahlenHand(selectedIndices, dice)` - Detect upper hand from selection
+- `Scoring.detectBestKombination(dice)` - Detect highest priority lower hand pattern
 
 ## Module Pattern
 

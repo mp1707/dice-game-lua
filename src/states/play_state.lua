@@ -1,5 +1,5 @@
--- Play State - Main gameplay with new UI layout
--- Left: Hand selection | Center: Item strip + Held tray + Loose dice | Right: Info panel
+-- Play State - Main gameplay with NEW UI layout
+-- Left: Info panel | Center: Item strip + Selection panels + Dice + CTAs
 
 local Theme = require("src.ui.theme")
 local Timer = require("src.core.timer")
@@ -11,9 +11,9 @@ local Levels = require("src.game.levels")
 local NineSlice = require("src.ui.nine_slice")
 local DiceDisplay = require("src.ui.dice_display")
 local ItemStrip = require("src.ui.item_strip")
-local HeldTray = require("src.ui.held_tray")
-local HandList = require("src.ui.hand_list")
+local SelectionPanel = require("src.ui.selection_panel")
 local InfoPanel = require("src.ui.info_panel")
+local DualCta = require("src.ui.dual_cta")
 local Juice = require("src.dice.juice")
 
 local PlayState = {}
@@ -28,18 +28,22 @@ function PlayState.new()
     -- UI Components
     self.diceDisplays = {}
     self.itemStrip = nil
-    self.heldTray = nil
-    self.handList = nil
+    self.zahlenPanel = nil
+    self.kombinationenPanel = nil
     self.infoPanel = nil
+    self.dualCta = nil
 
-    -- Loose dice positions (staggered)
-    self.looseDicePositions = {}
+    -- Dice home positions (center area below selection panels)
+    self.diceHomePositions = {}
 
     -- Drag state
     self.draggingDice = nil
 
     -- Reference to state machine (set in enter)
     self.stateMachine = nil
+
+    -- Round counter (mock for now)
+    self.currentRound = 1
 
     return self
 end
@@ -48,34 +52,34 @@ function PlayState:enter(params)
     self.stateMachine = params.stateMachine
 
     -- Initialize UI components
-    self:initLooseDicePositions()
+    self:initDiceHomePositions()
     self:initDiceDisplays()
     self:initItemStrip()
-    self:initHeldTray()
-    self:initHandList()
+    self:initSelectionPanels()
     self:initInfoPanel()
+    self:initDualCta()
 end
 
 function PlayState:exit()
     self.timer:clear()
 end
 
-function PlayState:initLooseDicePositions()
+function PlayState:initDiceHomePositions()
     local layout = Theme.layout
-    -- Calculate positions for a neat horizontal row
+    -- Calculate positions for a neat horizontal row in the center
     local centerX = layout.centerX + (layout.centerWidth / 2)
-    local baseY = layout.looseDiceY
+    local baseY = layout.diceHomeY
     local diceSize = layout.diceSize
-    local diceSpacing = layout.diceSpacing -- 30 pixels between dice
+    local diceSpacing = layout.diceSpacing
 
     -- Calculate total width and starting X for centered row
     local totalWidth = 5 * diceSize + 4 * diceSpacing
     local startX = centerX - totalWidth / 2
 
     -- Create evenly-spaced positions in a straight horizontal line
-    self.looseDicePositions = {}
+    self.diceHomePositions = {}
     for i = 1, 5 do
-        self.looseDicePositions[i] = {
+        self.diceHomePositions[i] = {
             x = startX + (i - 1) * (diceSize + diceSpacing),
             y = baseY
         }
@@ -84,7 +88,7 @@ end
 
 function PlayState:initDiceDisplays()
     for i = 1, 5 do
-        local pos = self.looseDicePositions[i]
+        local pos = self.diceHomePositions[i]
         self.diceDisplays[i] = DiceDisplay.new({
             x = pos.x,
             y = pos.y,
@@ -94,19 +98,20 @@ function PlayState:initDiceDisplays()
                 return GameState.dice[i]
             end,
             onClick = function(index)
-                self:onDiceClick(index)
+                -- Default click handler (left click)
+                self:onDiceLeftClick(index)
             end,
         })
-        -- Set home position for returning from tray
+        -- Set home position for returning from selection panels
         self.diceDisplays[i]:setHomePosition(pos.x, pos.y)
     end
 end
 
 function PlayState:initItemStrip()
     local layout = Theme.layout
-    -- Center the item strip
-    local totalWidth = layout.itemSlotCount * layout.itemSlotSize +
-        (layout.itemSlotCount - 1) * layout.itemSlotSpacing
+    -- Create temp strip to get width
+    local tempStrip = ItemStrip.new({})
+    local totalWidth = tempStrip:getTotalWidth()
     local stripX = layout.centerX + (layout.centerWidth - totalWidth) / 2
 
     self.itemStrip = ItemStrip.new({
@@ -115,54 +120,64 @@ function PlayState:initItemStrip()
     })
 end
 
-function PlayState:initHeldTray()
+function PlayState:initSelectionPanels()
     local layout = Theme.layout
-    -- Center the held tray
-    local totalWidth = layout.heldSlotCount * layout.heldSlotSize +
-        (layout.heldSlotCount - 1) * layout.heldSlotSpacing
-    local trayX = layout.centerX + (layout.centerWidth - totalWidth) / 2
+    local panelGap = layout.selectionPanelGap or 30
+    local totalPanelWidth = layout.centerWidth - panelGap
+    local panelWidth = totalPanelWidth / 2
 
-    self.heldTray = HeldTray.new({
-        x = trayX,
-        y = layout.heldTrayY,
+    -- Zahlen panel (left)
+    self.zahlenPanel = SelectionPanel.new({
+        x = layout.centerX,
+        y = layout.selectionPanelY,
+        width = panelWidth,
+        height = layout.selectionPanelHeight,
+        title = "Zahlen",
+        section = "upper",
+        getSelectedDice = function()
+            return GameState.zahlenDice
+        end,
+        getDiceValue = function(idx)
+            return GameState.dice[idx] and GameState.dice[idx].value or 1
+        end,
+        onDiceClick = function(diceIdx)
+            self:onRemoveDiceFromSelection(diceIdx)
+        end,
     })
-end
 
-function PlayState:initHandList()
-    self.handList = HandList.new({
-        x = Theme.layout.leftPanelX,
-        y = Theme.layout.leftPanelY,
-        width = Theme.layout.leftPanelWidth,
-        height = Theme.layout.leftPanelHeight,
-        isUsed = function(handId)
-            return GameState:isHandUsed(handId)
+    -- Kombinationen panel (right)
+    self.kombinationenPanel = SelectionPanel.new({
+        x = layout.centerX + panelWidth + panelGap,
+        y = layout.selectionPanelY,
+        width = panelWidth,
+        height = layout.selectionPanelHeight,
+        title = "Kombinationen",
+        section = "lower",
+        getSelectedDice = function()
+            return GameState.kombinationenDice
         end,
-        isSelected = function(handId)
-            return GameState.selectedHandId == handId
+        getDiceValue = function(idx)
+            return GameState.dice[idx] and GameState.dice[idx].value or 1
         end,
-        getScore = function(handId)
-            return Scoring.calculateScore(handId, GameState.dice)
-        end,
-        isValidHand = function(handId)
-            return Scoring.isValidHand(handId, GameState.dice)
-        end,
-        hasRolled = function()
-            return GameState.hasRolledThisHand
-        end,
-        onClick = function(handId)
-            self:onHandClick(handId)
+        onDiceClick = function(diceIdx)
+            self:onRemoveDiceFromSelection(diceIdx)
         end,
     })
 end
 
 function PlayState:initInfoPanel()
+    local layout = Theme.layout
+
     self.infoPanel = InfoPanel.new({
-        x = Theme.layout.rightPanelX,
-        y = Theme.layout.rightPanelY,
-        width = Theme.layout.rightPanelWidth,
-        height = Theme.layout.rightPanelHeight,
+        x = layout.leftPanelX,
+        y = layout.leftPanelY,
+        width = layout.leftPanelWidth,
+        height = layout.leftPanelHeight,
         getLevel = function()
             return GameState.currentLevel
+        end,
+        getRound = function()
+            return self.currentRound
         end,
         getMoney = function()
             return GameState.money
@@ -182,174 +197,184 @@ function PlayState:initInfoPanel()
         getRollsRemaining = function()
             return GameState.rollsRemaining
         end,
-        getSelectedHand = function()
-            return GameState.selectedHandId
+        getDetectedHand = function()
+            return self:getDetectedHand()
         end,
         getHandBreakdown = function()
-            if GameState.selectedHandId then
-                return Scoring.getBreakdown(GameState.selectedHandId, GameState.dice)
+            local detected = self:getDetectedHand()
+            if detected then
+                return Scoring.getBreakdown(detected.id, GameState.dice)
             end
             return nil
-        end,
-        onActionClick = function()
-            self:onActionButtonClick()
-        end,
-        getActionText = function()
-            return self:getActionButtonText()
-        end,
-        getActionEnabled = function()
-            return self:isActionButtonEnabled()
-        end,
-        getActionColor = function()
-            return self:getActionButtonColor()
         end,
     })
 end
 
-function PlayState:getActionButtonText()
-    if GameState.isRolling then
-        return "..."
-    elseif GameState.selectedHandId then
-        return "ANNEHMEN"
-    elseif GameState:hasReachedGoal() and GameState.hasRolledThisHand then
-        return "CASH OUT"
-    elseif GameState:canRoll() then
-        return "WÜRFELN"
-    else
-        return "HAND WAHLEN"
-    end
+function PlayState:initDualCta()
+    local layout = Theme.layout
+
+    self.dualCta = DualCta.new({
+        centerX = layout.centerX,
+        centerWidth = layout.centerWidth,
+        y = layout.ctaY,
+        buttonWidth = layout.ctaWidth,
+        buttonHeight = layout.ctaHeight,
+        spacing = layout.ctaSpacing,
+        onPlayHand = function()
+            self:onPlayHandClick()
+        end,
+        onRoll = function()
+            self:rollDice()
+        end,
+        canPlayHand = function()
+            return self:canPlayHand()
+        end,
+        canRoll = function()
+            return self:canRoll()
+        end,
+    })
 end
 
-function PlayState:isActionButtonEnabled()
-    if GameState.isRolling then
-        return false
-    elseif GameState.selectedHandId then
-        return true
-    elseif GameState:hasReachedGoal() and GameState.hasRolledThisHand then
-        return true
-    elseif GameState:canRoll() then
-        return true
-    else
-        return false
+-- Get the currently detected hand based on selection mode
+function PlayState:getDetectedHand()
+    if GameState.selectionMode == "zahlen" and #GameState.zahlenDice > 0 then
+        local handId = Scoring.detectZahlenHand(GameState.zahlenDice, GameState.dice)
+        if handId then
+            local handDef = Hands:get(handId)
+            return {
+                id = handId,
+                name = handDef.name,
+                level = handDef.level or 1,
+            }
+        end
+    elseif GameState.selectionMode == "kombinationen" and #GameState.kombinationenDice > 0 then
+        local handId = Scoring.detectBestKombination(GameState.dice)
+        if handId then
+            local handDef = Hands:get(handId)
+            return {
+                id = handId,
+                name = handDef.name,
+                level = handDef.level or 1,
+            }
+        end
     end
+    return nil
 end
 
-function PlayState:getActionButtonColor()
-    if GameState.isRolling then
-        return Theme.colors.surface
-    elseif GameState.selectedHandId then
-        return Theme.colors.mint
-    elseif GameState:hasReachedGoal() and GameState.hasRolledThisHand then
-        return Theme.colors.mint
-    elseif GameState:canRoll() then
-        return Theme.colors.cyan
-    else
-        return Theme.colors.surface
-    end
+function PlayState:canPlayHand()
+    if GameState.isRolling then return false end
+    if not GameState.hasRolledThisHand then return false end
+
+    local detected = self:getDetectedHand()
+    if not detected then return false end
+
+    -- Check if the hand is already used
+    if GameState:isHandUsed(detected.id) then return false end
+
+    return true
 end
 
-function PlayState:onDiceClick(index)
+function PlayState:canRoll()
+    if GameState.isRolling then return false end
+    if not GameState:canRoll() then return false end
+    -- Can roll if we have rolls remaining
+    return true
+end
+
+-- Handle left-click on dice (Zahlen selection)
+function PlayState:onDiceLeftClick(index)
     if GameState.isRolling then return end
     if not GameState.hasRolledThisHand then return end
 
+    -- If already in zahlen, remove it
+    if GameState:isDiceInZahlen(index) then
+        self:onRemoveDiceFromSelection(index)
+    else
+        -- Add to zahlen (clears kombinationen if needed)
+        if GameState:selectDiceForZahlen(index) then
+            self:moveDiceToZahlenPanel(index)
+        end
+    end
+end
+
+-- Handle right-click on dice (Kombinationen selection)
+function PlayState:onDiceRightClick(index)
+    if GameState.isRolling then return end
+    if not GameState.hasRolledThisHand then return end
+
+    -- If already in kombinationen, remove it
+    if GameState:isDiceInKombinationen(index) then
+        self:onRemoveDiceFromSelection(index)
+    else
+        -- Add to kombinationen (clears zahlen if needed)
+        if GameState:selectDiceForKombinationen(index) then
+            self:moveDiceToKombinationenPanel(index)
+        end
+    end
+end
+
+-- Remove dice from whichever selection it's in
+function PlayState:onRemoveDiceFromSelection(index)
+    -- Check if dice was cleared due to switching modes
+    local wasInZahlen = GameState:isDiceInZahlen(index)
+    local wasInKombinationen = GameState:isDiceInKombinationen(index)
+
+    if GameState:removeDiceFromSelection(index) then
+        self:moveDiceToHome(index)
+    end
+
+    -- Also check if other dice were cleared (due to mode switch)
+    for i = 1, 5 do
+        if not GameState:isDiceSelected(i) then
+            local display = self.diceDisplays[i]
+            if display.isInHeldTray then
+                self:moveDiceToHome(i)
+            end
+        end
+    end
+end
+
+function PlayState:moveDiceToZahlenPanel(index)
     local display = self.diceDisplays[index]
-    local die = GameState.dice[index]
+    local slotIndex = #GameState.zahlenDice -- Position in the zahlen array
 
-    if die.locked then
-        -- Unlock: move from tray back to loose area
-        GameState:unlockDice(index)
-        self.heldTray:freeSlotByDice(index)
-        display:returnToLoose()
-    else
-        -- Lock: find empty slot in tray and move there
-        local slotIndex = self.heldTray:getEmptySlot()
-        if slotIndex then
-            GameState:lockDice(index)
-            local bounds = self.heldTray:getSlotBounds(slotIndex)
-            self.heldTray:occupySlot(slotIndex, index)
-            display:moveToHeldSlot(bounds.x, bounds.y, slotIndex)
-        end
+    -- Get slot position from panel
+    local slotX, slotY = self.zahlenPanel:getSlotPosition(slotIndex)
+    if slotX and slotY then
+        display:moveToHeldSlot(slotX, slotY, slotIndex)
+        display.isInHeldTray = true
+        display.heldSlotIndex = slotIndex
     end
 end
 
-function PlayState:onHandClick(handId)
-    if GameState.isRolling then return end
-    if not GameState.hasRolledThisHand then return end
-    if GameState:isHandUsed(handId) then return end
+function PlayState:moveDiceToKombinationenPanel(index)
+    local display = self.diceDisplays[index]
+    local slotIndex = #GameState.kombinationenDice -- Position in the kombinationen array
 
-    -- Toggle selection
-    if GameState.selectedHandId == handId then
-        GameState:deselectHand()
-        self.infoPanel:updateFormula(nil)
-    else
-        GameState:selectHand(handId)
-        -- Update formula display
-        local handDef = Hands:get(handId)
-        local breakdown = Scoring.getBreakdown(handId, GameState.dice)
-        if breakdown then
-            self.infoPanel:updateFormula(
-                handDef.name,
-                1, -- level (could be upgraded later)
-                breakdown.basePoints + breakdown.pips,
-                breakdown.mult
-            )
-        end
+    -- Get slot position from panel
+    local slotX, slotY = self.kombinationenPanel:getSlotPosition(slotIndex)
+    if slotX and slotY then
+        display:moveToHeldSlot(slotX, slotY, slotIndex)
+        display.isInHeldTray = true
+        display.heldSlotIndex = slotIndex
     end
 end
 
-function PlayState:onActionButtonClick()
-    if GameState.isRolling then return end
-
-    -- Check if we should cash out
-    if GameState:hasReachedGoal() and GameState.hasRolledThisHand and not GameState.selectedHandId then
-        self:cashOut()
-        return
-    end
-
-    -- Check if a hand is selected - accept it
-    if GameState.selectedHandId then
-        self:acceptHand()
-        return
-    end
-
-    -- Roll dice
-    if GameState:canRoll() then
-        self:rollDice()
-    end
+function PlayState:moveDiceToHome(index)
+    local display = self.diceDisplays[index]
+    display:returnToLoose()
+    display.isInHeldTray = false
+    display.heldSlotIndex = nil
 end
 
-function PlayState:rollDice()
-    if not GameState:canRoll() then return end
+function PlayState:onPlayHandClick()
+    if not self:canPlayHand() then return end
 
-    -- Roll immediately so the new values are ready when animation ends
-    -- This prevents the glitch where the old value is shown briefly
-    if not GameState:rollDice() then return end
+    local detected = self:getDetectedHand()
+    if not detected then return end
 
-    GameState.isRolling = true
-
-    -- Start animations for unlocked dice
-    for i, die in ipairs(GameState.dice) do
-        if not die.locked then
-            self.diceDisplays[i]:startRollAnimation()
-        end
-    end
-
-    -- Finish rolling state after animation
-    -- New animation system takes ~1.2 seconds with stagger and bounces
-    self.timer:after(1.5, function()
-        GameState.isRolling = false
-    end)
-end
-
-function PlayState:acceptHand()
-    local handId = GameState.selectedHandId
-    if not handId then return end
-
-    local score = Scoring.calculateScore(handId, GameState.dice)
-    GameState:useHand(handId, score)
-
-    -- Clear formula display
-    self.infoPanel:updateFormula(nil)
+    local score = Scoring.calculateScore(detected.id, GameState.dice)
+    GameState:useHand(detected.id, score)
 
     -- Check end conditions
     if GameState:hasLostLevel() then
@@ -372,16 +397,40 @@ function PlayState:acceptHand()
     end
 end
 
+function PlayState:rollDice()
+    if not GameState:canRoll() then return end
+
+    -- Roll immediately so the new values are ready when animation ends
+    if not GameState:rollDice() then return end
+
+    GameState.isRolling = true
+
+    -- Start animations for unlocked dice only
+    for i, die in ipairs(GameState.dice) do
+        if not die.locked then
+            self.diceDisplays[i]:startRollAnimation()
+        end
+    end
+
+    -- Finish rolling state after animation
+    self.timer:after(1.5, function()
+        GameState.isRolling = false
+    end)
+end
+
 function PlayState:resetForNextHand()
+    -- Clear selections and reset game state
     GameState:resetForHand()
-    -- Reset held tray
-    self.heldTray:reset()
-    -- Reset dice positions to loose area
+
+    -- Reset dice positions to home area
     for i, display in ipairs(self.diceDisplays) do
         display.isInHeldTray = false
         display.heldSlotIndex = nil
-        display:snapTo(self.looseDicePositions[i].x, self.looseDicePositions[i].y)
+        display:snapTo(self.diceHomePositions[i].x, self.diceHomePositions[i].y)
     end
+
+    -- Increment round
+    self.currentRound = self.currentRound + 1
 end
 
 function PlayState:cashOut()
@@ -402,26 +451,42 @@ function PlayState:update(dt)
         display:update(dt)
     end
 
-    -- Update hand list
-    self.handList:update(dt)
+    -- Update selection panels
+    self.zahlenPanel:update(dt)
+    self.kombinationenPanel:update(dt)
 
     -- Update info panel
     self.infoPanel:update(dt)
 
-    -- Update formula if hand selected
-    if GameState.selectedHandId and GameState.hasRolledThisHand then
-        local handDef = Hands:get(GameState.selectedHandId)
-        local breakdown = Scoring.getBreakdown(GameState.selectedHandId, GameState.dice)
-        if breakdown then
-            self.infoPanel:updateFormula(
-                handDef.name,
-                1,
-                breakdown.basePoints + breakdown.pips,
-                breakdown.mult
-            )
+    -- Update dual CTA buttons
+    self.dualCta:update(dt)
+
+    -- Update dice positions based on selection state
+    self:updateDicePositions()
+end
+
+function PlayState:updateDicePositions()
+    -- Ensure dice in selection panels are positioned correctly
+    for i, idx in ipairs(GameState.zahlenDice) do
+        local display = self.diceDisplays[idx]
+        local slotX, slotY = self.zahlenPanel:getSlotPosition(i)
+        if slotX and slotY and not display.isDragging then
+            if display.targetX ~= slotX or display.targetY ~= slotY then
+                display:animateTo(slotX, slotY)
+            end
+            display.isInHeldTray = true
         end
-    elseif not GameState.selectedHandId then
-        self.infoPanel:updateFormula(nil)
+    end
+
+    for i, idx in ipairs(GameState.kombinationenDice) do
+        local display = self.diceDisplays[idx]
+        local slotX, slotY = self.kombinationenPanel:getSlotPosition(i)
+        if slotX and slotY and not display.isDragging then
+            if display.targetX ~= slotX or display.targetY ~= slotY then
+                display:animateTo(slotX, slotY)
+            end
+            display.isInHeldTray = true
+        end
     end
 end
 
@@ -429,8 +494,9 @@ function PlayState:draw()
     -- Draw item strip (top center)
     self.itemStrip:draw()
 
-    -- Draw held tray (middle center)
-    self.heldTray:draw()
+    -- Draw selection panels
+    self.zahlenPanel:draw()
+    self.kombinationenPanel:draw()
 
     -- Apply screen shake to dice area
     local shakeX, shakeY = Juice.getShakeOffset()
@@ -438,8 +504,8 @@ function PlayState:draw()
     love.graphics.translate(shakeX, shakeY)
 
     -- Draw dice with proper layering:
-    -- 1. Locked/held dice (in tray) - drawn first (behind)
-    -- 2. Unlocked dice (rolling or in loose area) - drawn on top
+    -- 1. Dice in selection panels (locked) - drawn first
+    -- 2. Dice in home area (unlocked) - drawn on top
     -- 3. Dragging dice - drawn last (always on top)
     for _, display in ipairs(self.diceDisplays) do
         local data = display.getDiceData()
@@ -461,19 +527,16 @@ function PlayState:draw()
 
     love.graphics.pop()
 
-    -- Draw hand list (left panel)
-    self.handList:draw()
-
-    -- Draw info panel (right panel)
+    -- Draw info panel (left panel)
     self.infoPanel:draw()
+
+    -- Draw dual CTA buttons (bottom center)
+    self.dualCta:draw()
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function PlayState:mousemoved(x, y)
-    -- Update hand list hover
-    self.handList:mousemoved(x, y)
-
     -- Update dragging dice position
     if self.draggingDice then
         self.draggingDice:updateDrag(x, y)
@@ -481,66 +544,47 @@ function PlayState:mousemoved(x, y)
 end
 
 function PlayState:mousepressed(x, y, button)
-    if button ~= 1 then return end
+    -- Check info panel clicks (settings/info buttons)
+    if self.infoPanel:mousepressed(x, y, button) then
+        return
+    end
 
-    -- Check if clicking on a dice (for drag start)
-    for i, display in ipairs(self.diceDisplays) do
-        if display:containsPoint(x, y) and GameState.hasRolledThisHand and not GameState.isRolling then
-            display:startDrag(x, y)
-            self.draggingDice = display
+    -- Check dual CTA clicks
+    if self.dualCta:mousepressed(x, y, button) then
+        return
+    end
+
+    -- Check selection panel clicks (to remove dice)
+    if button == 1 then
+        if self.zahlenPanel:mousepressed(x, y, button) then
+            return
+        end
+        if self.kombinationenPanel:mousepressed(x, y, button) then
             return
         end
     end
 
-    -- Check hand list clicks
-    if self.handList:mousepressed(x, y, button) then
-        return
+    -- Check if clicking on a dice in home area
+    if GameState.hasRolledThisHand and not GameState.isRolling then
+        for i, display in ipairs(self.diceDisplays) do
+            if display:containsPoint(x, y) and not GameState:isDiceSelected(i) then
+                if button == 1 then
+                    -- Left click - Zahlen selection
+                    self:onDiceLeftClick(i)
+                    return
+                elseif button == 2 then
+                    -- Right click - Kombinationen selection
+                    self:onDiceRightClick(i)
+                    return
+                end
+            end
+        end
     end
-
-    -- Check info panel clicks (action button)
-    self.infoPanel:mousepressed(x, y, button)
 end
 
 function PlayState:mousereleased(x, y, button)
-    if button ~= 1 then return end
-
-    -- Handle dice drag release
-    if self.draggingDice then
-        local display = self.draggingDice
-        local diceIndex = display.index
-        local die = GameState.dice[diceIndex]
-
-        -- Check if dropped on held tray (and not already locked)
-        local slotIndex = self.heldTray:getSlotAtPoint(x, y)
-
-        if slotIndex and not self.heldTray.slots[slotIndex].occupied and not die.locked then
-            -- Lock dice and move to tray
-            GameState:lockDice(diceIndex)
-            local bounds = self.heldTray:getSlotBounds(slotIndex)
-            self.heldTray:occupySlot(slotIndex, diceIndex)
-            display:moveToHeldSlot(bounds.x, bounds.y, slotIndex)
-        elseif display.isInHeldTray and not self.heldTray:containsPoint(x, y) then
-            -- Was in tray, dropped outside - unlock and return to loose
-            GameState:unlockDice(diceIndex)
-            self.heldTray:freeSlotByDice(diceIndex)
-            display:returnToLoose()
-        else
-            -- Return to current position (either home or tray slot)
-            if display.isInHeldTray then
-                local bounds = self.heldTray:getSlotBounds(display.heldSlotIndex)
-                display:animateTo(bounds.x, bounds.y)
-            else
-                display:animateTo(display.homeX, display.homeY)
-            end
-        end
-
-        display:endDrag()
-        self.draggingDice = nil
-        return
-    end
-
-    -- Release hand list
-    self.handList:mousereleased(x, y, button)
+    -- Release dual CTA
+    self.dualCta:mousereleased(x, y, button)
 
     -- Release info panel
     self.infoPanel:mousereleased(x, y, button)
@@ -549,10 +593,16 @@ end
 function PlayState:keypressed(key)
     -- Debug keys
     if key == "space" then
-        self:onActionButtonClick()
+        -- Roll if possible, otherwise play hand if possible
+        if self:canRoll() then
+            self:rollDice()
+        elseif self:canPlayHand() then
+            self:onPlayHandClick()
+        end
     elseif key == "1" or key == "2" or key == "3" or key == "4" or key == "5" then
         local index = tonumber(key)
-        self:onDiceClick(index)
+        -- Default to left-click behavior (Zahlen)
+        self:onDiceLeftClick(index)
     end
 end
 

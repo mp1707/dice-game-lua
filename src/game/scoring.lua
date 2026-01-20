@@ -189,4 +189,77 @@ function Scoring.getBreakdown(handId, dice)
     }
 end
 
+-- ============================================
+-- NEW: Detection functions for Zahlen/Kombinationen system
+-- ============================================
+
+-- Priority order for Kombinationen (lower section hands)
+-- Higher index = lower priority
+local KOMBINATIONEN_PRIORITY = {
+    "yahtzee",        -- 1st priority
+    "largeStraight",  -- 2nd priority
+    "smallStraight",  -- 3rd priority
+    "fullHouse",      -- 4th priority
+    "fourOfKind",     -- 5th priority
+    "threeOfKind",    -- 6th priority
+}
+
+-- Detect the best (highest priority) Kombinationen pattern for given dice
+-- Returns the hand ID of the highest valid pattern, or nil if none
+function Scoring.detectBestKombination(dice)
+    for _, handId in ipairs(KOMBINATIONEN_PRIORITY) do
+        if Scoring.isValidHand(handId, dice) then
+            return handId
+        end
+    end
+    return nil
+end
+
+-- Map face values to hand IDs for Zahlen
+local faceToHandId = {
+    [1] = "ones",
+    [2] = "twos",
+    [3] = "threes",
+    [4] = "fours",
+    [5] = "fives",
+    [6] = "sixes",
+}
+
+-- Detect the Zahlen hand based on selected dice indices
+-- Returns the hand ID for the highest face value among selected dice
+function Scoring.detectZahlenHand(selectedIndices, dice)
+    if #selectedIndices == 0 then
+        return nil
+    end
+
+    local maxFace = 0
+    for _, idx in ipairs(selectedIndices) do
+        if dice[idx] and dice[idx].value > maxFace then
+            maxFace = dice[idx].value
+        end
+    end
+
+    return faceToHandId[maxFace]
+end
+
+-- Get the face value from a hand ID (for display purposes)
+function Scoring.getFaceFromHandId(handId)
+    return upperFaceMap[handId]
+end
+
+-- Check if a hand ID is an upper section (Zahlen) hand
+function Scoring.isUpperSectionHand(handId)
+    return upperFaceMap[handId] ~= nil
+end
+
+-- Check if a hand ID is a lower section (Kombinationen) hand
+function Scoring.isLowerSectionHand(handId)
+    return handId == "threeOfKind" or
+           handId == "fourOfKind" or
+           handId == "yahtzee" or
+           handId == "fullHouse" or
+           handId == "smallStraight" or
+           handId == "largeStraight"
+end
+
 return Scoring

@@ -11,11 +11,13 @@ Theme.colors = {
     surface = { 0.208, 0.169, 0.345, 1 },          -- #352B58
     surface2 = { 0.290, 0.239, 0.478, 1 },         -- #4A3D7A
     surfaceHighlight = { 0.365, 0.302, 0.561, 1 }, -- #5D4D8F
+    panelDark = { 0.12, 0.10, 0.18, 1 },           -- Darker containers inside panels
 
     -- Text
     text = { 1, 1, 1, 1 },
     textMuted = { 0.667, 0.620, 0.812, 1 }, -- #AA9ECF
     textDark = { 0.102, 0.082, 0.157, 1 },  -- #1A1528
+    textShadow = { 0, 0, 0, 0.5 },          -- Text shadow color
 
     -- Accents
     cyan = { 0.302, 0.933, 0.918, 1 },      -- #4DEEEA
@@ -31,6 +33,11 @@ Theme.colors = {
     -- Dice enhancement colors
     upgradePoints = { 0, 0.384, 1, 1 },       -- #0062FF (blue)
     upgradeMult = { 0.878, 0.180, 0.298, 1 }, -- #E02E4C (red)
+
+    -- Button colors
+    buttonGray = { 0.35, 0.35, 0.40, 1 },         -- Settings button
+    buttonLightBlue = { 0.45, 0.70, 0.90, 1 },    -- Info button
+    buttonPurple = { 0.55, 0.35, 0.75, 1 },       -- Würfeln button
 
     -- Overlays (pre-mixed for convenience)
     overlayWhite = { 1, 1, 1, 0.2 },
@@ -79,6 +86,7 @@ Theme.fonts = {
     large = nil,   -- 36px
     huge = nil,    -- 48px
     display = nil, -- 66px
+    giant = nil,   -- 80px (for goal number)
 }
 
 -- Images
@@ -90,62 +98,59 @@ Theme.images = {
     diceFaces = {},  -- Array for dice faces 1-6
 }
 
--- Layout constants for Balatro-style 3-column UI (1080p)
--- NEW LAYOUT: Hands on LEFT, Info on RIGHT, Center has item strip + held tray + loose dice
+-- Layout constants for new 2-column UI (1080p)
+-- NEW LAYOUT: Info on LEFT, Center has item strip + selection panels + dice + CTAs
 Theme.layout = {
     -- Screen padding
     screenPadding = 24,
-    panelPadding = 24,
+    panelPadding = 20,
+    innerGap = 12,           -- Consistent small gap between elements
 
-    -- Left Panel (Hand Selection) - NOW ON LEFT
+    -- Left Panel (Info/Stats) - NOW ON LEFT
     leftPanelX = 24,
     leftPanelY = 24,
-    leftPanelWidth = 280,   -- wider for icons + text
+    leftPanelWidth = 380,
     leftPanelHeight = 1032,
 
-    -- Hand list (single column in left panel)
-    handListItemHeight = 77, -- fills vertical space perfectly (12 items fit panel)
-    handListItemSpacing = 4,
-    handListPadding = 10,
+    -- Center Area (Item Strip + Selection Panels + Dice + CTAs)
+    centerX = 428,           -- 24 + 380 + 24
+    centerWidth = 1468,      -- 1920 - 428 - 24
 
-    -- Center Area (Item Strip + Held Tray + Loose Dice + Action)
-    centerX = 328,       -- 24 + 280 + 24
-    centerWidth = 1188,  -- adjusted for wider left panel
-
-    -- Item strip (top center) - 7 empty slots
+    -- Item strip (top center) - 5 + gap + 2 slots
     itemStripY = 24,
-    itemStripHeight = 80,
-    itemSlotSize = 70,
-    itemSlotSpacing = 12,
+    itemStripHeight = 100,
+    itemSlotSize = 90,
+    itemSlotSpacing = 16,
+    itemSlotGap = 50,        -- Gap between first 5 and last 2 slots
     itemSlotCount = 7,
 
-    -- Held tray (middle center) - 5 slots for locked dice
+    -- Selection panels (Zahlen / Kombinationen)
+    selectionPanelY = 180,
+    selectionPanelHeight = 200,
+    selectionPanelGap = 30,  -- Gap between Zahlen and Kombinationen panels
+    selectionSlotSize = 100,
+    selectionSlotSpacing = 16,
+
+    -- Dice home area (below selection panels)
+    diceHomeY = 480,
+    diceHomeHeight = 200,
+    diceSize = 100,
+    diceSpacing = 40,
+
+    -- CTA buttons (bottom center)
+    ctaY = 780,
+    ctaWidth = 280,
+    ctaHeight = 100,
+    ctaSpacing = 60,
+
+    -- Deprecated: keeping for backwards compatibility during transition
     heldTrayY = 380,
     heldTrayHeight = 160,
     heldSlotSize = 120,
     heldSlotSpacing = 20,
     heldSlotCount = 5,
-
-    -- Loose dice area (below held tray)
     looseDiceY = 580,
     looseDiceHeight = 300,
-    diceSize = 120,
-    diceSpacing = 30,
-
-    -- Action button (in info panel now, but keep for reference)
-    actionButtonY = 920,
-    actionButtonWidth = 300,
-    actionButtonHeight = 80,
-
-    -- Right Panel (Info/Stats) - NOW ON RIGHT
-    rightPanelX = 1540, -- 1920 - 24 - 356
-    rightPanelY = 24,
-    rightPanelWidth = 356,
-    rightPanelHeight = 1032,
-
-    -- Top bar in center (Level indicator) - removed, level now in info panel
-    topBarY = 24,
-    topBarHeight = 90,
 }
 
 function Theme:load()
@@ -160,6 +165,7 @@ function Theme:load()
     self.fonts.large = love.graphics.newFont(fontPath, 36)   -- was 24
     self.fonts.huge = love.graphics.newFont(fontPath, 48)    -- was 32
     self.fonts.display = love.graphics.newFont(fontPath, 66) -- was 44
+    self.fonts.giant = love.graphics.newFont(fontPath, 80)   -- for goal number
 
     -- Set filter for crisp text
     for _, font in pairs(self.fonts) do
@@ -210,6 +216,63 @@ function Theme:drawTextRight(text, x, y, width, font, color)
 
     local textWidth = font:getWidth(text)
     local textX = x + width - textWidth
+    love.graphics.print(text, math.floor(textX), math.floor(y))
+end
+
+-- Helper function to draw text with shadow
+function Theme:drawTextWithShadow(text, x, y, font, color, shadowOffset)
+    font = font or self.fonts.normal
+    color = color or self.colors.text
+    shadowOffset = shadowOffset or 2
+
+    love.graphics.setFont(font)
+
+    -- Draw shadow
+    love.graphics.setColor(self.colors.textShadow)
+    love.graphics.print(text, math.floor(x + shadowOffset), math.floor(y + shadowOffset))
+
+    -- Draw main text
+    love.graphics.setColor(color)
+    love.graphics.print(text, math.floor(x), math.floor(y))
+end
+
+-- Helper function to draw text centered with shadow
+function Theme:drawTextCenteredWithShadow(text, x, y, width, font, color, shadowOffset)
+    font = font or self.fonts.normal
+    color = color or self.colors.text
+    shadowOffset = shadowOffset or 2
+
+    love.graphics.setFont(font)
+
+    local textWidth = font:getWidth(text)
+    local textX = x + (width - textWidth) / 2
+
+    -- Draw shadow
+    love.graphics.setColor(self.colors.textShadow)
+    love.graphics.print(text, math.floor(textX + shadowOffset), math.floor(y + shadowOffset))
+
+    -- Draw main text
+    love.graphics.setColor(color)
+    love.graphics.print(text, math.floor(textX), math.floor(y))
+end
+
+-- Helper function to draw text right-aligned with shadow
+function Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
+    font = font or self.fonts.normal
+    color = color or self.colors.text
+    shadowOffset = shadowOffset or 2
+
+    love.graphics.setFont(font)
+
+    local textWidth = font:getWidth(text)
+    local textX = x + width - textWidth
+
+    -- Draw shadow
+    love.graphics.setColor(self.colors.textShadow)
+    love.graphics.print(text, math.floor(textX + shadowOffset), math.floor(y + shadowOffset))
+
+    -- Draw main text
+    love.graphics.setColor(color)
     love.graphics.print(text, math.floor(textX), math.floor(y))
 end
 
