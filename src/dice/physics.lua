@@ -6,21 +6,21 @@ local Physics = {
     gravity = 1800,
 
     -- Bounce behavior
-    baseBounceStrength = 650,    -- Initial upward velocity on bounce
-    bounceDamping = 0.68,        -- Multiplier per bounce (0.5 = half strength)
-    horizontalDamping = 0.7,     -- How much horizontal speed is lost per bounce
-    angularDamping = 0.6,        -- How much rotation slows per bounce
+    baseBounceStrength = 650, -- Initial upward velocity on bounce
+    bounceDamping = 0.68,     -- Multiplier per bounce (0.5 = half strength)
+    horizontalDamping = 0.7,  -- How much horizontal speed is lost per bounce
+    angularDamping = 0.6,     -- How much rotation slows per bounce
 
     -- Settling
-    settleSpeed = 8,             -- Lerp speed when settling to final position
+    settleSpeed = 8, -- Lerp speed when settling to final position
 
     -- Squash/stretch
-    squashDuration = 0.08,       -- How long squash effect lasts
-    squashAmount = 0.7,          -- Scale Y multiplier during squash
-    stretchAmount = 1.2,         -- Scale Y multiplier during fast fall
+    squashDuration = 0.08, -- How long squash effect lasts
+    squashAmount = 0.7,    -- Scale Y multiplier during squash
+    stretchAmount = 1.2,   -- Scale Y multiplier during fast fall
 
     -- Face changes during animation
-    faceChangeInterval = 0.04,   -- How fast faces cycle during roll (~25fps)
+    faceChangeInterval = 0.04, -- How fast faces cycle during roll (~25fps)
 
     -- Initial drop parameters (ranges for randomization)
     dropHeight = { min = 200, max = 350 },
@@ -32,11 +32,12 @@ local Physics = {
     bounceCount = { min = 2, max = 5 },
 
     -- Slot constraints
-    slotWidth = 70,              -- How much horizontal freedom within slot
+    slotWidth = 70, -- How much horizontal freedom within slot
 
     -- Stagger timing
-    staggerDelay = 0,            -- Per-die delay multiplier (0 = instant start)
-    staggerRandom = 0.02,        -- Random addition to stagger (minimal for organic feel)
+    staggerDelay = 0,     -- Per-die delay multiplier (0 = instant start)
+    staggerRandom = 0.02, -- Random addition to stagger (minimal for organic feel)
+
 }
 
 -- Helper function to get random value within a range
@@ -63,23 +64,21 @@ function Physics.generateRollParams(slotIndex, slotCenterX, groundY)
     -- Start above the slot center with some random offset
     local slotWidth = Physics.slotWidth
     params.startX = slotCenterX + (math.random() - 0.5) * slotWidth * 0.8
-    params.startY = groundY  -- Y position stays near ground level
+    params.startY = groundY -- Y position stays near ground level
     params.startHeight = Physics.randomInRange(Physics.dropHeight)
 
     -- Initial velocities
     params.velocityX = Physics.randomInRange(Physics.initialVelocityX)
     params.velocityY = Physics.randomInRange(Physics.initialVelocityY)
-    params.velocityZ = 0  -- Start with no vertical velocity (will accelerate down)
+    params.velocityZ = 0 -- Start with no vertical velocity (will accelerate down)
     params.angularVelocity = Physics.randomInRange(Physics.initialAngularVelocity)
 
-    -- Final target position (within slot bounds with small variation)
-    local targetOffsetX = (math.random() - 0.5) * slotWidth * 0.6
-    local targetOffsetY = (math.random() - 0.5) * 90
-    params.targetX = slotCenterX + targetOffsetX
-    params.targetY = groundY + targetOffsetY
+    -- Final target position (use the passed-in position - now correctly calculated as a row)
+    params.targetX = slotCenterX
+    params.targetY = groundY
 
-    -- Final rotation (small random tilt)
-    params.targetRotation = (math.random() - 0.5) * 0.3  -- ~8.5 degrees max
+    -- Final rotation (no tilt for clean alignment)
+    params.targetRotation = 0
 
     -- Stagger start time for more organic feel
     params.startDelay = slotIndex * Physics.staggerDelay + math.random() * Physics.staggerRandom

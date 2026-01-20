@@ -17,19 +17,21 @@ src/dice/
 ## Module Descriptions
 
 ### `animation_states.lua`
+
 Defines the state machine for dice animation:
 
-| State | Description |
-|-------|-------------|
-| `IDLE` | Die sits still, no animation |
-| `DROPPING` | Die falling with gravity, cycling faces |
-| `BOUNCING` | Die hits ground, triggers bounce |
-| `SETTLING` | Die lerps to final position |
-| `LOCKED` | Die locked in place (animation complete) |
+| State      | Description                              |
+| ---------- | ---------------------------------------- |
+| `IDLE`     | Die sits still, no animation             |
+| `DROPPING` | Die falling with gravity, cycling faces  |
+| `BOUNCING` | Die hits ground, triggers bounce         |
+| `SETTLING` | Die lerps to final position              |
+| `LOCKED`   | Die locked in place (animation complete) |
 
 Each state has a handler function that updates the die and returns the next state.
 
 ### `physics.lua`
+
 Tunable physics parameters:
 
 ```lua
@@ -45,20 +47,28 @@ faceChangeInterval = 0.04 -- Face cycling speed (~25fps)
 
 Also provides `Physics.generateRollParams()` for creating randomized roll parameters.
 
+> **Note**: Dice final positions are defined in `src/states/play_state.lua` via `initLooseDicePositions()`, which creates a neat horizontal row using `Theme.layout.diceSpacing`. The physics system uses these positions as animation targets.
+
 ### `shadow.lua`
+
 Dynamic shadows that respond to die height:
+
 - **Offset**: Shadow moves away from die as height increases
 - **Scale**: Shadow grows larger when die is higher
 - **Alpha**: Shadow fades as die gets higher
 
 ### `juice.lua`
+
 Screen shake system:
+
 - `Juice.triggerShake(intensity, duration)` - Start a shake
 - `Juice.updateShake(dt)` - Update shake decay
 - `Juice.getShakeOffset()` - Get current (x, y) offset for rendering
 
 ### `die.lua`
+
 The core Die class with:
+
 - State machine integration
 - Physics simulation (position, velocity, height)
 - Squash/stretch effects
@@ -66,6 +76,7 @@ The core Die class with:
 - Shadow and face rendering
 
 Key methods:
+
 ```lua
 Die.new(slotIndex, slotCenterX, groundY, size)
 Die:startRoll(params)  -- Begin roll animation
@@ -76,7 +87,9 @@ Die:isStable()         -- Check if idle/locked
 ```
 
 ### `dice_manager.lua`
+
 Optional orchestrator for managing multiple dice:
+
 - Creates and manages 5 Die instances
 - Coordinates rolling with staggered starts
 - Handles screen shake globally
@@ -85,6 +98,7 @@ Optional orchestrator for managing multiple dice:
 ## Integration with DiceDisplay
 
 The `src/ui/dice_display.lua` wraps `Die` to provide:
+
 - Drag-and-drop functionality
 - Position animation (moving to/from held tray)
 - Home position tracking
@@ -100,17 +114,23 @@ The `src/ui/dice_display.lua` wraps `Die` to provide:
 6. **State: SETTLING**: Die lerps to final position
 7. **State: LOCKED**: Animation complete, die shows final face
 
+> **Note**: Dice settle into a neat, straight horizontal row. These positions are defined in `play_state.lua:initLooseDicePositions()` and used both as home positions and animation targets.
+
 ## Customization
 
 ### Adjusting Feel
+
 Edit `physics.lua` to tune:
+
 - `gravity`: Higher = faster, snappier drops
 - `bounceDamping`: Lower = more bounces, higher energy
 - `faceChangeInterval`: Lower = faster face cycling
 - `squashAmount`: Lower = more dramatic squash
 
 ### Adding Effects
+
 The `die.onBounce` callback fires on each bounce - use for:
+
 - Sound effects
 - Particle effects
 - Additional screen shake

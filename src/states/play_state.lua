@@ -62,22 +62,24 @@ end
 
 function PlayState:initLooseDicePositions()
     local layout = Theme.layout
-    -- Staggered positions below held tray
+    -- Calculate positions for a neat horizontal row
     local centerX = layout.centerX + (layout.centerWidth / 2)
     local baseY = layout.looseDiceY
     local diceSize = layout.diceSize
+    local diceSpacing = layout.diceSpacing -- 30 pixels between dice
 
-    -- Calculate centered positions with stagger
-    local totalWidth = 5 * diceSize + 4 * 40 -- wider spacing for scattered look
+    -- Calculate total width and starting X for centered row
+    local totalWidth = 5 * diceSize + 4 * diceSpacing
     local startX = centerX - totalWidth / 2
 
-    self.looseDicePositions = {
-        { x = startX,                            y = baseY + 40 },
-        { x = startX + diceSize + 60,            y = baseY + 80 },
-        { x = startX + (diceSize + 40) * 2,      y = baseY },
-        { x = startX + (diceSize + 40) * 3 - 20, y = baseY + 60 },
-        { x = startX + (diceSize + 40) * 4 - 40, y = baseY + 30 },
-    }
+    -- Create evenly-spaced positions in a straight horizontal line
+    self.looseDicePositions = {}
+    for i = 1, 5 do
+        self.looseDicePositions[i] = {
+            x = startX + (i - 1) * (diceSize + diceSpacing),
+            y = baseY
+        }
+    end
 end
 
 function PlayState:initDiceDisplays()
@@ -435,10 +437,19 @@ function PlayState:draw()
     love.graphics.push()
     love.graphics.translate(shakeX, shakeY)
 
-    -- Draw dice (both in tray and loose area)
-    -- Draw non-dragging dice first, then dragging dice on top
+    -- Draw dice with proper layering:
+    -- 1. Locked/held dice (in tray) - drawn first (behind)
+    -- 2. Unlocked dice (rolling or in loose area) - drawn on top
+    -- 3. Dragging dice - drawn last (always on top)
     for _, display in ipairs(self.diceDisplays) do
-        if not display.isDragging then
+        local data = display.getDiceData()
+        if not display.isDragging and data.locked then
+            display:draw()
+        end
+    end
+    for _, display in ipairs(self.diceDisplays) do
+        local data = display.getDiceData()
+        if not display.isDragging and not data.locked then
             display:draw()
         end
     end
