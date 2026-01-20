@@ -14,6 +14,7 @@ local ItemStrip = require("src.ui.item_strip")
 local HeldTray = require("src.ui.held_tray")
 local HandList = require("src.ui.hand_list")
 local InfoPanel = require("src.ui.info_panel")
+local Juice = require("src.dice.juice")
 
 local PlayState = {}
 PlayState.__index = PlayState
@@ -325,17 +326,15 @@ function PlayState:rollDice()
     GameState.isRolling = true
 
     -- Start animations for unlocked dice
-    local maxDuration = 0
     for i, die in ipairs(GameState.dice) do
         if not die.locked then
-            local duration = 0.3 + (i - 1) * 0.08
-            self.diceDisplays[i]:startRollAnimation(duration)
-            maxDuration = math.max(maxDuration, duration)
+            self.diceDisplays[i]:startRollAnimation()
         end
     end
 
     -- Finish rolling state after animation
-    self.timer:after(maxDuration + 0.1, function()
+    -- New animation system takes ~1.2 seconds with stagger and bounces
+    self.timer:after(1.5, function()
         GameState.isRolling = false
     end)
 end
@@ -393,6 +392,9 @@ end
 function PlayState:update(dt)
     self.timer:update(dt)
 
+    -- Update juice effects (screen shake)
+    Juice.updateShake(dt)
+
     -- Update dice displays
     for _, display in ipairs(self.diceDisplays) do
         display:update(dt)
@@ -428,6 +430,11 @@ function PlayState:draw()
     -- Draw held tray (middle center)
     self.heldTray:draw()
 
+    -- Apply screen shake to dice area
+    local shakeX, shakeY = Juice.getShakeOffset()
+    love.graphics.push()
+    love.graphics.translate(shakeX, shakeY)
+
     -- Draw dice (both in tray and loose area)
     -- Draw non-dragging dice first, then dragging dice on top
     for _, display in ipairs(self.diceDisplays) do
@@ -440,6 +447,8 @@ function PlayState:draw()
             display:draw()
         end
     end
+
+    love.graphics.pop()
 
     -- Draw hand list (left panel)
     self.handList:draw()
