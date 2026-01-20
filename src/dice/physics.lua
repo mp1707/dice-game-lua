@@ -6,8 +6,8 @@ local Physics = {
     gravity = 1800,
 
     -- Bounce behavior
-    baseBounceStrength = 400,    -- Initial upward velocity on bounce
-    bounceDamping = 0.55,        -- Multiplier per bounce (0.5 = half strength)
+    baseBounceStrength = 650,    -- Initial upward velocity on bounce
+    bounceDamping = 0.68,        -- Multiplier per bounce (0.5 = half strength)
     horizontalDamping = 0.7,     -- How much horizontal speed is lost per bounce
     angularDamping = 0.6,        -- How much rotation slows per bounce
 
@@ -29,14 +29,14 @@ local Physics = {
     initialAngularVelocity = { min = -15, max = 15 },
 
     -- Bounce count range
-    bounceCount = { min = 2, max = 4 },
+    bounceCount = { min = 2, max = 5 },
 
     -- Slot constraints
     slotWidth = 70,              -- How much horizontal freedom within slot
 
     -- Stagger timing
-    staggerDelay = 0.03,         -- Per-die delay multiplier
-    staggerRandom = 0.05,        -- Random addition to stagger
+    staggerDelay = 0,            -- Per-die delay multiplier (0 = instant start)
+    staggerRandom = 0.02,        -- Random addition to stagger (minimal for organic feel)
 }
 
 -- Helper function to get random value within a range
@@ -74,7 +74,7 @@ function Physics.generateRollParams(slotIndex, slotCenterX, groundY)
 
     -- Final target position (within slot bounds with small variation)
     local targetOffsetX = (math.random() - 0.5) * slotWidth * 0.6
-    local targetOffsetY = (math.random() - 0.5) * 30
+    local targetOffsetY = (math.random() - 0.5) * 90
     params.targetX = slotCenterX + targetOffsetX
     params.targetY = groundY + targetOffsetY
 
