@@ -320,12 +320,108 @@ function Scoring.getScoringDiceForHand(handId, selectedIndices, dice)
                 table.insert(scoringValues, targetFace)
             end
         end
-    else
-        -- For Kombinationen: all selected dice contribute
+    elseif handId == "smallStraight" or handId == "largeStraight" then
+        -- Straights: Extract unique sorted values and find the consecutive sequence
+        local values = {}
+        for _, idx in ipairs(selectedIndices) do
+            if dice[idx] then
+                table.insert(values, dice[idx].value)
+            end
+        end
+        table.sort(values)
+
+        -- Get unique values sorted
+        local unique = {}
+        local seen = {}
+        for _, v in ipairs(values) do
+            if not seen[v] then
+                table.insert(unique, v)
+                seen[v] = true
+            end
+        end
+
+        -- Find the sequence
+        local reqLen = (handId == "largeStraight") and 5 or 4
+
+        -- Try to find a consecutive run of required length
+        local bestRun = {}
+
+        for i = 1, #unique - reqLen + 1 do
+            local run = {}
+            local isConsecutive = true
+            for j = 0, reqLen - 1 do
+                if unique[i + j] ~= unique[i] + j then
+                    isConsecutive = false
+                    break
+                end
+                table.insert(run, unique[i + j])
+            end
+
+            if isConsecutive then
+                bestRun = run
+                break -- Found the straight, use it
+            end
+        end
+
+        scoringValues = bestRun
+    elseif handId == "fullHouse" then
+        -- Full House: Sort all selected dice ascending
+        -- User requested: "always order full house ascending in groups"
+        -- Standard sort achieves grouping (e.g., 2,2,3,3,3)
         for _, idx in ipairs(selectedIndices) do
             if dice[idx] then
                 table.insert(scoringValues, dice[idx].value)
             end
+        end
+        table.sort(scoringValues)
+    else
+        -- Other low hands (3-kind, 4-kind, Yahtzee):
+        -- Only show the dice that form the combination (the N matching faces)
+        local requiredCount = 3
+        if handId == "fourOfKind" then requiredCount = 4 end
+        if handId == "yahtzee" then requiredCount = 5 end
+
+        -- Count faces in selection
+        local counts = { 0, 0, 0, 0, 0, 0 }
+        local selectedValues = {}
+        for _, idx in ipairs(selectedIndices) do
+            if dice[idx] then
+                local v = dice[idx].value
+                counts[v] = counts[v] + 1
+                table.insert(selectedValues, v)
+            end
+        end
+
+        -- Find the face that satisfies the condition (highest face priority if multiple)
+        local matchFace = nil
+        for f = 6, 1, -1 do
+            if counts[f] >= requiredCount then
+                matchFace = f
+                break
+            end
+        end
+
+        if matchFace then
+            -- Collect only instances of matchFace
+            -- Limit to actual count present in selection (which is counts[matchFace])
+            -- The user wants "valid hand", so if I have 4 ones and it's "3 of kind", do I show 3 or 4?
+            -- User example: "1,1,1,6" -> "1,1,1".
+            -- If I have "1,1,1,1" and it's detected as "3 of kind" (because 4ofKind used?), I should show all 4?
+            -- Usually all matching dice contribute.
+            -- If I have 1,1,1,1 and hand is "threeOfKind", showing 1,1,1,1 is correct as it satisfies "at least 3".
+            -- Showing 1,1,1 might be misleading if I actually have 4.
+            -- But "1,1,1,6" -> "1,1,1" implies we exclude NON-matching.
+            -- So I will include all dice that match the matchFace.
+
+            for _, v in ipairs(selectedValues) do
+                if v == matchFace then
+                    table.insert(scoringValues, v)
+                end
+            end
+        else
+            -- Fallback: shouldn't happen if hand detection works, but just show all sorted
+            scoringValues = selectedValues
+            table.sort(scoringValues)
         end
     end
 
