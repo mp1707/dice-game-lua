@@ -473,6 +473,11 @@ function PlayState:mousemoved(x, y)
     if self.draggingDice then
         self.draggingDice:updateDrag(x, y)
     end
+
+    -- Update hover state for all dice (Balatro-style tilt effect)
+    for _, display in ipairs(self.diceDisplays) do
+        display:updateHover(x, y)
+    end
 end
 
 function PlayState:mousepressed(x, y, button)
@@ -493,12 +498,18 @@ function PlayState:mousepressed(x, y, button)
         end
     end
 
-    -- Check if clicking on a dice (any mouse button toggles selection)
+    -- Check if clicking on a dice - start drag (selection happens on release)
     if GameState.hasRolledThisHand and not GameState.isRolling then
         for i, display in ipairs(self.diceDisplays) do
             if display:containsPoint(x, y) then
                 if button == 1 then
-                    self:onDiceClick(i)
+                    -- Start dragging this die
+                    self.draggingDice = display
+                    self.draggingDiceIndex = i
+                    self.dragStartX = x
+                    self.dragStartY = y
+                    display:startDrag(x, y)
+                    display:setHeld(true)
                     return
                 end
             end
@@ -512,6 +523,47 @@ function PlayState:mousereleased(x, y, button)
 
     -- Release info panel
     self.infoPanel:mousereleased(x, y, button)
+
+    -- Handle dice drag release
+    if button == 1 and self.draggingDice then
+        local display = self.draggingDice
+        local index = self.draggingDiceIndex
+        local homePos = self.diceHomePositions[index]
+
+        -- Stop dragging/holding
+        local currentY = display:endDrag()
+
+        -- Check if it was a simple click (moved less than threshold)
+        local dragDist = math.sqrt((x - self.dragStartX) ^ 2 + (y - self.dragStartY) ^ 2)
+        local clickThreshold = 6
+
+        if dragDist < clickThreshold then
+            -- Simple click: toggle selection
+            GameState:toggleDiceSelection(index)
+            self:updateHandCards()
+        else
+            -- Drag release: determine selection based on Y position
+            local homeY = homePos.y
+            local selectedY = homeY + Theme.layout.diceSelectedOffsetY
+            local midpointY = (homeY + selectedY) / 2
+
+            -- Determine if should be selected based on Y position (up is smaller Y)
+            local shouldBeSelected = currentY < midpointY
+            local isCurrentlySelected = GameState:isDiceSelected(index)
+
+            -- Change state if dropped in different zone
+            if shouldBeSelected ~= isCurrentlySelected then
+                GameState:toggleDiceSelection(index)
+                self:updateHandCards()
+            end
+        end
+
+        -- Clear drag state
+        self.draggingDice = nil
+        self.draggingDiceIndex = nil
+        self.dragStartX = nil
+        self.dragStartY = nil
+    end
 end
 
 function PlayState:keypressed(key)

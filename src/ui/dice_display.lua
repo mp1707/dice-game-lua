@@ -61,6 +61,38 @@ function DiceDisplay.new(config)
         Juice.triggerShake(intensity, duration)
     end
 
+    -- =========================================================================
+    -- JUICE ANIMATION STATE
+    -- =========================================================================
+
+    -- Breathing animation (always active)
+    self.breathingTime = 0
+
+    -- Hover state (Balatro-style tilt)
+    self.isHovered = false
+    self.hoverRotation = 0
+    self.hoverScaleX = 1
+    self.hoverScaleY = 1
+    self.targetHoverRotation = 0
+    self.targetHoverScaleX = 1
+    self.targetHoverScaleY = 1
+
+    -- Selection spring animation
+    self.selectionScale = 1
+    self.selectionScaleVelocity = 0
+    self.selectionYOffset = 0
+    self.selectionYVelocity = 0
+    self.wasSelected = false
+
+    -- Held state (mouse down on die)
+    self.isHeld = false
+    self.heldScale = 1
+    self.targetHeldScale = 1
+
+    -- Mouse position (updated by play_state)
+    self.mouseX = 0
+    self.mouseY = 0
+
     return self
 end
 
@@ -146,9 +178,18 @@ function DiceDisplay:updateDrag(mouseX, mouseY)
     end
 end
 
--- End drag
+-- End drag and return held state info for selection logic
 function DiceDisplay:endDrag()
     self.isDragging = false
+    self.isHeld = false
+    self.targetHeldScale = 1
+    return self.y -- Return current Y position for selection logic
+end
+
+-- Set held state (mouse pressed but not necessarily dragging yet)
+function DiceDisplay:setHeld(held)
+    self.isHeld = held
+    self.targetHeldScale = held and 1.12 or 1
 end
 
 -- Animate to target position
@@ -225,6 +266,67 @@ function DiceDisplay:update(dt)
             self.die.slotCenterX = self.x + self.size / 2
         end
     end
+
+    -- =========================================================================
+    -- JUICE ANIMATIONS (only when not roll-animating)
+    -- =========================================================================
+    if not self.isAnimating then
+        -- Update breathing animation timer
+        self.breathingTime = self.breathingTime + dt
+
+        -- Check selection state change for spring animation
+        local data = self.getDiceData()
+        local isSelected = data.locked
+
+        if isSelected and not self.wasSelected then
+            -- Just got selected - trigger pop animation
+            local popScale, popY, _, _ = Juice.getSelectionPopParams()
+            self.selectionScale = popScale
+            self.selectionYOffset = popY
+            self.selectionScaleVelocity = 0
+            self.selectionYVelocity = 0
+        elseif not isSelected and self.wasSelected then
+            -- Just got deselected - trigger smaller pop
+            local popScale, popY, _, _ = Juice.getDeselectionPopParams()
+            self.selectionScale = popScale
+            self.selectionYOffset = popY
+            self.selectionScaleVelocity = 0
+            self.selectionYVelocity = 0
+        end
+        self.wasSelected = isSelected
+
+        -- Update spring physics for selection animation
+        local _, _, stiffness, damping = Juice.getSelectionPopParams()
+        self.selectionScale, self.selectionScaleVelocity = Juice.updateSpring(
+            self.selectionScale, 1, self.selectionScaleVelocity,
+            stiffness, damping, dt
+        )
+        self.selectionYOffset, self.selectionYVelocity = Juice.updateSpring(
+            self.selectionYOffset, 0, self.selectionYVelocity,
+            stiffness, damping, dt
+        )
+
+        -- Update hover effects
+        local centerX = self.x + self.size / 2
+        local centerY = self.y + self.size / 2
+        self.targetHoverRotation, self.targetHoverScaleX, self.targetHoverScaleY, self.isHovered =
+            Juice.getHoverEffects(self.mouseX, self.mouseY, centerX, centerY, self.size)
+
+        -- Smooth interpolation for hover (fluid response)
+        local hoverLerp = 12 * dt
+        self.hoverRotation = self.hoverRotation + (self.targetHoverRotation - self.hoverRotation) * hoverLerp
+        self.hoverScaleX = self.hoverScaleX + (self.targetHoverScaleX - self.hoverScaleX) * hoverLerp
+        self.hoverScaleY = self.hoverScaleY + (self.targetHoverScaleY - self.hoverScaleY) * hoverLerp
+
+        -- Update held scale smoothly
+        self.heldScale = self.heldScale + (self.targetHeldScale - self.heldScale) * hoverLerp
+    end
+end
+
+-- Update hover state with current mouse position
+function DiceDisplay:updateHover(mouseX, mouseY)
+    self.mouseX = mouseX
+    self.mouseY = mouseY
 end
 
 function DiceDisplay:mousepressed(x, y, button)
@@ -256,9 +358,22 @@ function DiceDisplay:draw()
             local image = Spritesheet:getImage()
             local spriteW, spriteH = Spritesheet:getSpriteSize()
 
+            -- Base scale
             local baseScale = self.size / math.max(spriteW, spriteH)
+
+            -- Get breathing animation values (disabled when held)
+            local breathScale, breathY = 1, 0
+            if not self.isHeld and not self.isDragging then
+                breathScale, breathY = Juice.getBreathingValues(self.breathingTime, self.index)
+            end
+
+            -- Combine all scale effects (include held scale)
+            local finalScaleX = baseScale * breathScale * self.selectionScale * self.hoverScaleX * self.heldScale
+            local finalScaleY = baseScale * breathScale * self.selectionScale * self.hoverScaleY * self.heldScale
+
+            -- Calculate position with breathing and selection offsets
             local centerX = self.x + self.size / 2
-            local centerY = self.y + self.size / 2
+            local centerY = self.y + self.size / 2 + breathY + self.selectionYOffset
 
             -- No tint - dice are distinguished by position only
             love.graphics.setColor(1, 1, 1, 1)
@@ -267,8 +382,8 @@ function DiceDisplay:draw()
                 image,
                 quad,
                 centerX, centerY,
-                0, -- no rotation
-                baseScale, baseScale,
+                self.hoverRotation, -- Balatro-style tilt
+                finalScaleX, finalScaleY,
                 spriteW / 2, spriteH / 2
             )
         end
