@@ -18,9 +18,8 @@ local Physics = {
     squashAmount = 0.7,    -- Scale Y multiplier during squash
     stretchAmount = 1.2,   -- Scale Y multiplier during fast fall
 
-    -- Face and orientation changes during animation
-    faceChangeInterval = 0.04,    -- How fast faces cycle during roll (~25fps)
-    orientationInterval = 0.06,   -- How fast orientation cycles (tumble effect)
+    -- Roll animation
+    faceChangeInterval = 0.04,    -- How fast roll frames cycle during animation (~25fps)
 
     -- Initial drop parameters (ranges for randomization)
     dropHeight = { min = 200, max = 350 },
@@ -74,9 +73,6 @@ function Physics.generateRollParams(slotIndex, slotCenterX, groundY)
     -- Final target position (use the passed-in position - now correctly calculated as a row)
     params.targetX = slotCenterX
     params.targetY = groundY
-
-    -- Final orientation (random for visual variety)
-    params.targetOrientation = math.random(1, 4)
 
     -- Stagger start time for more organic feel
     params.startDelay = slotIndex * Physics.staggerDelay + math.random() * Physics.staggerRandom

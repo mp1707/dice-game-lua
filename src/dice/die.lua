@@ -30,10 +30,8 @@ function Die.new(slotIndex, slotCenterX, groundY, size)
     self.velocityY = 0
     self.velocityZ = 0  -- Vertical velocity for bouncing
 
-    -- Orientation (sprite column 1-4, replaces rotation)
-    self.orientation = math.random(1, 4)
-    self.targetOrientation = 1
-    self.orientationTimer = 0
+    -- Roll animation frame (1-6, cycles during roll)
+    self.rollFrame = 1
 
     -- Scale (for squash/stretch)
     self.scaleX = 1
@@ -83,10 +81,8 @@ function Die:startRoll(params)
     self.velocityY = params.velocityY
     self.velocityZ = params.velocityZ or 0
 
-    -- Set orientation (replaces rotation)
-    self.orientation = math.random(1, 4)
-    self.targetOrientation = params.targetOrientation or math.random(1, 4)
-    self.orientationTimer = 0
+    -- Initialize roll animation frame
+    self.rollFrame = math.random(1, 6)
 
     -- Set target position
     self.targetX = params.targetX - self.size / 2
@@ -158,7 +154,6 @@ function Die:onStateChange(oldState, newState)
         -- Ensure final state is clean
         self.scaleX = 1
         self.scaleY = 1
-        self.orientation = self.targetOrientation
     end
 end
 
@@ -209,7 +204,16 @@ function Die:draw()
     local Spritesheet = Theme.diceSpritesheet
     if not Spritesheet then return end
 
-    local quad = Spritesheet:getQuad(self.currentFace, self.orientation)
+    -- Choose quad based on animation state
+    local quad
+    if self.state == AnimStates.DROPPING or self.state == AnimStates.BOUNCING then
+        -- During roll animation, use roll animation frames
+        quad = Spritesheet:getRollQuad(self.rollFrame)
+    else
+        -- Static display (IDLE, SETTLING, LOCKED) - show face value
+        quad = Spritesheet:getQuad(self.currentFace)
+    end
+
     local image = Spritesheet:getImage()
     local spriteW, spriteH = Spritesheet:getSpriteSize()
 
@@ -228,15 +232,15 @@ function Die:draw()
     local centerX = drawX + self.size / 2
     local centerY = drawY + self.size / 2
 
-    -- Set color (could tint based on state if needed)
+    -- Set color
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- Draw the die using quad (no rotation - orientation is handled by sprite)
+    -- Draw the die using quad
     love.graphics.draw(
         image,
         quad,
         centerX, centerY,
-        0,  -- No rotation
+        0,
         scaleX, scaleY,
         spriteW / 2, spriteH / 2
     )
@@ -275,8 +279,7 @@ function Die:resetToIdle(x, y)
     self.velocityX = 0
     self.velocityY = 0
     self.velocityZ = 0
-    self.orientation = self.targetOrientation or math.random(1, 4)
-    self.orientationTimer = 0
+    self.rollFrame = 1
     self.scaleX = 1
     self.scaleY = 1
     self.squashTimer = 0

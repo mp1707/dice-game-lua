@@ -37,21 +37,12 @@ function AnimationStates.Handlers.dropping(die, dt, physics)
     die.velocityX = die.velocityX * (1 - physics.horizontalDamping * dt)
     die.velocityY = die.velocityY * (1 - physics.horizontalDamping * dt)
 
-    -- Cycle orientation for tumbling effect (replaces rotation)
-    die.orientationTimer = die.orientationTimer + dt
-    if die.orientationTimer >= physics.orientationInterval then
-        die.orientationTimer = 0
-        -- Cycle to next orientation (1 -> 2 -> 3 -> 4 -> 1)
-        die.orientation = (die.orientation % 4) + 1
-    end
-
-    -- Cycle through faces rapidly
+    -- Cycle through roll animation frames rapidly
     die.faceChangeTimer = die.faceChangeTimer + dt
     if die.faceChangeTimer >= physics.faceChangeInterval then
         die.faceChangeTimer = 0
-        die.currentFace = math.random(1, 6)
-        -- Also randomize orientation on face change for more chaos
-        die.orientation = math.random(1, 4)
+        -- Cycle to next roll frame (1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 1)
+        die.rollFrame = (die.rollFrame % 6) + 1
     end
 
     -- Apply stretch when falling fast
@@ -77,7 +68,6 @@ function AnimationStates.Handlers.bouncing(die, dt, physics)
     -- Check if we've bounced enough
     if die.bounceCount > die.maxBounces then
         die.currentFace = die.targetFace
-        die.orientation = die.targetOrientation
         return AnimationStates.SETTLING
     end
 
@@ -95,13 +85,9 @@ function AnimationStates.Handlers.bouncing(die, dt, physics)
     -- Squash effect on impact
     die.squashTimer = physics.squashDuration
 
-    -- Change face and orientation on bounce (except last bounce shows target)
-    if die.bounceCount < die.maxBounces then
-        die.currentFace = math.random(1, 6)
-        die.orientation = math.random(1, 4)
-    else
+    -- On last bounce, set to target face (will show in SETTLING)
+    if die.bounceCount >= die.maxBounces then
         die.currentFace = die.targetFace
-        die.orientation = die.targetOrientation
     end
 
     -- Trigger screen shake callback if available
@@ -119,8 +105,6 @@ function AnimationStates.Handlers.settling(die, dt, physics)
     -- Lerp position toward target
     die.x = die.x + (die.targetX - die.x) * lerpSpeed
     die.y = die.y + (die.targetY - die.y) * lerpSpeed
-
-    -- Orientation is already at target (set in BOUNCING), no lerping needed
 
     -- Lerp scale back to normal
     die.scaleX = die.scaleX + (1 - die.scaleX) * lerpSpeed
