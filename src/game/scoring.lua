@@ -257,14 +257,29 @@ function Scoring.detectZahlenHand(selectedIndices, dice)
         return nil
     end
 
-    local maxFace = 0
+    local counts = { 0, 0, 0, 0, 0, 0 }
     for _, idx in ipairs(selectedIndices) do
-        if dice[idx] and dice[idx].value > maxFace then
-            maxFace = dice[idx].value
+        if dice[idx] then
+            local val = dice[idx].value
+            if val >= 1 and val <= 6 then
+                counts[val] = counts[val] + 1
+            end
         end
     end
 
-    return faceToHandId[maxFace]
+    local bestFace = 0
+    local maxCount = -1
+
+    -- Iterate from 6 down to 1 to prioritize higher face value on ties
+    for face = 6, 1, -1 do
+        if counts[face] > maxCount then
+            maxCount = counts[face]
+            bestFace = face
+        end
+    end
+
+    if bestFace == 0 then return nil end
+    return faceToHandId[bestFace]
 end
 
 -- Get the face value from a hand ID (for display purposes)

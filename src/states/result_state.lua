@@ -154,26 +154,30 @@ function ResultState:draw()
     local screenWidth = Theme.screen.width
     local screenHeight = Theme.screen.height
 
-    -- Center content panel
+    -- Center content panel (aligned with Center Area and above CTA)
     local panelWidth = 500
     local panelHeight = 400
-    local panelX = (screenWidth - panelWidth) / 2
-    local panelY = 80
+
+    local centerAreaX = Theme.layout.centerX
+    local centerAreaWidth = Theme.layout.centerWidth
+
+    local panelX = centerAreaX + (centerAreaWidth - panelWidth) / 2
+    local panelY = (Theme.layout.ctaY - panelHeight) / 2
 
     self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
     local titleText = self.won and "LEVEL CLEARED!" or "GAME OVER!"
     local titleColor = self.won and Theme.colors.mint or Theme.colors.coral
-    Theme:drawTextCenteredWithShadow(titleText, 0, panelY + 30, screenWidth, Theme.fonts.display, titleColor)
+    Theme:drawTextCenteredWithShadow(titleText, panelX, panelY + 30, panelWidth, Theme.fonts.display, titleColor)
 
     -- Level and score summary
     local levelText = "Level " .. tostring(GameState.currentLevel)
-    Theme:drawTextCenteredWithShadow(levelText, 0, panelY + 90, screenWidth, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow(levelText, panelX, panelY + 90, panelWidth, Theme.fonts.large, Theme.colors.text)
 
     local scoreText = tostring(GameState.currentScore) .. " / " .. tostring(GameState:getCurrentGoal())
     local scoreColor = GameState:hasReachedGoal() and Theme.colors.mint or Theme.colors.coral
-    Theme:drawTextCenteredWithShadow(scoreText, 0, panelY + 130, screenWidth, Theme.fonts.large, scoreColor)
+    Theme:drawTextCenteredWithShadow(scoreText, panelX, panelY + 130, panelWidth, Theme.fonts.large, scoreColor)
 
     -- Reward breakdown (only if won)
     if self.won then
@@ -214,9 +218,9 @@ function ResultState:draw()
             Theme.fonts.large, Theme.colors.gold)
     else
         -- Loss message
-        Theme:drawTextCenteredWithShadow("Goal not reached.", 0, panelY + 200, screenWidth, Theme.fonts.large,
+        Theme:drawTextCenteredWithShadow("Goal not reached.", panelX, panelY + 200, panelWidth, Theme.fonts.large,
             Theme.colors.textMuted)
-        Theme:drawTextCenteredWithShadow("Try again!", 0, panelY + 250, screenWidth, Theme.fonts.large,
+        Theme:drawTextCenteredWithShadow("Try again!", panelX, panelY + 250, panelWidth, Theme.fonts.large,
             Theme.colors.textMuted)
     end
 

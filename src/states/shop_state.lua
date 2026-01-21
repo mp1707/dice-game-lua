@@ -135,20 +135,24 @@ function ShopState:draw()
     local screenWidth = Theme.screen.width
     local screenHeight = Theme.screen.height
 
-    -- Center content panel
+    -- Center content panel (aligned with Center Area and above CTA)
     local panelWidth = 600
     local panelHeight = 450
-    local panelX = (screenWidth - panelWidth) / 2
-    local panelY = 60
+
+    local centerAreaX = Theme.layout.centerX
+    local centerAreaWidth = Theme.layout.centerWidth
+
+    local panelX = centerAreaX + (centerAreaWidth - panelWidth) / 2
+    local panelY = (Theme.layout.ctaY - panelHeight) / 2
 
     self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
-    Theme:drawTextCenteredWithShadow("SHOP", 0, panelY + 30, screenWidth, Theme.fonts.display, Theme.colors.cyan)
+    Theme:drawTextCenteredWithShadow("SHOP", panelX, panelY + 30, panelWidth, Theme.fonts.display, Theme.colors.cyan)
 
     -- Current money
     local moneyText = "Cash: " .. tostring(GameState.money)
-    Theme:drawTextCenteredWithShadow(moneyText, 0, panelY + 90, screenWidth, Theme.fonts.large, Theme.colors.gold)
+    Theme:drawTextCenteredWithShadow(moneyText, panelX, panelY + 90, panelWidth, Theme.fonts.large, Theme.colors.gold)
 
     -- Empty shop content area
     local shopPanelX = panelX + 40
@@ -160,24 +164,26 @@ function ShopState:draw()
         Theme.nineSlice.borderScale)
 
     -- Empty message
-    Theme:drawTextCenteredWithShadow("Shop is empty...", 0, shopPanelY + shopPanelHeight / 2 - 30, screenWidth,
+    Theme:drawTextCenteredWithShadow("Shop is empty...", panelX, shopPanelY + shopPanelHeight / 2 - 30, panelWidth,
         Theme.fonts.large, Theme.colors.textMuted)
-    Theme:drawTextCenteredWithShadow("(Upgrades coming soon)", 0, shopPanelY + shopPanelHeight / 2 + 10, screenWidth,
+    Theme:drawTextCenteredWithShadow("(Upgrades coming soon)", panelX, shopPanelY + shopPanelHeight / 2 + 10, panelWidth,
         Theme.fonts.large, Theme.colors.textMuted)
 
     -- Level info
     local levelText = "Level " .. tostring(GameState.currentLevel) .. " / " .. tostring(Levels.totalLevels)
-    Theme:drawTextCenteredWithShadow(levelText, 0, shopPanelY + shopPanelHeight + 20, screenWidth, Theme.fonts.normal,
+    Theme:drawTextCenteredWithShadow(levelText, panelX, shopPanelY + shopPanelHeight + 20, panelWidth, Theme.fonts
+        .normal,
         Theme.colors.text)
 
     -- Next goal preview
     if not Levels:isLastLevel(GameState.currentLevel) then
         local nextGoal = Levels:getGoal(GameState.currentLevel + 1)
         local nextText = "Next Goal: " .. tostring(nextGoal)
-        Theme:drawTextCenteredWithShadow(nextText, 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal,
+        Theme:drawTextCenteredWithShadow(nextText, panelX, shopPanelY + shopPanelHeight + 50, panelWidth,
+            Theme.fonts.normal,
             Theme.colors.textMuted)
     else
-        Theme:drawTextCenteredWithShadow("LAST LEVEL CLEARED!", 0, shopPanelY + shopPanelHeight + 50, screenWidth,
+        Theme:drawTextCenteredWithShadow("LAST LEVEL CLEARED!", panelX, shopPanelY + shopPanelHeight + 50, panelWidth,
             Theme.fonts.normal, Theme.colors.mint)
     end
 

@@ -336,6 +336,9 @@ function PlayState:resetForNextHand()
     -- Clear selections and reset game state
     GameState:resetForHand()
 
+    -- Explicitly clear displayed hand cards
+    self.handCardArea:setHands(nil, nil)
+
     -- Reset dice positions to home area
     for i, display in ipairs(self.diceDisplays) do
         display.isInHeldTray = false
@@ -408,26 +411,47 @@ function PlayState:draw()
     love.graphics.push()
     love.graphics.translate(shakeX, shakeY)
 
-    -- Draw dice with proper layering:
-    -- 1. Unselected dice (unlocked) - drawn first
-    -- 2. Selected dice (locked) - drawn on top
-    -- 3. Dragging dice - drawn last (always on top)
-    for _, display in ipairs(self.diceDisplays) do
-        local data = display.getDiceData()
-        if not display.isDragging and not data.locked then
-            display:draw()
+    -- Draw dice with proper layering or "Roll the dice!" text
+    local showDice = GameState.hasRolledThisHand or GameState.isRolling
+
+    if showDice then
+        -- 1. Unselected dice (unlocked) - drawn first
+        -- 2. Selected dice (locked) - drawn on top
+        -- 3. Dragging dice - drawn last (always on top)
+        for _, display in ipairs(self.diceDisplays) do
+            local data = display.getDiceData()
+            if not display.isDragging and not data.locked then
+                display:draw()
+            end
         end
-    end
-    for _, display in ipairs(self.diceDisplays) do
-        local data = display.getDiceData()
-        if not display.isDragging and data.locked then
-            display:draw()
+        for _, display in ipairs(self.diceDisplays) do
+            local data = display.getDiceData()
+            if not display.isDragging and data.locked then
+                display:draw()
+            end
         end
-    end
-    for _, display in ipairs(self.diceDisplays) do
-        if display.isDragging then
-            display:draw()
+        for _, display in ipairs(self.diceDisplays) do
+            if display.isDragging then
+                display:draw()
+            end
         end
+    else
+        -- Draw "Roll the dice!" text
+        local layout = Theme.layout
+        local centerX = layout.centerX + (layout.centerWidth / 2)
+        local totalDiceWidth = 5 * layout.diceSize + 4 * layout.diceSpacing
+        local startX = centerX - totalDiceWidth / 2
+        local centerY = layout.diceHomeY + layout.diceSize / 2
+
+        -- Use display font (66px) or giant (80px)
+        Theme:drawTextCenteredWithShadow(
+            "Roll the dice!",
+            startX,
+            centerY - Theme.fonts.display:getHeight() / 2,
+            totalDiceWidth,
+            Theme.fonts.display,
+            Theme.colors.textMuted
+        )
     end
 
     love.graphics.pop()

@@ -118,7 +118,7 @@ end
 
 function InfoPanel:draw()
     -- Main panel background (50% transparent)
-    local surfaceColor = Theme.colors.surface
+    local surfaceColor = Theme.colors.panelDark
     local transparentSurface = { surfaceColor[1], surfaceColor[2], surfaceColor[3], 0.5 }
     self.nineSlice:draw(
         self.x,
