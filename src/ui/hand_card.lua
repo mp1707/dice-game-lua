@@ -75,12 +75,17 @@ function HandCard:draw()
     local diceSpacing = 4
 
     for i, value in ipairs(self.scoringDice) do
-        local img = Theme.images.diceFaces[value]
-        if img then
-            local imgW, imgH = img:getDimensions()
-            local scale = diceSize / math.max(imgW, imgH)
+        local sheet = Theme.diceSpritesheet
+        if sheet then
+            local quad = sheet:getQuad(value)
+            local image = sheet:getImage()
+            local sw, sh = sheet:getSpriteSize()
+
+            -- Calculate scale if not already done
+            local scale = diceSize / math.max(sw, sh)
+
             love.graphics.setColor(1, 1, 1, 1)
-            love.graphics.draw(img, diceX, diceY, 0, scale, scale)
+            love.graphics.draw(image, quad, diceX, diceY, 0, scale, scale)
             diceX = diceX + diceSize + diceSpacing
         end
     end

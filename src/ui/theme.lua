@@ -35,9 +35,9 @@ Theme.colors = {
     upgradeMult = { 0.878, 0.180, 0.298, 1 }, -- #E02E4C (red)
 
     -- Button colors
-    buttonGray = { 0.35, 0.35, 0.40, 1 },         -- Settings button
-    buttonLightBlue = { 0.45, 0.70, 0.90, 1 },    -- Info button
-    buttonPurple = { 0.55, 0.35, 0.75, 1 },       -- Würfeln button
+    buttonGray = { 0.35, 0.35, 0.40, 1 },      -- Settings button
+    buttonLightBlue = { 0.45, 0.70, 0.90, 1 }, -- Info button
+    buttonPurple = { 0.55, 0.35, 0.75, 1 },    -- Würfeln button
 
     -- Overlays (pre-mixed for convenience)
     overlayWhite = { 1, 1, 1, 0.2 },
@@ -95,7 +95,6 @@ Theme.images = {
     glove = nil,
     die = nil,
     lock = nil,
-    diceFaces = {},  -- Array for dice faces 1-6
 }
 
 -- Dice spritesheet (loaded in Theme:load())
@@ -107,7 +106,7 @@ Theme.layout = {
     -- Screen padding
     screenPadding = 24,
     panelPadding = 20,
-    innerGap = 12,           -- Consistent small gap between elements
+    innerGap = 12, -- Consistent small gap between elements
 
     -- Left Panel (Info/Stats) - NOW ON LEFT
     leftPanelX = 24,
@@ -116,15 +115,15 @@ Theme.layout = {
     leftPanelHeight = 1032,
 
     -- Center Area (Item Strip + Selection Panels + Dice + CTAs)
-    centerX = 428,           -- 24 + 380 + 24
-    centerWidth = 1468,      -- 1920 - 428 - 24
+    centerX = 428,      -- 24 + 380 + 24
+    centerWidth = 1468, -- 1920 - 428 - 24
 
     -- Item strip (top center) - 5 + gap + 2 slots
     itemStripY = 24,
     itemStripHeight = 100,
     itemSlotSize = 90,
     itemSlotSpacing = 16,
-    itemSlotGap = 50,        -- Gap between first 5 and last 2 slots
+    itemSlotGap = 50, -- Gap between first 5 and last 2 slots
     itemSlotCount = 7,
 
     -- Dice home area
@@ -132,17 +131,17 @@ Theme.layout = {
     diceHomeHeight = 200,
     diceSize = 100,
     diceSpacing = 40,
-    diceSelectedOffsetY = -80,  -- How far up selected dice move
+    diceSelectedOffsetY = -80, -- How far up selected dice move
 
     -- Hand card area (between dice and CTAs)
     handCardAreaY = 600,
     handCardWidth = 280,
     handCardHeight = 110,
     handCardSpacing = 40,
-    handCardDiceSize = 32,      -- Small dice faces on hand cards
+    handCardDiceSize = 24, -- Small dice faces on hand cards
 
     -- CTA buttons (bottom center)
-    ctaY = 780,
+    ctaY = 936,
     ctaWidth = 280,
     ctaHeight = 100,
     ctaSpacing = 60,
@@ -180,12 +179,7 @@ function Theme:load()
     self.images.lock = love.graphics.newImage("assets/icons/ui/lock.png")
     self.images.lock:setFilter("nearest", "nearest")
 
-    -- Load dice face images (kept for hand icons and other UI uses)
-    for i = 1, 6 do
-        local path = "assets/icons/hands/" .. i .. "die.png"
-        self.images.diceFaces[i] = love.graphics.newImage(path)
-        self.images.diceFaces[i]:setFilter("nearest", "nearest")
-    end
+
 
     -- Load dice spritesheet for animated dice rendering
     local Spritesheet = require("src.dice.spritesheet")
