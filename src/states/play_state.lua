@@ -248,7 +248,8 @@ function PlayState:getDetectedHand()
             }
         end
     elseif GameState.selectionMode == "kombinationen" and #GameState.kombinationenDice > 0 then
-        local handId = Scoring.detectBestKombination(GameState.dice)
+        -- Use new function that only checks the SELECTED dice, not all dice
+        local handId = Scoring.detectBestKombinationFromIndices(GameState.kombinationenDice, GameState.dice)
         if handId then
             local handDef = Hands:get(handId)
             return {

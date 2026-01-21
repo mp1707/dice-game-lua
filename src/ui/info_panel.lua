@@ -125,75 +125,106 @@ function InfoPanel:draw()
     )
 
     local contentX = self.x + self.padding
-    local contentY = self.y + self.padding
     local contentW = self.width - self.padding * 2
 
+    -- Calculate proportional heights using 10-unit system:
+    -- Row units: Level=1, Goal=3, Score=1, Hand=2, Counters=1, Money=1, Buttons=1 = 10 units
+    -- 9 total gaps: 6 visible between rows + 2 absorbed inside goal + 1 absorbed inside hand
+    -- Goal section = 3 units + 2 gaps (like 3 stacked rows)
+    -- Hand section = 2 units + 1 gap (like 2 stacked rows)
+    local availableHeight = self.height - self.padding * 2
+    local gapRatio = 0.15                -- gap is 15% of a unit
+    local totalUnits = 10 + 9 * gapRatio -- 10 units + 9 gaps total
+    local unit = availableHeight / totalUnits
+    local gap = unit * gapRatio
+
+    -- Row heights based on units (larger sections include absorbed gaps)
+    local levelHeight = unit * 1
+    local goalHeight = unit * 3 + gap * 2 -- 3 units + 2 absorbed gaps
+    local scoreHeight = unit * 1
+    local handHeight = unit * 2 + gap * 1 -- 2 units + 1 absorbed gap
+    local countersHeight = unit * 1
+    local moneyHeight = unit * 1
+    local buttonsHeight = unit * 1
+
+    local contentY = self.y + self.padding
+
     -- 1. Level + Round row
-    self:drawLevelRoundRow(contentX, contentY, contentW)
-    contentY = contentY + 60 + self.innerGap
+    self:drawLevelRoundRow(contentX, contentY, contentW, levelHeight)
+    contentY = contentY + levelHeight + gap
 
     -- 2. Goal section
-    self:drawGoalSection(contentX, contentY, contentW)
-    contentY = contentY + 160 + self.innerGap
+    self:drawGoalSection(contentX, contentY, contentW, goalHeight)
+    contentY = contentY + goalHeight + gap
 
     -- 3. Score section
-    self:drawScoreSection(contentX, contentY, contentW)
-    contentY = contentY + 70 + self.innerGap
+    self:drawScoreSection(contentX, contentY, contentW, scoreHeight)
+    contentY = contentY + scoreHeight + gap
 
     -- 4. Hand preview (always visible space)
-    self:drawHandPreview(contentX, contentY, contentW)
-    contentY = contentY + 130 + self.innerGap
+    self:drawHandPreview(contentX, contentY, contentW, handHeight)
+    contentY = contentY + handHeight + gap
 
     -- 5. Counters row (Hände + Würfe)
-    self:drawCountersRow(contentX, contentY, contentW)
-    contentY = contentY + 70 + self.innerGap
+    self:drawCountersRow(contentX, contentY, contentW, countersHeight)
+    contentY = contentY + countersHeight + gap
 
     -- 6. Money display
-    self:drawMoneyDisplay(contentX, contentY, contentW)
+    self:drawMoneyDisplay(contentX, contentY, contentW, moneyHeight)
+    contentY = contentY + moneyHeight + gap
 
-    -- 7. Utility buttons (positioned at bottom)
-    self.settingsButton:draw()
-    self.infoButton:draw()
+    -- 7. Utility buttons (use remaining space)
+    self:drawButtonsRow(contentX, contentY, contentW, buttonsHeight)
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function InfoPanel:drawLevelRoundRow(x, y, width)
+function InfoPanel:drawLevelRoundRow(x, y, width, height)
     local boxWidth = (width - self.innerGap) / 2
-    local boxHeight = 60
+    local boxHeight = height
 
     -- Level box
     self.nineSlice:draw(x, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
-    Theme:drawTextCenteredWithShadow("Level " .. tostring(self.getLevel()), x, y + (boxHeight - Theme.fonts.large:getHeight()) / 2, boxWidth, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow("Level " .. tostring(self.getLevel()), x,
+        y + (boxHeight - Theme.fonts.large:getHeight()) / 2, boxWidth, Theme.fonts.large, Theme.colors.text)
 
     -- Round box
     local roundX = x + boxWidth + self.innerGap
     self.nineSlice:draw(roundX, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
-    Theme:drawTextCenteredWithShadow("Runde " .. tostring(self.getRound()), roundX, y + (boxHeight - Theme.fonts.large:getHeight()) / 2, boxWidth, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow("Runde " .. tostring(self.getRound()), roundX,
+        y + (boxHeight - Theme.fonts.large:getHeight()) / 2, boxWidth, Theme.fonts.large, Theme.colors.text)
 end
 
-function InfoPanel:drawGoalSection(x, y, width)
-    local boxHeight = 160
+function InfoPanel:drawGoalSection(x, y, width, height)
+    local boxHeight = height
 
     -- Goal box with dark background
     self.nineSlice:draw(x, y, width, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
+    -- Distribute content vertically within the box
+    local innerPadding = boxHeight * 0.08
+    local erreicheHeight = Theme.fonts.large:getHeight()
+    local goalNumHeight = Theme.fonts.giant:getHeight()
+    local punkteHeight = Theme.fonts.large:getHeight()
+    local totalTextHeight = erreicheHeight + goalNumHeight + punkteHeight
+    local spacing = (boxHeight - 2 * innerPadding - totalTextHeight) / 2
+
     -- "erreiche" label
-    local labelY = y + 16
+    local labelY = y + innerPadding
     Theme:drawTextCenteredWithShadow("erreiche", x, labelY, width, Theme.fonts.large, Theme.colors.text)
 
     -- Big goal number (coral/red color)
     local goal = self.getGoal()
-    local goalY = labelY + 30
+    local goalY = labelY + erreicheHeight + spacing
     Theme:drawTextCenteredWithShadow(tostring(goal), x, goalY, width, Theme.fonts.giant, Theme.colors.coral)
 
     -- "Punkte" label below
-    local punkteY = goalY + 70
+    local punkteY = goalY + goalNumHeight + spacing
     Theme:drawTextCenteredWithShadow("Punkte", x, punkteY, width, Theme.fonts.large, Theme.colors.text)
 end
 
-function InfoPanel:drawScoreSection(x, y, width)
-    local boxHeight = 70
+function InfoPanel:drawScoreSection(x, y, width, height)
+    local boxHeight = height
 
     -- Score box
     self.nineSlice:draw(x, y, width, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
@@ -212,8 +243,8 @@ function InfoPanel:drawScoreSection(x, y, width)
     Theme:drawTextWithShadow(scoreText, scoreX, scoreY, Theme.fonts.huge, Theme.colors.text)
 end
 
-function InfoPanel:drawHandPreview(x, y, width)
-    local boxHeight = 130
+function InfoPanel:drawHandPreview(x, y, width, height)
+    local boxHeight = height
 
     -- Hand preview box (always visible)
     self.nineSlice:draw(x, y, width, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
@@ -222,8 +253,8 @@ function InfoPanel:drawHandPreview(x, y, width)
     local breakdown = self.getHandBreakdown()
 
     if detectedHand and breakdown then
-        -- Show hand name at top
-        local handY = y + 12
+        -- Show hand name at top (10% from top)
+        local handY = y + boxHeight * 0.08
         local handName = string.upper(detectedHand.name or detectedHand.id or "")
         local levelText = "LV " .. tostring(detectedHand.level or 1)
 
@@ -232,16 +263,16 @@ function InfoPanel:drawHandPreview(x, y, width)
         local levelWidth = Theme.fonts.large:getWidth(levelText)
         Theme:drawTextWithShadow(levelText, x + width - levelWidth - 16, handY, Theme.fonts.large, Theme.colors.text)
 
-        -- Draw formula boxes
-        local formulaY = y + 55
+        -- Draw formula boxes (centered vertically in remaining space)
         local formulaX = x + 16
         local formulaWidth = width - 32
+        local boxHeightInner = boxHeight * 0.35 -- 35% of total height
+        local formulaY = y + boxHeight * 0.4    -- 40% from top
 
         -- Calculate box sizes
         local xSymbolWidth = Theme.fonts.large:getWidth("x")
         local spacing = 12
         local boxWidth = (formulaWidth - spacing * 2 - xSymbolWidth) / 2
-        local boxHeightInner = 50
 
         -- Chips box (blue)
         love.graphics.setColor(Theme.colors.upgradePoints)
@@ -273,38 +304,41 @@ function InfoPanel:drawHandPreview(x, y, width)
     else
         -- Empty state - show placeholder
         local emptyY = y + boxHeight / 2 - Theme.fonts.normal:getHeight() / 2
-        Theme:drawTextCenteredWithShadow("Wähle Würfel aus", x, emptyY, width, Theme.fonts.normal, Theme.colors.textMuted)
+        Theme:drawTextCenteredWithShadow("Wähle Würfel aus", x, emptyY, width, Theme.fonts.normal, Theme.colors
+            .textMuted)
     end
 end
 
-function InfoPanel:drawCountersRow(x, y, width)
+function InfoPanel:drawCountersRow(x, y, width, height)
     local boxWidth = (width - self.innerGap) / 2
-    local boxHeight = 70
+    local boxHeight = height
 
     -- Hände box
     self.nineSlice:draw(x, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
-    local handeY = y + 12
-    Theme:drawTextWithShadow("Hände", x + 16, handeY, Theme.fonts.normal, Theme.colors.text)
+    local labelY = y + boxHeight * 0.15
+    Theme:drawTextWithShadow("Hände", x + 16, labelY, Theme.fonts.normal, Theme.colors.text)
 
     local handsValue = tostring(self.getHandsRemaining())
     local handsValueWidth = Theme.fonts.huge:getWidth(handsValue)
-    local handsValueY = y + boxHeight - Theme.fonts.huge:getHeight() - 8
-    Theme:drawTextWithShadow(handsValue, x + boxWidth - handsValueWidth - 16, handsValueY, Theme.fonts.huge, Theme.colors.mint)
+    local valueY = y + boxHeight - Theme.fonts.huge:getHeight() - boxHeight * 0.1
+    Theme:drawTextWithShadow(handsValue, x + boxWidth - handsValueWidth - 16, valueY, Theme.fonts.huge, Theme.colors
+        .mint)
 
     -- Würfe box
     local wurfeX = x + boxWidth + self.innerGap
     self.nineSlice:draw(wurfeX, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
-    Theme:drawTextWithShadow("Würfe", wurfeX + 16, handeY, Theme.fonts.normal, Theme.colors.text)
+    Theme:drawTextWithShadow("Würfe", wurfeX + 16, labelY, Theme.fonts.normal, Theme.colors.text)
 
     local rollsValue = tostring(self.getRollsRemaining())
     local rollsValueWidth = Theme.fonts.huge:getWidth(rollsValue)
-    Theme:drawTextWithShadow(rollsValue, wurfeX + boxWidth - rollsValueWidth - 16, handsValueY, Theme.fonts.huge, Theme.colors.cyan)
+    Theme:drawTextWithShadow(rollsValue, wurfeX + boxWidth - rollsValueWidth - 16, valueY, Theme.fonts.huge,
+        Theme.colors.cyan)
 end
 
-function InfoPanel:drawMoneyDisplay(x, y, width)
-    local boxHeight = 60
+function InfoPanel:drawMoneyDisplay(x, y, width, height)
+    local boxHeight = height
 
     -- Money box
     self.nineSlice:draw(x, y, width, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
@@ -312,7 +346,27 @@ function InfoPanel:drawMoneyDisplay(x, y, width)
     -- Money value centered in gold
     local money = self.getMoney()
     local moneyText = "$" .. tostring(money)
-    Theme:drawTextCenteredWithShadow(moneyText, x, y + (boxHeight - Theme.fonts.huge:getHeight()) / 2, width, Theme.fonts.huge, Theme.colors.gold)
+    Theme:drawTextCenteredWithShadow(moneyText, x, y + (boxHeight - Theme.fonts.huge:getHeight()) / 2, width,
+        Theme.fonts.huge, Theme.colors.gold)
+end
+
+function InfoPanel:drawButtonsRow(x, y, width, height)
+    local buttonWidth = (width - self.innerGap) / 2
+    local buttonHeight = height
+
+    -- Update button positions dynamically
+    self.settingsButton.x = x
+    self.settingsButton.y = y
+    self.settingsButton.width = buttonWidth
+    self.settingsButton.height = buttonHeight
+
+    self.infoButton.x = x + buttonWidth + self.innerGap
+    self.infoButton.y = y
+    self.infoButton.width = buttonWidth
+    self.infoButton.height = buttonHeight
+
+    self.settingsButton:draw()
+    self.infoButton:draw()
 end
 
 return InfoPanel

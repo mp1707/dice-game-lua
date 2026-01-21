@@ -97,8 +97,8 @@ function DiceDisplay:startRollAnimation(duration)
     -- Generate roll parameters
     local params = Physics.generateRollParams(
         self.index,
-        self.x + self.size / 2,  -- slot center
-        self.y                    -- ground Y
+        self.x + self.size / 2, -- slot center
+        self.y                  -- ground Y
     )
 
     -- Get the target face from game state
@@ -256,17 +256,13 @@ function DiceDisplay:draw()
             local centerX = self.x + self.size / 2
             local centerY = self.y + self.size / 2
 
-            -- Tint for locked state
-            if locked then
-                love.graphics.setColor(0.7, 0.9, 1.0, 1)
-            else
-                love.graphics.setColor(1, 1, 1, 1)
-            end
+            -- No tint - dice are distinguished by position only
+            love.graphics.setColor(1, 1, 1, 1)
 
             love.graphics.draw(
                 diceImage,
                 centerX, centerY,
-                0,  -- no rotation when static
+                0, -- no rotation when static
                 baseScale, baseScale,
                 iw / 2, ih / 2
             )

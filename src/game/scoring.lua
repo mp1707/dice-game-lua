@@ -7,7 +7,7 @@ local Scoring = {}
 
 -- Helper: Count occurrences of each face value (1-6)
 local function countFaces(dice)
-    local counts = {0, 0, 0, 0, 0, 0}
+    local counts = { 0, 0, 0, 0, 0, 0 }
     for _, die in ipairs(dice) do
         if die.value >= 1 and die.value <= 6 then
             counts[die.value] = counts[die.value] + 1
@@ -79,8 +79,8 @@ local function isSmallStraight(dice)
     local unique = getUniqueSet(dice)
     -- Check for 1-2-3-4, 2-3-4-5, or 3-4-5-6
     return (unique[1] and unique[2] and unique[3] and unique[4]) or
-           (unique[2] and unique[3] and unique[4] and unique[5]) or
-           (unique[3] and unique[4] and unique[5] and unique[6])
+        (unique[2] and unique[3] and unique[4] and unique[5]) or
+        (unique[3] and unique[4] and unique[5] and unique[6])
 end
 
 -- Helper: Check for large straight (5 consecutive)
@@ -93,7 +93,7 @@ local function isLargeStraight(dice)
 
     -- Check for 1-2-3-4-5 or 2-3-4-5-6
     return (unique[1] and unique[2] and unique[3] and unique[4] and unique[5]) or
-           (unique[2] and unique[3] and unique[4] and unique[5] and unique[6])
+        (unique[2] and unique[3] and unique[4] and unique[5] and unique[6])
 end
 
 -- Map upper hand IDs to face values
@@ -196,12 +196,12 @@ end
 -- Priority order for Kombinationen (lower section hands)
 -- Higher index = lower priority
 local KOMBINATIONEN_PRIORITY = {
-    "yahtzee",        -- 1st priority
-    "largeStraight",  -- 2nd priority
-    "smallStraight",  -- 3rd priority
-    "fullHouse",      -- 4th priority
-    "fourOfKind",     -- 5th priority
-    "threeOfKind",    -- 6th priority
+    "yahtzee",       -- 1st priority
+    "largeStraight", -- 2nd priority
+    "smallStraight", -- 3rd priority
+    "fullHouse",     -- 4th priority
+    "fourOfKind",    -- 5th priority
+    "threeOfKind",   -- 6th priority
 }
 
 -- Detect the best (highest priority) Kombinationen pattern for given dice
@@ -209,6 +209,31 @@ local KOMBINATIONEN_PRIORITY = {
 function Scoring.detectBestKombination(dice)
     for _, handId in ipairs(KOMBINATIONEN_PRIORITY) do
         if Scoring.isValidHand(handId, dice) then
+            return handId
+        end
+    end
+    return nil
+end
+
+-- Detect the best Kombinationen pattern for ONLY the selected dice
+-- This builds a subset of dice from the indices and checks patterns against it
+-- Returns the hand ID of the highest valid pattern, or nil if none
+function Scoring.detectBestKombinationFromIndices(selectedIndices, dice)
+    if #selectedIndices == 0 then
+        return nil
+    end
+
+    -- Build a dice array from only the selected indices
+    local selectedDice = {}
+    for _, idx in ipairs(selectedIndices) do
+        if dice[idx] then
+            table.insert(selectedDice, { value = dice[idx].value })
+        end
+    end
+
+    -- Check patterns against the selected dice only
+    for _, handId in ipairs(KOMBINATIONEN_PRIORITY) do
+        if Scoring.isValidHand(handId, selectedDice) then
             return handId
         end
     end
@@ -255,11 +280,11 @@ end
 -- Check if a hand ID is a lower section (Kombinationen) hand
 function Scoring.isLowerSectionHand(handId)
     return handId == "threeOfKind" or
-           handId == "fourOfKind" or
-           handId == "yahtzee" or
-           handId == "fullHouse" or
-           handId == "smallStraight" or
-           handId == "largeStraight"
+        handId == "fourOfKind" or
+        handId == "yahtzee" or
+        handId == "fullHouse" or
+        handId == "smallStraight" or
+        handId == "largeStraight"
 end
 
 return Scoring
