@@ -22,16 +22,12 @@ local GameState = {
     -- Used hands this level (set of hand IDs)
     usedHands = {},
 
-    -- Currently selected hand (nil if none) - DEPRECATED: kept for compatibility
-    selectedHandId = nil,
-
     -- Rolling animation state
     isRolling = false,
 
-    -- NEW: Selection state for Zahlen/Kombinationen system
-    zahlenDice = {},           -- Array of dice indices selected for Zahlen (upper hands)
-    kombinationenDice = {},    -- Array of dice indices selected for Kombinationen (lower hands)
-    selectionMode = nil,       -- "zahlen" | "kombinationen" | nil
+    -- Selection state (unified system)
+    selectedDice = {},         -- Array of dice indices that are selected
+    selectedHandId = nil,      -- Currently selected hand card for playing
 }
 
 -- Initialize dice
@@ -66,7 +62,7 @@ function GameState:resetForHand()
     self.hasRolledThisHand = false
     self.selectedHandId = nil
     self.isRolling = false
-    self:clearAllSelections()
+    self:clearSelection()
     self:unlockAllDice()
     self:initDice()
 end
@@ -195,147 +191,71 @@ function GameState:hasWonGame()
 end
 
 -- ============================================
--- NEW: Selection system for Zahlen/Kombinationen
+-- Unified Selection System
 -- ============================================
 
 -- Clear all selections and unlock dice
-function GameState:clearAllSelections()
-    self:clearZahlenSelection()
-    self:clearKombinationenSelection()
-    self.selectionMode = nil
-end
-
--- Clear Zahlen selection
-function GameState:clearZahlenSelection()
-    for _, idx in ipairs(self.zahlenDice) do
+function GameState:clearSelection()
+    for _, idx in ipairs(self.selectedDice) do
         if self.dice[idx] then
             self.dice[idx].locked = false
         end
     end
-    self.zahlenDice = {}
-    if self.selectionMode == "zahlen" then
-        self.selectionMode = nil
-    end
+    self.selectedDice = {}
+    self.selectedHandId = nil
 end
 
--- Clear Kombinationen selection
-function GameState:clearKombinationenSelection()
-    for _, idx in ipairs(self.kombinationenDice) do
-        if self.dice[idx] then
-            self.dice[idx].locked = false
-        end
-    end
-    self.kombinationenDice = {}
-    if self.selectionMode == "kombinationen" then
-        self.selectionMode = nil
-    end
-end
-
--- Select a die for Zahlen (upper section hands)
-function GameState:selectDiceForZahlen(index)
+-- Toggle dice selection
+function GameState:toggleDiceSelection(index)
     if not self.hasRolledThisHand then return false end
     if index < 1 or index > 5 then return false end
-    if self:isDiceInZahlen(index) then return false end
 
-    -- Clear kombinationen if switching
-    if #self.kombinationenDice > 0 then
-        self:clearKombinationenSelection()
-    end
-
-    -- Add to zahlen selection
-    table.insert(self.zahlenDice, index)
-    self.selectionMode = "zahlen"
-
-    -- Lock the die
-    self.dice[index].locked = true
-
-    return true
-end
-
--- Select a die for Kombinationen (lower section hands)
-function GameState:selectDiceForKombinationen(index)
-    if not self.hasRolledThisHand then return false end
-    if index < 1 or index > 5 then return false end
-    if self:isDiceInKombinationen(index) then return false end
-
-    -- Clear zahlen if switching
-    if #self.zahlenDice > 0 then
-        self:clearZahlenSelection()
-    end
-
-    -- Add to kombinationen selection
-    table.insert(self.kombinationenDice, index)
-    self.selectionMode = "kombinationen"
-
-    -- Lock the die
-    self.dice[index].locked = true
-
-    return true
-end
-
--- Remove a die from selection (either Zahlen or Kombinationen)
-function GameState:removeDiceFromSelection(index)
-    -- Try to remove from Zahlen
-    for i, idx in ipairs(self.zahlenDice) do
+    -- Check if already selected
+    for i, idx in ipairs(self.selectedDice) do
         if idx == index then
-            table.remove(self.zahlenDice, i)
+            -- Deselect: remove from array and unlock
+            table.remove(self.selectedDice, i)
             self.dice[index].locked = false
-            if #self.zahlenDice == 0 then
-                self.selectionMode = nil
-            end
+            -- Clear hand selection when dice change
+            self.selectedHandId = nil
             return true
         end
     end
 
-    -- Try to remove from Kombinationen
-    for i, idx in ipairs(self.kombinationenDice) do
-        if idx == index then
-            table.remove(self.kombinationenDice, i)
-            self.dice[index].locked = false
-            if #self.kombinationenDice == 0 then
-                self.selectionMode = nil
-            end
-            return true
-        end
-    end
-
-    return false
+    -- Select: add to array and lock
+    table.insert(self.selectedDice, index)
+    self.dice[index].locked = true
+    -- Clear hand selection when dice change
+    self.selectedHandId = nil
+    return true
 end
 
--- Check if a die is in Zahlen selection
-function GameState:isDiceInZahlen(index)
-    for _, idx in ipairs(self.zahlenDice) do
-        if idx == index then return true end
-    end
-    return false
-end
-
--- Check if a die is in Kombinationen selection
-function GameState:isDiceInKombinationen(index)
-    for _, idx in ipairs(self.kombinationenDice) do
-        if idx == index then return true end
-    end
-    return false
-end
-
--- Check if a die is selected (in either panel)
+-- Check if a die is selected
 function GameState:isDiceSelected(index)
-    return self:isDiceInZahlen(index) or self:isDiceInKombinationen(index)
+    for _, idx in ipairs(self.selectedDice) do
+        if idx == index then return true end
+    end
+    return false
 end
 
--- Get the currently selected dice indices (from whichever panel is active)
+-- Get selected dice indices
 function GameState:getSelectedDiceIndices()
-    if self.selectionMode == "zahlen" then
-        return self.zahlenDice
-    elseif self.selectionMode == "kombinationen" then
-        return self.kombinationenDice
-    end
-    return {}
+    return self.selectedDice
 end
 
 -- Get count of selected dice
 function GameState:getSelectedCount()
-    return #self.zahlenDice + #self.kombinationenDice
+    return #self.selectedDice
+end
+
+-- Set the selected hand (for hand card selection)
+function GameState:setSelectedHand(handId)
+    self.selectedHandId = handId
+end
+
+-- Get the selected hand
+function GameState:getSelectedHand()
+    return self.selectedHandId
 end
 
 return GameState

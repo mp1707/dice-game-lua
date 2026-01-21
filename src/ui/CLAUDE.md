@@ -14,13 +14,13 @@ The UI is designed for 1920x1080 virtual resolution with a Balatro-inspired aest
 │  (Info Panel)        │  ┌─────────────────────────────────┐  │
 │  380px wide          │  │   Item Strip (5+2 slots)        │  │
 │                      │  └─────────────────────────────────┘  │
-│  - Level + Round     │  ┌────────────┐  ┌────────────────┐  │
-│  - Goal              │  │  Zahlen    │  │ Kombinationen  │  │
-│  - Score             │  │ (L-click)  │  │   (R-click)    │  │
-│  - Hand Preview      │  └────────────┘  └────────────────┘  │
-│  - Hände + Würfe     │                                       │
-│  - Money             │        [Dice Home Area]               │
-│  - Settings/Info     │                                       │
+│  - Level + Round     │                                       │
+│  - Goal              │        [Dice Home Area]               │
+│  - Score             │        (selected = raised)            │
+│  - Hand Preview      │                                       │
+│  - Hände + Würfe     │   ┌───────────┐   ┌───────────┐      │
+│  - Money             │   │ Hand Card │   │ Hand Card │      │
+│  - Settings/Info     │   └───────────┘   └───────────┘      │
 │                      │   [Hand spielen]    [Würfeln]         │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -71,8 +71,9 @@ local handHeight = unit * 2 + gap * 1
 | `panel.lua`           | Basic panel container                           |
 | `button.lua`          | Clickable button with hover/press states        |
 | `info_panel.lua`      | Left panel with game stats and hand preview     |
-| `selection_panel.lua` | Zahlen/Kombinationen dice selection areas       |
-| `dice_display.lua`    | Single die with animation and drag support      |
+| `hand_card.lua`       | Single hand card with dice icons, level, name   |
+| `hand_card_area.lua`  | Container for 0-2 hand cards with selection     |
+| `dice_display.lua`    | Single die with animation support               |
 | `dual_cta.lua`        | "Hand spielen" + "Würfeln" button pair          |
 | `item_strip.lua`      | 5+2 item slots at top center                    |
 | `hand_button.lua`     | Individual hand selection button                |
@@ -96,9 +97,10 @@ Key colors defined in `theme.lua`:
 - **Accents**: `cyan`, `gold`, `coral`, `mint`
 - **Formula boxes**: `upgradePoints` (blue), `upgradeMult` (red)
 
-## Dice Selection Modes
+## Dice Selection System
 
-- **Zahlen (Left-click)**: Upper section hands (1-6), placed in left selection panel
-- **Kombinationen (Right-click)**: Lower section pattern hands, placed in right selection panel
-- **Mutual exclusivity**: Selecting in one mode clears the other
-- **Position-only highlighting**: Selected dice are distinguished by position, not color tint
+- **Unified Selection**: Click any die to toggle selection (selected dice move up visually)
+- **Hand Detection**: Based on selected dice, detects both Zahlen (upper) and Kombination (lower) hands
+- **Hand Cards**: 1-2 cards appear showing playable hands with dice icons, level, and name
+- **Hand Card Selection**: Click card or use arrow keys to select which hand to play (radio-button style)
+- **Visual Feedback**: Selected dice are raised; selected hand card has cyan border highlight

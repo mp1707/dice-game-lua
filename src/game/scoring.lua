@@ -287,4 +287,34 @@ function Scoring.isLowerSectionHand(handId)
         handId == "largeStraight"
 end
 
+-- Get the dice values that contribute to a hand's score display
+-- For Zahlen: returns values matching the highest face
+-- For Kombinationen: returns all selected dice values
+function Scoring.getScoringDiceForHand(handId, selectedIndices, dice)
+    if #selectedIndices == 0 then
+        return {}
+    end
+
+    local scoringValues = {}
+
+    if Scoring.isUpperSectionHand(handId) then
+        -- For Zahlen: only dice matching the target face value
+        local targetFace = upperFaceMap[handId]
+        for _, idx in ipairs(selectedIndices) do
+            if dice[idx] and dice[idx].value == targetFace then
+                table.insert(scoringValues, targetFace)
+            end
+        end
+    else
+        -- For Kombinationen: all selected dice contribute
+        for _, idx in ipairs(selectedIndices) do
+            if dice[idx] then
+                table.insert(scoringValues, dice[idx].value)
+            end
+        end
+    end
+
+    return scoringValues
+end
+
 return Scoring

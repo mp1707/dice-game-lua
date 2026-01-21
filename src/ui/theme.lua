@@ -127,33 +127,25 @@ Theme.layout = {
     itemSlotGap = 50,        -- Gap between first 5 and last 2 slots
     itemSlotCount = 7,
 
-    -- Selection panels (Zahlen / Kombinationen)
-    selectionPanelY = 180,
-    selectionPanelHeight = 200,
-    selectionPanelGap = 30,  -- Gap between Zahlen and Kombinationen panels
-    selectionSlotSize = 100,
-    selectionSlotSpacing = 16,
-
-    -- Dice home area (below selection panels)
-    diceHomeY = 480,
+    -- Dice home area
+    diceHomeY = 380,
     diceHomeHeight = 200,
     diceSize = 100,
     diceSpacing = 40,
+    diceSelectedOffsetY = -80,  -- How far up selected dice move
+
+    -- Hand card area (between dice and CTAs)
+    handCardAreaY = 600,
+    handCardWidth = 280,
+    handCardHeight = 110,
+    handCardSpacing = 40,
+    handCardDiceSize = 32,      -- Small dice faces on hand cards
 
     -- CTA buttons (bottom center)
     ctaY = 780,
     ctaWidth = 280,
     ctaHeight = 100,
     ctaSpacing = 60,
-
-    -- Deprecated: keeping for backwards compatibility during transition
-    heldTrayY = 380,
-    heldTrayHeight = 160,
-    heldSlotSize = 120,
-    heldSlotSpacing = 20,
-    heldSlotCount = 5,
-    looseDiceY = 580,
-    looseDiceHeight = 300,
 }
 
 function Theme:load()

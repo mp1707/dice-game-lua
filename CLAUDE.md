@@ -17,14 +17,15 @@ Requires Love2D 11.4+ installed on the system.
 ## Controls
 
 ### Mouse
-- **Left-click dice** - Select for Zahlen (upper section hands 1-6)
-- **Right-click dice** - Select for Kombinationen (lower section pattern hands)
-- **Click selected dice** - Remove from selection
+- **Left-click dice** - Toggle selection (selected dice move up and are not rerolled)
+- **Click hand card** - Select which hand to play (radio-button style)
 
 ### Keyboard
 - **R** - Hot reload (reloads all src/ modules)
 - **Space** - Roll dice or play hand (context-dependent)
-- **1-5** - Select dice for Zahlen
+- **Backspace** - Roll dice (shortcut for "Würfeln")
+- **1-5** - Toggle dice selection
+- **Left/Right arrows** - Navigate between hand cards
 - **F3** - Toggle scaling debug
 - **F10** - Toggle fullscreen
 - **Escape** - Quit
@@ -57,20 +58,24 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
 │  (Info Panel)      │  ┌─────────────────────────┐  │
 │  - Level + Round   │  │  Item Strip (5+2 slots) │  │
 │  - Goal            │  └─────────────────────────┘  │
-│  - Score           │  ┌──────────┐  ┌──────────┐  │
-│  - Hand Preview    │  │ Zahlen   │  │Kombis    │  │
-│  - Hände + Würfe   │  │(L-click) │  │(R-click) │  │
-│  - Money           │  └──────────┘  └──────────┘  │
-│  - Settings/Info   │     [Dice Home Area]         │
+│  - Score           │                               │
+│  - Hand Preview    │     [Dice Home Area]         │
+│  - Hände + Würfe   │     (selected = raised)       │
+│  - Money           │  ┌─────────┐  ┌─────────┐    │
+│  - Settings/Info   │  │Hand Card│  │Hand Card│    │
+│                    │  └─────────┘  └─────────┘    │
 │                    │  [Hand spielen] [Würfeln]    │
 └─────────────────────────────────────────────────────┘
 ```
 
 ### Selection Mechanics
 
-- **Zahlen (Left-click)**: Selects dice for upper section hands (1-6). Highest face value among selected dice determines the hand.
-- **Kombinationen (Right-click)**: Selects dice for lower section pattern hands. Best valid pattern is automatically detected (priority: Yahtzee > Large Straight > Small Straight > Full House > 4ofKind > 3ofKind).
-- **Mutual exclusivity**: Only one selection type can be active. Selecting in one clears the other.
+- **Unified Selection**: Click any die to toggle selection. Selected dice move up visually and are locked (not rerolled).
+- **Hand Detection**: Based on selected dice, the game detects playable hands:
+  - **Zahlen** (upper section): The highest face value among selected dice determines the hand (e.g., selecting dice 5,5,3 → "Fünfer")
+  - **Kombinationen** (lower section): Best pattern match is detected (priority: Yahtzee > Large Straight > Small Straight > Full House > 4ofKind > 3ofKind)
+- **Hand Cards**: 1 or 2 hand cards appear above CTAs showing playable hands. If both Zahlen and Kombination match, two cards are shown.
+- **Hand Selection**: Click a hand card (or use arrow keys) to select which hand to play. Only one can be selected at a time.
 - **Rolling**: Selected dice stay locked, unselected dice get re-rolled.
 
 ### Dice Animation System
@@ -89,9 +94,10 @@ All in `src/ui/`:
 - **theme.lua**: Colors, fonts, spacing, layout constants (1080p)
 - **nine_slice.lua**: Singleton for drawing panel backgrounds
 - **panel.lua**, **button.lua**: Basic UI primitives
-- **dice_display.lua**: Wraps Die with drag-and-drop
+- **dice_display.lua**: Wraps Die with animation support
 - **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
-- **selection_panel.lua**: Dice selection areas for Zahlen (upper hands) and Kombinationen (lower hands)
+- **hand_card.lua**: Single hand card showing hand name, level, and scoring dice
+- **hand_card_area.lua**: Container managing 0-2 hand cards with radio-button selection
 - **dual_cta.lua**: Two action buttons - "Hand spielen" and "Würfeln"
 - **item_strip.lua**: 5+2 item slots at top center
 
@@ -120,7 +126,8 @@ Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
 - `Scoring.calculateScore(handId, dice)` - Returns `(basePoints + pips) * mult`
 - `Scoring.getBreakdown(handId, dice)` - Detailed breakdown for UI
 - `Scoring.detectZahlenHand(selectedIndices, dice)` - Detect upper hand from selection
-- `Scoring.detectBestKombination(dice)` - Detect highest priority lower hand pattern
+- `Scoring.detectBestKombinationFromIndices(selectedIndices, dice)` - Detect highest priority pattern from selected dice
+- `Scoring.getScoringDiceForHand(handId, selectedIndices, dice)` - Get dice values that contribute to score (for hand card display)
 
 ## Module Pattern
 

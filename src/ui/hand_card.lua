@@ -1,0 +1,131 @@
+-- Hand Card component
+-- Displays a single selectable hand option with dice icons, level, and name
+
+local Theme = require("src.ui.theme")
+local NineSlice = require("src.ui.nine_slice")
+
+local HandCard = {}
+HandCard.__index = HandCard
+
+function HandCard.new(config)
+    local self = setmetatable({}, HandCard)
+
+    self.x = config.x or 0
+    self.y = config.y or 0
+    self.width = config.width or Theme.layout.handCardWidth
+    self.height = config.height or Theme.layout.handCardHeight
+
+    -- Hand data
+    self.handId = config.handId
+    self.handName = config.handName or ""
+    self.level = config.level or 1
+    self.scoringDice = config.scoringDice or {}  -- Array of dice values to display
+
+    -- State
+    self.isSelected = false
+    self.isHovered = false
+
+    -- Callback
+    self.onClick = config.onClick
+
+    return self
+end
+
+function HandCard:update(dt)
+    -- Check hover state
+    local mx, my = love.mouse.getPosition()
+    -- Convert to game coordinates using Scaling if available
+    local Scaling = require("src.core.scaling")
+    mx, my = Scaling.screenToGame(mx, my)
+
+    self.isHovered = self:containsPoint(mx, my)
+end
+
+function HandCard:draw()
+    local nineSlice = NineSlice.getInstance()
+
+    -- Determine background color based on state
+    local bgColor = Theme.colors.surface
+    if self.isSelected then
+        bgColor = Theme.colors.surface2
+    elseif self.isHovered then
+        bgColor = Theme.colors.surfaceHighlight
+    end
+
+    -- Draw background panel
+    nineSlice:draw(self.x, self.y, self.width, self.height, bgColor)
+
+    -- Draw selected border highlight
+    if self.isSelected then
+        love.graphics.setColor(Theme.colors.cyan)
+        love.graphics.setLineWidth(3)
+        love.graphics.rectangle("line", self.x + 2, self.y + 2, self.width - 4, self.height - 4, 10, 10)
+        love.graphics.setLineWidth(1)
+    end
+
+    local padding = 12
+
+    -- Draw small dice faces (top-left)
+    local diceX = self.x + padding
+    local diceY = self.y + padding
+    local diceSize = Theme.layout.handCardDiceSize
+    local diceSpacing = 4
+
+    for i, value in ipairs(self.scoringDice) do
+        local img = Theme.images.diceFaces[value]
+        if img then
+            local imgW, imgH = img:getDimensions()
+            local scale = diceSize / math.max(imgW, imgH)
+            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.draw(img, diceX, diceY, 0, scale, scale)
+            diceX = diceX + diceSize + diceSpacing
+        end
+    end
+
+    -- Draw level indicator (top-right)
+    local levelText = "LV" .. self.level
+    Theme:drawTextRightWithShadow(
+        levelText,
+        self.x,
+        self.y + padding,
+        self.width - padding,
+        Theme.fonts.normal,
+        Theme.colors.textMuted
+    )
+
+    -- Draw hand name (bottom-left, large text)
+    local nameY = self.y + self.height - padding - Theme.fonts.large:getHeight()
+    Theme:drawTextWithShadow(
+        self.handName,
+        self.x + padding,
+        nameY,
+        Theme.fonts.large,
+        Theme.colors.text
+    )
+end
+
+function HandCard:containsPoint(px, py)
+    return px >= self.x and px <= self.x + self.width and
+           py >= self.y and py <= self.y + self.height
+end
+
+function HandCard:mousepressed(x, y, button)
+    if button == 1 and self:containsPoint(x, y) then
+        if self.onClick then
+            self.onClick(self)
+        end
+        return true
+    end
+    return false
+end
+
+function HandCard:setSelected(selected)
+    self.isSelected = selected
+end
+
+function HandCard:setPosition(x, y)
+    self.x = x
+    self.y = y
+end
+
+return HandCard

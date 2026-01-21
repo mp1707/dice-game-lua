@@ -36,7 +36,7 @@ function DualCta.new(config)
         height = self.buttonHeight,
         text = "Hand spielen",
         bgColor = Theme.colors.cyan,
-        textColor = Theme.colors.textDark,
+        textColor = Theme.colors.text,
         hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
         disabledBgColor = Theme.colors.surface,
         disabledTextColor = Theme.colors.textMuted,
