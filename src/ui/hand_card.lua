@@ -19,7 +19,7 @@ function HandCard.new(config)
     self.handId = config.handId
     self.handName = config.handName or ""
     self.level = config.level or 1
-    self.scoringDice = config.scoringDice or {}  -- Array of dice values to display
+    self.scoringDice = config.scoringDice or {} -- Array of dice values to display
 
     -- State
     self.isSelected = false
@@ -52,22 +52,25 @@ function HandCard:draw()
         bgColor = Theme.colors.surfaceHighlight
     end
 
-    -- Draw background panel
-    nineSlice:draw(self.x, self.y, self.width, self.height, bgColor)
+    -- Elevation offset
+    local yOffset = 0
 
-    -- Draw selected border highlight
+    -- Draw shadow if selected (match button style)
     if self.isSelected then
-        love.graphics.setColor(Theme.colors.cyan)
-        love.graphics.setLineWidth(3)
-        love.graphics.rectangle("line", self.x + 2, self.y + 2, self.width - 4, self.height - 4, 10, 10)
-        love.graphics.setLineWidth(1)
+        yOffset = -2 -- Slightly elevate
+        local shadowColor = { 0, 0, 0, 0.4 }
+        -- Use theme scale for shadow to match button shadow exactly
+        nineSlice:draw(self.x, self.y + 4, self.width, self.height, shadowColor, Theme.nineSlice.borderScale)
     end
+
+    -- Draw background panel
+    nineSlice:draw(self.x, self.y + yOffset, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
 
     local padding = 12
 
     -- Draw small dice faces (top-left)
     local diceX = self.x + padding
-    local diceY = self.y + padding
+    local diceY = self.y + padding + yOffset
     local diceSize = Theme.layout.handCardDiceSize
     local diceSpacing = 4
 
@@ -87,14 +90,14 @@ function HandCard:draw()
     Theme:drawTextRightWithShadow(
         levelText,
         self.x,
-        self.y + padding,
+        self.y + padding + yOffset,
         self.width - padding,
         Theme.fonts.normal,
         Theme.colors.textMuted
     )
 
     -- Draw hand name (bottom-left, large text)
-    local nameY = self.y + self.height - padding - Theme.fonts.large:getHeight()
+    local nameY = self.y + self.height - padding - Theme.fonts.large:getHeight() + yOffset
     Theme:drawTextWithShadow(
         self.handName,
         self.x + padding,
@@ -106,7 +109,7 @@ end
 
 function HandCard:containsPoint(px, py)
     return px >= self.x and px <= self.x + self.width and
-           py >= self.y and py <= self.y + self.height
+        py >= self.y and py <= self.y + self.height
 end
 
 function HandCard:mousepressed(x, y, button)

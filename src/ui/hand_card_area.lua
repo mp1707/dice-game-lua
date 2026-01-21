@@ -27,7 +27,7 @@ function HandCardArea.new(config)
     self.selectedIndex = nil
 
     -- Store hand data for retrieval
-    self.handData = {}  -- {zahlen = {...}, kombination = {...}}
+    self.handData = {} -- {zahlen = {...}, kombination = {...}}
 
     return self
 end
@@ -97,7 +97,8 @@ function HandCardArea:onCardClick(index)
     -- Radio button behavior: clicking selected card keeps it selected
     -- clicking different card switches selection
     if self.selectedIndex == index then
-        -- Already selected, do nothing (or could deselect if desired)
+        -- Already selected, deselect it
+        self:clearSelection()
         return
     end
 
