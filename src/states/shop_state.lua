@@ -88,18 +88,11 @@ function ShopState:draw()
     self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
-    love.graphics.setFont(Theme.fonts.display)
-    love.graphics.setColor(Theme.colors.cyan)
-    local titleText = "SHOP"
-    local titleWidth = Theme.fonts.display:getWidth(titleText)
-    love.graphics.print(titleText, (screenWidth - titleWidth) / 2, panelY + 30)
+    Theme:drawTextCenteredWithShadow("SHOP", 0, panelY + 30, screenWidth, Theme.fonts.display, Theme.colors.cyan)
 
     -- Current money
-    love.graphics.setFont(Theme.fonts.large)
-    love.graphics.setColor(Theme.colors.gold)
     local moneyText = "Guthaben: " .. tostring(GameState.money)
-    local moneyWidth = Theme.fonts.large:getWidth(moneyText)
-    love.graphics.print(moneyText, (screenWidth - moneyWidth) / 2, panelY + 90)
+    Theme:drawTextCenteredWithShadow(moneyText, 0, panelY + 90, screenWidth, Theme.fonts.large, Theme.colors.gold)
 
     -- Empty shop content area
     local shopPanelX = panelX + 40
@@ -111,35 +104,20 @@ function ShopState:draw()
         Theme.nineSlice.borderScale)
 
     -- Empty message
-    love.graphics.setFont(Theme.fonts.large)
-    love.graphics.setColor(Theme.colors.textMuted)
-    local emptyText = "Shop ist leer..."
-    local emptyWidth = Theme.fonts.large:getWidth(emptyText)
-    love.graphics.print(emptyText, (screenWidth - emptyWidth) / 2, shopPanelY + shopPanelHeight / 2 - 30)
-
-    local comingSoonText = "(Upgrades kommen bald)"
-    local comingSoonWidth = Theme.fonts.large:getWidth(comingSoonText)
-    love.graphics.print(comingSoonText, (screenWidth - comingSoonWidth) / 2, shopPanelY + shopPanelHeight / 2 + 10)
+    Theme:drawTextCenteredWithShadow("Shop ist leer...", 0, shopPanelY + shopPanelHeight / 2 - 30, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
+    Theme:drawTextCenteredWithShadow("(Upgrades kommen bald)", 0, shopPanelY + shopPanelHeight / 2 + 10, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
 
     -- Level info
-    love.graphics.setFont(Theme.fonts.normal)
-    love.graphics.setColor(Theme.colors.text)
     local levelText = "Level " .. tostring(GameState.currentLevel) .. " / " .. tostring(Levels.totalLevels)
-    local levelWidth = Theme.fonts.normal:getWidth(levelText)
-    love.graphics.print(levelText, (screenWidth - levelWidth) / 2, shopPanelY + shopPanelHeight + 20)
+    Theme:drawTextCenteredWithShadow(levelText, 0, shopPanelY + shopPanelHeight + 20, screenWidth, Theme.fonts.normal, Theme.colors.text)
 
     -- Next goal preview
     if not Levels:isLastLevel(GameState.currentLevel) then
-        love.graphics.setColor(Theme.colors.textMuted)
         local nextGoal = Levels:getGoal(GameState.currentLevel + 1)
         local nextText = "Nächstes Ziel: " .. tostring(nextGoal)
-        local nextWidth = Theme.fonts.normal:getWidth(nextText)
-        love.graphics.print(nextText, (screenWidth - nextWidth) / 2, shopPanelY + shopPanelHeight + 50)
+        Theme:drawTextCenteredWithShadow(nextText, 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal, Theme.colors.textMuted)
     else
-        love.graphics.setColor(Theme.colors.mint)
-        local finalText = "LETZTES LEVEL GESCHAFFT!"
-        local finalWidth = Theme.fonts.normal:getWidth(finalText)
-        love.graphics.print(finalText, (screenWidth - finalWidth) / 2, shopPanelY + shopPanelHeight + 50)
+        Theme:drawTextCenteredWithShadow("LETZTES LEVEL GESCHAFFT!", 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal, Theme.colors.mint)
     end
 
     -- Action button

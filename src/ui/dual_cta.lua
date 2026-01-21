@@ -52,7 +52,7 @@ function DualCta.new(config)
         y = self.y,
         width = self.buttonWidth,
         height = self.buttonHeight,
-        text = "Wurfeln",
+        text = "Würfeln",
         bgColor = Theme.colors.buttonPurple,
         textColor = Theme.colors.text,
         hoverBgColor = { Theme.colors.buttonPurple[1] * 1.1, Theme.colors.buttonPurple[2] * 1.1, Theme.colors.buttonPurple[3] * 1.1, 1 },

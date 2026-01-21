@@ -108,24 +108,15 @@ function ResultState:draw()
     -- Title
     local titleText = self.won and "LEVEL GESCHAFFT!" or "VERLOREN!"
     local titleColor = self.won and Theme.colors.mint or Theme.colors.coral
-
-    love.graphics.setFont(Theme.fonts.display)
-    love.graphics.setColor(titleColor)
-    local titleWidth = Theme.fonts.display:getWidth(titleText)
-    love.graphics.print(titleText, (screenWidth - titleWidth) / 2, panelY + 30)
+    Theme:drawTextCenteredWithShadow(titleText, 0, panelY + 30, screenWidth, Theme.fonts.display, titleColor)
 
     -- Level and score summary
-    love.graphics.setFont(Theme.fonts.large)
-    love.graphics.setColor(Theme.colors.text)
     local levelText = "Level " .. tostring(GameState.currentLevel)
-    local levelWidth = Theme.fonts.large:getWidth(levelText)
-    love.graphics.print(levelText, (screenWidth - levelWidth) / 2, panelY + 90)
+    Theme:drawTextCenteredWithShadow(levelText, 0, panelY + 90, screenWidth, Theme.fonts.large, Theme.colors.text)
 
     local scoreText = tostring(GameState.currentScore) .. " / " .. tostring(GameState:getCurrentGoal())
-    local scoreWidth = Theme.fonts.large:getWidth(scoreText)
     local scoreColor = GameState:hasReachedGoal() and Theme.colors.mint or Theme.colors.coral
-    love.graphics.setColor(scoreColor)
-    love.graphics.print(scoreText, (screenWidth - scoreWidth) / 2, panelY + 130)
+    Theme:drawTextCenteredWithShadow(scoreText, 0, panelY + 130, screenWidth, Theme.fonts.large, scoreColor)
 
     -- Reward breakdown (only if won)
     if self.won then
@@ -138,53 +129,31 @@ function ResultState:draw()
             Theme.nineSlice.borderScale)
 
         -- Title
-        love.graphics.setFont(Theme.fonts.normal)
-        love.graphics.setColor(Theme.colors.textMuted)
-        love.graphics.print("BELOHNUNGEN", rewardPanelX + 16, rewardPanelY + 12)
+        Theme:drawTextWithShadow("BELOHNUNGEN", rewardPanelX + 16, rewardPanelY + 12, Theme.fonts.normal, Theme.colors.textMuted)
 
         -- Base reward
-        love.graphics.setColor(Theme.colors.text)
-        love.graphics.print("Level Belohnung", rewardPanelX + 16, rewardPanelY + 45)
-
-        love.graphics.setColor(Theme.colors.gold)
+        Theme:drawTextWithShadow("Level Belohnung", rewardPanelX + 16, rewardPanelY + 45, Theme.fonts.normal, Theme.colors.text)
         local baseText = "+" .. tostring(self.baseReward)
-        local baseWidth = Theme.fonts.normal:getWidth(baseText)
-        love.graphics.print(baseText, rewardPanelX + rewardPanelWidth - 16 - baseWidth, rewardPanelY + 45)
+        Theme:drawTextRightWithShadow(baseText, rewardPanelX, rewardPanelY + 45, rewardPanelWidth - 16, Theme.fonts.normal, Theme.colors.gold)
 
         -- Unused hands bonus
-        love.graphics.setColor(Theme.colors.text)
         local handsText = "Hände übrig (" .. tostring(GameState.handsRemaining) .. ")"
-        love.graphics.print(handsText, rewardPanelX + 16, rewardPanelY + 75)
-
-        love.graphics.setColor(Theme.colors.gold)
+        Theme:drawTextWithShadow(handsText, rewardPanelX + 16, rewardPanelY + 75, Theme.fonts.normal, Theme.colors.text)
         local bonusText = "+" .. tostring(self.unusedHandsBonus)
-        local bonusWidth = Theme.fonts.normal:getWidth(bonusText)
-        love.graphics.print(bonusText, rewardPanelX + rewardPanelWidth - 16 - bonusWidth, rewardPanelY + 75)
+        Theme:drawTextRightWithShadow(bonusText, rewardPanelX, rewardPanelY + 75, rewardPanelWidth - 16, Theme.fonts.normal, Theme.colors.gold)
 
         -- Divider
         love.graphics.setColor(Theme.colors.border)
         love.graphics.rectangle("fill", rewardPanelX + 16, rewardPanelY + 105, rewardPanelWidth - 32, 2)
 
         -- Total
-        love.graphics.setFont(Theme.fonts.large)
-        love.graphics.setColor(Theme.colors.text)
-        love.graphics.print("GESAMT", rewardPanelX + 16, rewardPanelY + 118)
-
-        love.graphics.setColor(Theme.colors.gold)
+        Theme:drawTextWithShadow("GESAMT", rewardPanelX + 16, rewardPanelY + 118, Theme.fonts.large, Theme.colors.text)
         local totalText = "+" .. tostring(self.reward)
-        local totalWidth = Theme.fonts.large:getWidth(totalText)
-        love.graphics.print(totalText, rewardPanelX + rewardPanelWidth - 16 - totalWidth, rewardPanelY + 118)
+        Theme:drawTextRightWithShadow(totalText, rewardPanelX, rewardPanelY + 118, rewardPanelWidth - 16, Theme.fonts.large, Theme.colors.gold)
     else
         -- Loss message
-        love.graphics.setFont(Theme.fonts.large)
-        love.graphics.setColor(Theme.colors.textMuted)
-        local lossText = "Ziel nicht erreicht."
-        local lossWidth = Theme.fonts.large:getWidth(lossText)
-        love.graphics.print(lossText, (screenWidth - lossWidth) / 2, panelY + 200)
-
-        local tryAgainText = "Versuche es erneut!"
-        local tryAgainWidth = Theme.fonts.large:getWidth(tryAgainText)
-        love.graphics.print(tryAgainText, (screenWidth - tryAgainWidth) / 2, panelY + 250)
+        Theme:drawTextCenteredWithShadow("Ziel nicht erreicht.", 0, panelY + 200, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
+        Theme:drawTextCenteredWithShadow("Versuche es erneut!", 0, panelY + 250, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
     end
 
     -- Action button

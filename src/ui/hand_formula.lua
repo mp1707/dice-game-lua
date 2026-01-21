@@ -53,10 +53,8 @@ function HandFormula:draw()
     local y = self.y
 
     -- Draw hand name with level (e.g., "LV1 VIERER")
-    love.graphics.setFont(Theme.fonts.normal)
-    love.graphics.setColor(Theme.colors.textMuted)
     local levelLabel = "LV" .. tostring(self.level) .. " " .. string.upper(self.handName)
-    love.graphics.print(levelLabel, x, y)
+    Theme:drawTextWithShadow(levelLabel, x, y, Theme.fonts.normal, Theme.colors.textMuted)
 
     y = y + 30
 
@@ -97,29 +95,21 @@ function HandFormula:draw()
     love.graphics.setColor(Theme.colors.upgradePoints)
     love.graphics.rectangle("fill", x, y, chipsWidth, boxHeight, self.boxRadius)
 
-    -- Chips text
-    love.graphics.setColor(Theme.colors.text)
-    local chipsTextWidth = Theme.fonts.large:getWidth(chipsText)
-    local chipsTextX = x + (chipsWidth - chipsTextWidth) / 2
+    -- Chips text (centered in box)
     local textY = y + (boxHeight - Theme.fonts.large:getHeight()) / 2
-    love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textY))
+    Theme:drawTextCenteredWithShadow(chipsText, x, textY, chipsWidth, Theme.fonts.large, Theme.colors.text)
 
     -- "x" symbol
     local xSymbolX = x + chipsWidth + 12
-    love.graphics.setFont(Theme.fonts.large)
-    love.graphics.setColor(Theme.colors.textMuted)
-    love.graphics.print("x", xSymbolX, textY)
+    Theme:drawTextWithShadow("x", xSymbolX, textY, Theme.fonts.large, Theme.colors.textMuted)
 
     -- Mult box (red)
     local multBoxX = xSymbolX + xWidth + 12
     love.graphics.setColor(Theme.colors.upgradeMult)
     love.graphics.rectangle("fill", multBoxX, y, multWidth, boxHeight, self.boxRadius)
 
-    -- Mult text
-    love.graphics.setColor(Theme.colors.text)
-    local multTextWidth = Theme.fonts.large:getWidth(multText)
-    local multTextX = multBoxX + (multWidth - multTextWidth) / 2
-    love.graphics.print(multText, math.floor(multTextX), math.floor(textY))
+    -- Mult text (centered in box)
+    Theme:drawTextCenteredWithShadow(multText, multBoxX, textY, multWidth, Theme.fonts.large, Theme.colors.text)
 
     love.graphics.setColor(1, 1, 1, 1)
 end

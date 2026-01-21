@@ -95,6 +95,22 @@ All in `src/ui/`:
 - **dual_cta.lua**: Two action buttons - "Hand spielen" and "Würfeln"
 - **item_strip.lua**: 5+2 item slots at top center
 
+### Text Rendering
+
+All game UI text uses shadow helper functions for consistent readability. Located in `theme.lua`:
+
+```lua
+Theme:drawTextWithShadow(text, x, y, font, color, shadowOffset)
+Theme:drawTextCenteredWithShadow(text, x, y, width, font, color, shadowOffset)
+Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
+```
+
+**Shadow settings** (defined in `theme.lua`):
+- Color: `Theme.colors.textShadow` (black, 50% opacity)
+- Default offset: 2 pixels
+
+**IMPORTANT**: Never use `love.graphics.print()` directly for game UI text. Always use the shadow helpers above. This ensures visual consistency across all screens and makes text readable on any background.
+
 ### Scoring System
 
 **hands.lua**: Defines 12 hands (6 upper, 6 lower) with basePoints, mult, level.

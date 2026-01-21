@@ -183,24 +183,16 @@ function HandButton:draw()
         textColor = Theme.colors.text
     end
 
-    love.graphics.setColor(textColor)
-    love.graphics.setFont(Theme.fonts.small)
-
     local name = self.handDef.shortName
     local textY = self.y + (self.height - Theme.fonts.small:getHeight()) / 2
-    love.graphics.print(name, self.x + iconPadding + iconSize + 6, textY)
+    Theme:drawTextWithShadow(name, self.x + iconPadding + iconSize + 6, textY, Theme.fonts.small, textColor)
 
     -- Draw score (right side) if rolled and valid
     if hasRolled and score > 0 and not used then
         local scoreText = tostring(score)
-        local scoreWidth = Theme.fonts.small:getWidth(scoreText)
-
-        if selected then
-            love.graphics.setColor(Theme.colors.textDark)
-        else
-            love.graphics.setColor(Theme.colors.gold)
-        end
-        love.graphics.print(scoreText, self.x + self.width - scoreWidth - 8, textY)
+        local scoreColor = selected and Theme.colors.textDark or Theme.colors.gold
+        -- Right-align: use width minus padding (8px from right edge)
+        Theme:drawTextRightWithShadow(scoreText, self.x, textY, self.width - 8, Theme.fonts.small, scoreColor)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

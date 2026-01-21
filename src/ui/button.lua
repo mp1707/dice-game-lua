@@ -115,16 +115,11 @@ function Button:draw()
     -- Draw 9-slice background (offset when pressed)
     self.nineSlice:draw(self.x, self.y + pressOffset, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
 
-    -- Draw text centered (offset when pressed)
-    love.graphics.setFont(self.font)
-    love.graphics.setColor(textColor)
-
-    local textWidth = self.font:getWidth(self.text)
+    -- Draw text centered with shadow (offset when pressed)
     local textHeight = self.font:getHeight()
-    local textX = self.x + (self.width - textWidth) / 2
     local textY = self.y + pressOffset + (self.height - textHeight) / 2
 
-    love.graphics.print(self.text, math.floor(textX), math.floor(textY))
+    Theme:drawTextCenteredWithShadow(self.text, self.x, textY, self.width, self.font, textColor)
     love.graphics.setColor(1, 1, 1, 1)
 end
 
