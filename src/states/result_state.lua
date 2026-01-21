@@ -6,6 +6,7 @@ local GameState = require("src.game.game_state")
 local Levels = require("src.game.levels")
 local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
+local InfoPanel = require("src.ui.info_panel")
 
 local ResultState = {}
 ResultState.__index = ResultState
@@ -16,6 +17,7 @@ function ResultState.new()
     self.nineSlice = NineSlice.getInstance()
     self.actionButton = nil
     self.stateMachine = nil
+    self.infoPanel = nil
 
     -- Result data
     self.won = false
@@ -40,6 +42,8 @@ function ResultState:enter(params)
         GameState:addMoney(self.reward)
     end
 
+    -- Initialize info panel for cashout phase
+    self:initInfoPanel()
     self:initActionButton()
 end
 
@@ -47,8 +51,8 @@ function ResultState:exit()
 end
 
 function ResultState:initActionButton()
-    local buttonWidth = 300
-    local buttonHeight = 60
+    local buttonWidth = Theme.layout.ctaWidth
+    local buttonHeight = Theme.layout.ctaHeight
 
     local buttonText, buttonColor
     if self.won then
@@ -59,17 +63,67 @@ function ResultState:initActionButton()
         buttonColor = Theme.colors.coral
     end
 
+    -- Center button in the center area (same as DualCta)
+    local centerX = Theme.layout.centerX
+    local centerWidth = Theme.layout.centerWidth
+    local buttonX = centerX + (centerWidth - buttonWidth) / 2
+
     self.actionButton = Button.new({
-        x = (Theme.screen.width - buttonWidth) / 2,
-        y = Theme.screen.height - 100,
+        x = buttonX,
+        y = Theme.layout.ctaY,
         width = buttonWidth,
         height = buttonHeight,
         text = buttonText,
         bgColor = buttonColor,
-        textColor = Theme.colors.textDark,
-        hoverBgColor = buttonColor,
+        textColor = Theme.colors.text,
+        hoverBgColor = { buttonColor[1] * 0.9, buttonColor[2] * 0.9, buttonColor[3] * 0.9, 1 },
+        disabledBgColor = Theme.colors.surface,
+        disabledTextColor = Theme.colors.textMuted,
+        font = Theme.fonts.large,
         onClick = function()
             self:onActionButtonClick()
+        end,
+    })
+end
+
+function ResultState:initInfoPanel()
+    local layout = Theme.layout
+
+    self.infoPanel = InfoPanel.new({
+        x = layout.leftPanelX,
+        y = layout.leftPanelY,
+        width = layout.leftPanelWidth,
+        height = layout.leftPanelHeight,
+        phase = "cashout",
+        getLevel = function()
+            return GameState.currentLevel
+        end,
+        getRound = function()
+            return 1 -- Not relevant in cashout
+        end,
+        getMoney = function()
+            return GameState.money
+        end,
+        getGoal = function()
+            return GameState:getCurrentGoal()
+        end,
+        getScore = function()
+            return GameState.currentScore
+        end,
+        hasReachedGoal = function()
+            return GameState:hasReachedGoal()
+        end,
+        getHandsRemaining = function()
+            return GameState.handsRemaining
+        end,
+        getRollsRemaining = function()
+            return GameState.rollsRemaining
+        end,
+        getDetectedHand = function()
+            return nil
+        end,
+        getHandBreakdown = function()
+            return nil
         end,
     })
 end
@@ -91,6 +145,9 @@ end
 
 function ResultState:update(dt)
     self.actionButton:update(dt)
+    if self.infoPanel then
+        self.infoPanel:update(dt)
+    end
 end
 
 function ResultState:draw()
@@ -129,18 +186,22 @@ function ResultState:draw()
             Theme.nineSlice.borderScale)
 
         -- Title
-        Theme:drawTextWithShadow("BELOHNUNGEN", rewardPanelX + 16, rewardPanelY + 12, Theme.fonts.normal, Theme.colors.textMuted)
+        Theme:drawTextWithShadow("BELOHNUNGEN", rewardPanelX + 16, rewardPanelY + 12, Theme.fonts.normal,
+            Theme.colors.textMuted)
 
         -- Base reward
-        Theme:drawTextWithShadow("Level Belohnung", rewardPanelX + 16, rewardPanelY + 45, Theme.fonts.normal, Theme.colors.text)
+        Theme:drawTextWithShadow("Level Belohnung", rewardPanelX + 16, rewardPanelY + 45, Theme.fonts.normal,
+            Theme.colors.text)
         local baseText = "+" .. tostring(self.baseReward)
-        Theme:drawTextRightWithShadow(baseText, rewardPanelX, rewardPanelY + 45, rewardPanelWidth - 16, Theme.fonts.normal, Theme.colors.gold)
+        Theme:drawTextRightWithShadow(baseText, rewardPanelX, rewardPanelY + 45, rewardPanelWidth - 16,
+            Theme.fonts.normal, Theme.colors.gold)
 
         -- Unused hands bonus
         local handsText = "Hände übrig (" .. tostring(GameState.handsRemaining) .. ")"
         Theme:drawTextWithShadow(handsText, rewardPanelX + 16, rewardPanelY + 75, Theme.fonts.normal, Theme.colors.text)
         local bonusText = "+" .. tostring(self.unusedHandsBonus)
-        Theme:drawTextRightWithShadow(bonusText, rewardPanelX, rewardPanelY + 75, rewardPanelWidth - 16, Theme.fonts.normal, Theme.colors.gold)
+        Theme:drawTextRightWithShadow(bonusText, rewardPanelX, rewardPanelY + 75, rewardPanelWidth - 16,
+            Theme.fonts.normal, Theme.colors.gold)
 
         -- Divider
         love.graphics.setColor(Theme.colors.border)
@@ -149,25 +210,39 @@ function ResultState:draw()
         -- Total
         Theme:drawTextWithShadow("GESAMT", rewardPanelX + 16, rewardPanelY + 118, Theme.fonts.large, Theme.colors.text)
         local totalText = "+" .. tostring(self.reward)
-        Theme:drawTextRightWithShadow(totalText, rewardPanelX, rewardPanelY + 118, rewardPanelWidth - 16, Theme.fonts.large, Theme.colors.gold)
+        Theme:drawTextRightWithShadow(totalText, rewardPanelX, rewardPanelY + 118, rewardPanelWidth - 16,
+            Theme.fonts.large, Theme.colors.gold)
     else
         -- Loss message
-        Theme:drawTextCenteredWithShadow("Ziel nicht erreicht.", 0, panelY + 200, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
-        Theme:drawTextCenteredWithShadow("Versuche es erneut!", 0, panelY + 250, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
+        Theme:drawTextCenteredWithShadow("Ziel nicht erreicht.", 0, panelY + 200, screenWidth, Theme.fonts.large,
+            Theme.colors.textMuted)
+        Theme:drawTextCenteredWithShadow("Versuche es erneut!", 0, panelY + 250, screenWidth, Theme.fonts.large,
+            Theme.colors.textMuted)
     end
 
     -- Action button
     self.actionButton:draw()
+
+    -- Draw info panel (left side)
+    if self.infoPanel then
+        self.infoPanel:draw()
+    end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function ResultState:mousepressed(x, y, button)
     self.actionButton:mousepressed(x, y, button)
+    if self.infoPanel then
+        self.infoPanel:mousepressed(x, y, button)
+    end
 end
 
 function ResultState:mousereleased(x, y, button)
     self.actionButton:mousereleased(x, y, button)
+    if self.infoPanel then
+        self.infoPanel:mousereleased(x, y, button)
+    end
 end
 
 function ResultState:keypressed(key)

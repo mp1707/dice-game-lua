@@ -20,6 +20,9 @@ function InfoPanel.new(config)
     self.padding = Theme.layout.panelPadding or 20
     self.innerGap = Theme.layout.innerGap or 12
 
+    -- Phase: "play", "cashout", or "shop"
+    self.phase = config.phase or "play"
+
     -- Data callbacks
     self.getLevel = config.getLevel or function() return 1 end
     self.getRound = config.getRound or function() return 1 end
@@ -114,13 +117,15 @@ function InfoPanel:mousereleased(x, y, button)
 end
 
 function InfoPanel:draw()
-    -- Main panel background
+    -- Main panel background (50% transparent)
+    local surfaceColor = Theme.colors.surface
+    local transparentSurface = { surfaceColor[1], surfaceColor[2], surfaceColor[3], 0.5 }
     self.nineSlice:draw(
         self.x,
         self.y,
         self.width,
         self.height,
-        Theme.colors.surface,
+        transparentSurface,
         Theme.nineSlice.borderScale
     )
 
@@ -201,6 +206,13 @@ function InfoPanel:drawGoalSection(x, y, width, height)
     -- Goal box with dark background
     self.nineSlice:draw(x, y, width, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
+    -- Shop phase: show big "SHOP" text in gold
+    if self.phase == "shop" then
+        local shopY = y + (boxHeight - Theme.fonts.giant:getHeight()) / 2
+        Theme:drawTextCenteredWithShadow("SHOP", x, shopY, width, Theme.fonts.giant, Theme.colors.gold)
+        return
+    end
+
     -- Distribute content vertically within the box
     local innerPadding = boxHeight * 0.08
     local erreicheHeight = Theme.fonts.large:getHeight()
@@ -209,7 +221,19 @@ function InfoPanel:drawGoalSection(x, y, width, height)
     local totalTextHeight = erreicheHeight + goalNumHeight + punkteHeight
     local spacing = (boxHeight - 2 * innerPadding - totalTextHeight) / 2
 
-    -- "erreiche" label
+    -- Cashout phase: "geschafft!" in mint above the goal number
+    if self.phase == "cashout" then
+        local labelY = y + innerPadding
+        Theme:drawTextCenteredWithShadow("geschafft!", x, labelY, width, Theme.fonts.large, Theme.colors.mint)
+
+        -- Big goal number in mint (no "Punkte" label in cashout)
+        local goal = self.getGoal()
+        local goalY = labelY + erreicheHeight + spacing
+        Theme:drawTextCenteredWithShadow(tostring(goal), x, goalY, width, Theme.fonts.giant, Theme.colors.mint)
+        return
+    end
+
+    -- Play phase: normal "erreiche" label
     local labelY = y + innerPadding
     Theme:drawTextCenteredWithShadow("erreiche", x, labelY, width, Theme.fonts.large, Theme.colors.text)
 
@@ -302,10 +326,32 @@ function InfoPanel:drawHandPreview(x, y, width, height)
         love.graphics.setColor(Theme.colors.text)
         love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
     else
-        -- Empty state - show placeholder
-        local emptyY = y + boxHeight / 2 - Theme.fonts.normal:getHeight() / 2
-        Theme:drawTextCenteredWithShadow("Wähle Würfel aus", x, emptyY, width, Theme.fonts.normal, Theme.colors
-            .textMuted)
+        -- Empty state - show just the formula boxes without numbers/text
+        local formulaX = x + 16
+        local formulaWidth = width - 32
+        local boxHeightInner = boxHeight * 0.35 -- 35% of total height
+        local formulaY = y + boxHeight * 0.4    -- 40% from top
+
+        -- Calculate box sizes
+        local xSymbolWidth = Theme.fonts.large:getWidth("x")
+        local spacing = 12
+        local boxWidth = (formulaWidth - spacing * 2 - xSymbolWidth) / 2
+
+        -- Chips box (blue) - empty
+        love.graphics.setColor(Theme.colors.upgradePoints)
+        love.graphics.rectangle("fill", formulaX, formulaY, boxWidth, boxHeightInner, 8)
+
+        -- "x" symbol
+        local xX = formulaX + boxWidth + spacing
+        local textCenterY = formulaY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
+        love.graphics.setColor(Theme.colors.textMuted)
+        love.graphics.setFont(Theme.fonts.large)
+        love.graphics.print("x", xX, textCenterY)
+
+        -- Mult box (red) - empty
+        local multBoxX = xX + xSymbolWidth + spacing
+        love.graphics.setColor(Theme.colors.upgradeMult)
+        love.graphics.rectangle("fill", multBoxX, formulaY, boxWidth, boxHeightInner, 8)
     end
 end
 

@@ -6,6 +6,7 @@ local GameState = require("src.game.game_state")
 local Levels = require("src.game.levels")
 local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
+local InfoPanel = require("src.ui.info_panel")
 
 local ShopState = {}
 ShopState.__index = ShopState
@@ -16,12 +17,14 @@ function ShopState.new()
     self.nineSlice = NineSlice.getInstance()
     self.actionButton = nil
     self.stateMachine = nil
+    self.infoPanel = nil
 
     return self
 end
 
 function ShopState:enter(params)
     self.stateMachine = params.stateMachine
+    self:initInfoPanel()
     self:initActionButton()
 end
 
@@ -29,8 +32,8 @@ function ShopState:exit()
 end
 
 function ShopState:initActionButton()
-    local buttonWidth = 300
-    local buttonHeight = 60
+    local buttonWidth = Theme.layout.ctaWidth
+    local buttonHeight = Theme.layout.ctaHeight
 
     local buttonText
     if Levels:isLastLevel(GameState.currentLevel) and GameState:hasReachedGoal() then
@@ -39,17 +42,67 @@ function ShopState:initActionButton()
         buttonText = "NÄCHSTES LEVEL"
     end
 
+    -- Center button in the center area (same as DualCta)
+    local centerX = Theme.layout.centerX
+    local centerWidth = Theme.layout.centerWidth
+    local buttonX = centerX + (centerWidth - buttonWidth) / 2
+
     self.actionButton = Button.new({
-        x = (Theme.screen.width - buttonWidth) / 2,
-        y = Theme.screen.height - 100,
+        x = buttonX,
+        y = Theme.layout.ctaY,
         width = buttonWidth,
         height = buttonHeight,
         text = buttonText,
         bgColor = Theme.colors.cyan,
-        textColor = Theme.colors.textDark,
-        hoverBgColor = Theme.colors.cyan,
+        textColor = Theme.colors.text,
+        hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
+        disabledBgColor = Theme.colors.surface,
+        disabledTextColor = Theme.colors.textMuted,
+        font = Theme.fonts.large,
         onClick = function()
             self:onActionButtonClick()
+        end,
+    })
+end
+
+function ShopState:initInfoPanel()
+    local layout = Theme.layout
+
+    self.infoPanel = InfoPanel.new({
+        x = layout.leftPanelX,
+        y = layout.leftPanelY,
+        width = layout.leftPanelWidth,
+        height = layout.leftPanelHeight,
+        phase = "shop",
+        getLevel = function()
+            return GameState.currentLevel
+        end,
+        getRound = function()
+            return 1 -- Not relevant in shop
+        end,
+        getMoney = function()
+            return GameState.money
+        end,
+        getGoal = function()
+            return GameState:getCurrentGoal()
+        end,
+        getScore = function()
+            return GameState.currentScore
+        end,
+        hasReachedGoal = function()
+            return GameState:hasReachedGoal()
+        end,
+        getHandsRemaining = function()
+            return GameState.handsRemaining
+        end,
+        getRollsRemaining = function()
+            return GameState.rollsRemaining
+        end,
+        getDetectedHand = function()
+            return nil
+        end,
+        getHandBreakdown = function()
+            return nil
         end,
     })
 end
@@ -73,6 +126,9 @@ end
 
 function ShopState:update(dt)
     self.actionButton:update(dt)
+    if self.infoPanel then
+        self.infoPanel:update(dt)
+    end
 end
 
 function ShopState:draw()
@@ -104,34 +160,50 @@ function ShopState:draw()
         Theme.nineSlice.borderScale)
 
     -- Empty message
-    Theme:drawTextCenteredWithShadow("Shop ist leer...", 0, shopPanelY + shopPanelHeight / 2 - 30, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
-    Theme:drawTextCenteredWithShadow("(Upgrades kommen bald)", 0, shopPanelY + shopPanelHeight / 2 + 10, screenWidth, Theme.fonts.large, Theme.colors.textMuted)
+    Theme:drawTextCenteredWithShadow("Shop ist leer...", 0, shopPanelY + shopPanelHeight / 2 - 30, screenWidth,
+        Theme.fonts.large, Theme.colors.textMuted)
+    Theme:drawTextCenteredWithShadow("(Upgrades kommen bald)", 0, shopPanelY + shopPanelHeight / 2 + 10, screenWidth,
+        Theme.fonts.large, Theme.colors.textMuted)
 
     -- Level info
     local levelText = "Level " .. tostring(GameState.currentLevel) .. " / " .. tostring(Levels.totalLevels)
-    Theme:drawTextCenteredWithShadow(levelText, 0, shopPanelY + shopPanelHeight + 20, screenWidth, Theme.fonts.normal, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow(levelText, 0, shopPanelY + shopPanelHeight + 20, screenWidth, Theme.fonts.normal,
+        Theme.colors.text)
 
     -- Next goal preview
     if not Levels:isLastLevel(GameState.currentLevel) then
         local nextGoal = Levels:getGoal(GameState.currentLevel + 1)
         local nextText = "Nächstes Ziel: " .. tostring(nextGoal)
-        Theme:drawTextCenteredWithShadow(nextText, 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal, Theme.colors.textMuted)
+        Theme:drawTextCenteredWithShadow(nextText, 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal,
+            Theme.colors.textMuted)
     else
-        Theme:drawTextCenteredWithShadow("LETZTES LEVEL GESCHAFFT!", 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal, Theme.colors.mint)
+        Theme:drawTextCenteredWithShadow("LETZTES LEVEL GESCHAFFT!", 0, shopPanelY + shopPanelHeight + 50, screenWidth,
+            Theme.fonts.normal, Theme.colors.mint)
     end
 
     -- Action button
     self.actionButton:draw()
+
+    -- Draw info panel (left side)
+    if self.infoPanel then
+        self.infoPanel:draw()
+    end
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function ShopState:mousepressed(x, y, button)
     self.actionButton:mousepressed(x, y, button)
+    if self.infoPanel then
+        self.infoPanel:mousepressed(x, y, button)
+    end
 end
 
 function ShopState:mousereleased(x, y, button)
     self.actionButton:mousereleased(x, y, button)
+    if self.infoPanel then
+        self.infoPanel:mousereleased(x, y, button)
+    end
 end
 
 function ShopState:keypressed(key)
