@@ -1,5 +1,6 @@
 local Theme = require("src.ui.theme")
 local ShaderBackground = require("src.core.shader_background")
+local ShaderCRT = require("src.core.shader_crt")
 
 ---@class Scaling
 local Scaling = {
@@ -53,6 +54,8 @@ function Scaling.init()
 
     -- Initialize shader background
     ShaderBackground.init()
+    -- Initialize CRT shader
+    ShaderCRT.init()
 
     Scaling.calculateScale()
     Scaling.initialized = true
@@ -67,6 +70,7 @@ end
 
 function Scaling.updateShader(dt)
     ShaderBackground.update(dt)
+    ShaderCRT.update(dt)
 end
 
 function Scaling.toggleDebug()
@@ -92,7 +96,18 @@ function Scaling.draw(drawCallback)
 
     -- Draw scaled canvas
     love.graphics.setColor(1, 1, 1, 1)
+
+    -- Apply CRT Shader if enabled
+    if ShaderCRT.isEnabled() and ShaderCRT.shader then
+        -- Send uniforms (using internal resolution for scanlines to match game pixels)
+        ShaderCRT.sendUniforms(Theme.screen.width, Theme.screen.height)
+        love.graphics.setShader(ShaderCRT.shader)
+    end
+
     love.graphics.draw(Scaling.canvas, Scaling.offsetX, Scaling.offsetY, 0, Scaling.scale, Scaling.scale)
+
+    -- Reset shader
+    love.graphics.setShader()
 
     -- Letterboxing
     love.graphics.setColor(0, 0, 0, 1)
