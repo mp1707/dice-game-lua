@@ -59,7 +59,7 @@ function ResultState:initActionButton()
         buttonText = "SHOP"
         buttonColor = Theme.colors.mint
     else
-        buttonText = "NEUER RUN"
+        buttonText = "NEW RUN"
         buttonColor = Theme.colors.coral
     end
 
@@ -163,7 +163,7 @@ function ResultState:draw()
     self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
 
     -- Title
-    local titleText = self.won and "LEVEL GESCHAFFT!" or "VERLOREN!"
+    local titleText = self.won and "LEVEL CLEARED!" or "GAME OVER!"
     local titleColor = self.won and Theme.colors.mint or Theme.colors.coral
     Theme:drawTextCenteredWithShadow(titleText, 0, panelY + 30, screenWidth, Theme.fonts.display, titleColor)
 
@@ -186,18 +186,18 @@ function ResultState:draw()
             Theme.nineSlice.borderScale)
 
         -- Title
-        Theme:drawTextWithShadow("BELOHNUNGEN", rewardPanelX + 16, rewardPanelY + 12, Theme.fonts.normal,
+        Theme:drawTextWithShadow("REWARDS", rewardPanelX + 16, rewardPanelY + 12, Theme.fonts.normal,
             Theme.colors.textMuted)
 
         -- Base reward
-        Theme:drawTextWithShadow("Level Belohnung", rewardPanelX + 16, rewardPanelY + 45, Theme.fonts.normal,
+        Theme:drawTextWithShadow("Level Reward", rewardPanelX + 16, rewardPanelY + 45, Theme.fonts.normal,
             Theme.colors.text)
         local baseText = "+" .. tostring(self.baseReward)
         Theme:drawTextRightWithShadow(baseText, rewardPanelX, rewardPanelY + 45, rewardPanelWidth - 16,
             Theme.fonts.normal, Theme.colors.gold)
 
         -- Unused hands bonus
-        local handsText = "Hände übrig (" .. tostring(GameState.handsRemaining) .. ")"
+        local handsText = "Hands remaining (" .. tostring(GameState.handsRemaining) .. ")"
         Theme:drawTextWithShadow(handsText, rewardPanelX + 16, rewardPanelY + 75, Theme.fonts.normal, Theme.colors.text)
         local bonusText = "+" .. tostring(self.unusedHandsBonus)
         Theme:drawTextRightWithShadow(bonusText, rewardPanelX, rewardPanelY + 75, rewardPanelWidth - 16,
@@ -208,15 +208,15 @@ function ResultState:draw()
         love.graphics.rectangle("fill", rewardPanelX + 16, rewardPanelY + 105, rewardPanelWidth - 32, 2)
 
         -- Total
-        Theme:drawTextWithShadow("GESAMT", rewardPanelX + 16, rewardPanelY + 118, Theme.fonts.large, Theme.colors.text)
+        Theme:drawTextWithShadow("TOTAL", rewardPanelX + 16, rewardPanelY + 118, Theme.fonts.large, Theme.colors.text)
         local totalText = "+" .. tostring(self.reward)
         Theme:drawTextRightWithShadow(totalText, rewardPanelX, rewardPanelY + 118, rewardPanelWidth - 16,
             Theme.fonts.large, Theme.colors.gold)
     else
         -- Loss message
-        Theme:drawTextCenteredWithShadow("Ziel nicht erreicht.", 0, panelY + 200, screenWidth, Theme.fonts.large,
+        Theme:drawTextCenteredWithShadow("Goal not reached.", 0, panelY + 200, screenWidth, Theme.fonts.large,
             Theme.colors.textMuted)
-        Theme:drawTextCenteredWithShadow("Versuche es erneut!", 0, panelY + 250, screenWidth, Theme.fonts.large,
+        Theme:drawTextCenteredWithShadow("Try again!", 0, panelY + 250, screenWidth, Theme.fonts.large,
             Theme.colors.textMuted)
     end
 

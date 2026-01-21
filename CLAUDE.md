@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-A roguelike Yahtzee dice game built with Love2D (LÖVE), featuring Balatro-style desktop UI. The game uses German UI text and implements a scoring system with 12 Yahtzee-style hands.
+A roguelike Yahtzee dice game built with Love2D (LÖVE), featuring Balatro-style desktop UI. The game uses English UI text and implements a scoring system with 12 Yahtzee-style hands.
 
 ## Running the Game
 
@@ -17,13 +17,15 @@ Requires Love2D 11.4+ installed on the system.
 ## Controls
 
 ### Mouse
+
 - **Left-click dice** - Toggle selection (selected dice move up and are not rerolled)
 - **Click hand card** - Select which hand to play (radio-button style)
 
 ### Keyboard
+
 - **R** - Hot reload (reloads all src/ modules)
 - **Space** - Roll dice or play hand (context-dependent)
-- **Backspace** - Roll dice (shortcut for "Würfeln")
+- **Backspace** - Roll dice (shortcut for "Roll")
 - **1-5** - Toggle dice selection
 - **Left/Right arrows** - Navigate between hand cards
 - **F3** - Toggle scaling debug
@@ -60,11 +62,11 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
 │  - Goal            │  └─────────────────────────┘  │
 │  - Score           │                               │
 │  - Hand Preview    │     [Dice Home Area]         │
-│  - Hände + Würfe   │     (selected = raised)       │
+│  - Hands + Rolls   │     (selected = raised)       │
 │  - Money           │  ┌─────────┐  ┌─────────┐    │
 │  - Settings/Info   │  │Hand Card│  │Hand Card│    │
 │                    │  └─────────┘  └─────────┘    │
-│                    │  [Hand spielen] [Würfeln]    │
+│                    │  [Play Hand] [Roll]          │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -72,9 +74,9 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
 
 - **Unified Selection**: Click any die to toggle selection. Selected dice move up visually and are locked (not rerolled).
 - **Hand Detection**: Based on selected dice, the game detects playable hands:
-  - **Zahlen** (upper section): The highest face value among selected dice determines the hand (e.g., selecting dice 5,5,3 → "Fünfer")
-  - **Kombinationen** (lower section): Best pattern match is detected (priority: Yahtzee > Large Straight > Small Straight > Full House > 4ofKind > 3ofKind)
-- **Hand Cards**: 1 or 2 hand cards appear above CTAs showing playable hands. If both Zahlen and Kombination match, two cards are shown.
+  - **Numbers** (upper section): The highest face value among selected dice determines the hand (e.g., selecting dice 5,5,3 → "Fives")
+  - **Combinations** (lower section): Best pattern match is detected (priority: Yahtzee > Large Straight > Small Straight > Full House > 4ofKind > 3ofKind)
+- **Hand Cards**: 1 or 2 hand cards appear above CTAs showing playable hands. If both Numbers and Combinations match, two cards are shown.
 - **Hand Selection**: Click a hand card (or use arrow keys) to select which hand to play. Only one can be selected at a time.
 - **Rolling**: Selected dice stay locked, unselected dice get re-rolled.
 
@@ -98,7 +100,7 @@ All in `src/ui/`:
 - **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
 - **hand_card.lua**: Single hand card showing hand name, level, and scoring dice
 - **hand_card_area.lua**: Container managing 0-2 hand cards with radio-button selection
-- **dual_cta.lua**: Two action buttons - "Hand spielen" and "Würfeln"
+- **dual_cta.lua**: Two action buttons - "Play Hand" and "Roll"
 - **item_strip.lua**: 5+2 item slots at top center
 
 ### Text Rendering
@@ -112,6 +114,7 @@ Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
 ```
 
 **Shadow settings** (defined in `theme.lua`):
+
 - Color: `Theme.colors.textShadow` (black, 50% opacity)
 - Default offset: 2 pixels
 
@@ -122,6 +125,7 @@ Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
 **hands.lua**: Defines 12 hands (6 upper, 6 lower) with basePoints, mult, level.
 
 **scoring.lua**: Pure functions for calculating scores:
+
 - `Scoring.isValidHand(handId, dice)` - Check if pattern matches
 - `Scoring.calculateScore(handId, dice)` - Returns `(basePoints + pips) * mult`
 - `Scoring.getBreakdown(handId, dice)` - Detailed breakdown for UI
@@ -132,6 +136,7 @@ Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
 ## Module Pattern
 
 All modules follow this pattern:
+
 ```lua
 local Module = {}
 Module.__index = Module

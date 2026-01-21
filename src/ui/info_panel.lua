@@ -57,7 +57,7 @@ function InfoPanel.new(config)
         y = buttonY,
         width = buttonWidth,
         height = buttonHeight,
-        text = "Einstellungen",
+        text = "Settings",
         bgColor = Theme.colors.buttonGray,
         textColor = Theme.colors.text,
         font = Theme.fonts.normal,
@@ -196,7 +196,7 @@ function InfoPanel:drawLevelRoundRow(x, y, width, height)
     -- Round box
     local roundX = x + boxWidth + self.innerGap
     self.nineSlice:draw(roundX, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
-    Theme:drawTextCenteredWithShadow("Runde " .. tostring(self.getRound()), roundX,
+    Theme:drawTextCenteredWithShadow("Round " .. tostring(self.getRound()), roundX,
         y + (boxHeight - Theme.fonts.large:getHeight()) / 2, boxWidth, Theme.fonts.large, Theme.colors.text)
 end
 
@@ -224,7 +224,7 @@ function InfoPanel:drawGoalSection(x, y, width, height)
     -- Cashout phase: "geschafft!" in mint above the goal number
     if self.phase == "cashout" then
         local labelY = y + innerPadding
-        Theme:drawTextCenteredWithShadow("geschafft!", x, labelY, width, Theme.fonts.large, Theme.colors.mint)
+        Theme:drawTextCenteredWithShadow("cleared!", x, labelY, width, Theme.fonts.large, Theme.colors.mint)
 
         -- Big goal number in mint (no "Punkte" label in cashout)
         local goal = self.getGoal()
@@ -235,7 +235,7 @@ function InfoPanel:drawGoalSection(x, y, width, height)
 
     -- Play phase: normal "erreiche" label
     local labelY = y + innerPadding
-    Theme:drawTextCenteredWithShadow("erreiche", x, labelY, width, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow("Goal", x, labelY, width, Theme.fonts.large, Theme.colors.text)
 
     -- Big goal number (coral/red color)
     local goal = self.getGoal()
@@ -244,7 +244,7 @@ function InfoPanel:drawGoalSection(x, y, width, height)
 
     -- "Punkte" label below
     local punkteY = goalY + goalNumHeight + spacing
-    Theme:drawTextCenteredWithShadow("Punkte", x, punkteY, width, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow("Score", x, punkteY, width, Theme.fonts.large, Theme.colors.text)
 end
 
 function InfoPanel:drawScoreSection(x, y, width, height)
@@ -256,7 +256,7 @@ function InfoPanel:drawScoreSection(x, y, width, height)
     -- "Punkte" label on left
     local labelX = x + 16
     local textY = y + (boxHeight - Theme.fonts.large:getHeight()) / 2
-    Theme:drawTextWithShadow("Punkte", labelX, textY, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextWithShadow("Score", labelX, textY, Theme.fonts.large, Theme.colors.text)
 
     -- Score value on right
     local score = self.getScore()
@@ -363,7 +363,7 @@ function InfoPanel:drawCountersRow(x, y, width, height)
     self.nineSlice:draw(x, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
     local labelY = y + boxHeight * 0.15
-    Theme:drawTextWithShadow("Hände", x + 16, labelY, Theme.fonts.normal, Theme.colors.text)
+    Theme:drawTextWithShadow("Hands", x + 16, labelY, Theme.fonts.normal, Theme.colors.text)
 
     local handsValue = tostring(self.getHandsRemaining())
     local handsValueWidth = Theme.fonts.huge:getWidth(handsValue)
@@ -375,7 +375,7 @@ function InfoPanel:drawCountersRow(x, y, width, height)
     local wurfeX = x + boxWidth + self.innerGap
     self.nineSlice:draw(wurfeX, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
-    Theme:drawTextWithShadow("Würfe", wurfeX + 16, labelY, Theme.fonts.normal, Theme.colors.text)
+    Theme:drawTextWithShadow("Rolls", wurfeX + 16, labelY, Theme.fonts.normal, Theme.colors.text)
 
     local rollsValue = tostring(self.getRollsRemaining())
     local rollsValueWidth = Theme.fonts.huge:getWidth(rollsValue)

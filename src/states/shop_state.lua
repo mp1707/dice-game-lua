@@ -37,9 +37,9 @@ function ShopState:initActionButton()
 
     local buttonText
     if Levels:isLastLevel(GameState.currentLevel) and GameState:hasReachedGoal() then
-        buttonText = "SIEG! NEUER RUN"
+        buttonText = "VICTORY! NEW RUN"
     else
-        buttonText = "NÄCHSTES LEVEL"
+        buttonText = "NEXT LEVEL"
     end
 
     -- Center button in the center area (same as DualCta)
@@ -147,7 +147,7 @@ function ShopState:draw()
     Theme:drawTextCenteredWithShadow("SHOP", 0, panelY + 30, screenWidth, Theme.fonts.display, Theme.colors.cyan)
 
     -- Current money
-    local moneyText = "Guthaben: " .. tostring(GameState.money)
+    local moneyText = "Cash: " .. tostring(GameState.money)
     Theme:drawTextCenteredWithShadow(moneyText, 0, panelY + 90, screenWidth, Theme.fonts.large, Theme.colors.gold)
 
     -- Empty shop content area
@@ -160,9 +160,9 @@ function ShopState:draw()
         Theme.nineSlice.borderScale)
 
     -- Empty message
-    Theme:drawTextCenteredWithShadow("Shop ist leer...", 0, shopPanelY + shopPanelHeight / 2 - 30, screenWidth,
+    Theme:drawTextCenteredWithShadow("Shop is empty...", 0, shopPanelY + shopPanelHeight / 2 - 30, screenWidth,
         Theme.fonts.large, Theme.colors.textMuted)
-    Theme:drawTextCenteredWithShadow("(Upgrades kommen bald)", 0, shopPanelY + shopPanelHeight / 2 + 10, screenWidth,
+    Theme:drawTextCenteredWithShadow("(Upgrades coming soon)", 0, shopPanelY + shopPanelHeight / 2 + 10, screenWidth,
         Theme.fonts.large, Theme.colors.textMuted)
 
     -- Level info
@@ -173,11 +173,11 @@ function ShopState:draw()
     -- Next goal preview
     if not Levels:isLastLevel(GameState.currentLevel) then
         local nextGoal = Levels:getGoal(GameState.currentLevel + 1)
-        local nextText = "Nächstes Ziel: " .. tostring(nextGoal)
+        local nextText = "Next Goal: " .. tostring(nextGoal)
         Theme:drawTextCenteredWithShadow(nextText, 0, shopPanelY + shopPanelHeight + 50, screenWidth, Theme.fonts.normal,
             Theme.colors.textMuted)
     else
-        Theme:drawTextCenteredWithShadow("LETZTES LEVEL GESCHAFFT!", 0, shopPanelY + shopPanelHeight + 50, screenWidth,
+        Theme:drawTextCenteredWithShadow("LAST LEVEL CLEARED!", 0, shopPanelY + shopPanelHeight + 50, screenWidth,
             Theme.fonts.normal, Theme.colors.mint)
     end
 
