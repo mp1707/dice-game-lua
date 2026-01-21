@@ -1,4 +1,5 @@
 local Theme = require("src.ui.theme")
+local ShaderBackground = require("src.core.shader_background")
 
 ---@class Scaling
 local Scaling = {
@@ -50,6 +51,9 @@ function Scaling.init()
     Scaling.canvas = love.graphics.newCanvas(Theme.screen.width, Theme.screen.height)
     Scaling.canvas:setFilter("nearest", "nearest")
 
+    -- Initialize shader background
+    ShaderBackground.init()
+
     Scaling.calculateScale()
     Scaling.initialized = true
 
@@ -61,6 +65,10 @@ function Scaling.resize(w, h)
     Scaling.calculateScale()
 end
 
+function Scaling.updateShader(dt)
+    ShaderBackground.update(dt)
+end
+
 function Scaling.toggleDebug()
     Scaling.showDebug = not Scaling.showDebug
 end
@@ -70,7 +78,11 @@ end
 function Scaling.draw(drawCallback)
     -- Render to canvas
     love.graphics.setCanvas(Scaling.canvas)
-    love.graphics.clear(Theme.colors.bg)
+
+    -- Draw shader background (or fallback to solid color)
+    if not ShaderBackground.draw(Theme.screen.width, Theme.screen.height) then
+        love.graphics.clear(Theme.colors.bg)
+    end
 
     if drawCallback then
         drawCallback()

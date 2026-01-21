@@ -2,7 +2,6 @@
 -- A roguelike Yahtzee game with Balatro-style desktop UI
 -- Main entry point
 
-local Scaling = require("src.core.scaling")
 local HotReload = require("src.core.hot_reload")
 local HotReloadSetup = require("src.game.hot_reload_setup")
 
@@ -10,6 +9,7 @@ local HotReloadSetup = require("src.game.hot_reload_setup")
 local Theme
 local StateMachine
 local GameState
+local Scaling
 local stateMachine
 
 function love.load()
@@ -20,6 +20,7 @@ function love.load()
     Theme = require("src.ui.theme")
     StateMachine = require("src.core.state_machine")
     GameState = require("src.game.game_state")
+    Scaling = require("src.core.scaling")
 
     -- Initialize systems
     Theme:load()
@@ -46,6 +47,7 @@ end
 
 function love.update(dt)
     HotReload:update(dt)
+    Scaling.updateShader(dt)
     stateMachine:update(dt)
 end
 
