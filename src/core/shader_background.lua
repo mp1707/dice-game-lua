@@ -61,14 +61,20 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
     vec2 uv = screen_coords / screen;
     vec2 centered = uv - 0.5;
 
-    float slowTime = time * 0.15;
-    vec2 swirled = swirl(centered, vec2(0.0), 1.5, slowTime * 0.5);
-    swirled = swirl(swirled, vec2(-0.3, 0.2), 0.6, -slowTime * 0.3);
-    swirled = swirl(swirled, vec2(0.3, -0.2), 0.6, slowTime * 0.4);
+    // Use oscillating swirl angles instead of accumulating - prevents infinite curl
+    float slowTime = time * 0.08;
+    float swirlAngle1 = sin(slowTime * 0.5) * 0.8;  // Oscillate between -0.8 and 0.8 radians
+    float swirlAngle2 = sin(slowTime * 0.3 + 1.0) * 0.5;
+    float swirlAngle3 = sin(slowTime * 0.4 + 2.0) * 0.6;
 
-    float n1 = fbm(swirled * 3.0 + vec2(slowTime * 0.2, slowTime * 0.1));
-    float n2 = fbm(swirled * 2.0 - vec2(slowTime * 0.15, -slowTime * 0.25));
-    float n3 = fbm(swirled * 4.0 + vec2(-slowTime * 0.1, slowTime * 0.3));
+    vec2 swirled = swirl(centered, vec2(0.0), 1.5, swirlAngle1);
+    swirled = swirl(swirled, vec2(-0.3, 0.2), 0.6, -swirlAngle2);
+    swirled = swirl(swirled, vec2(0.3, -0.2), 0.6, swirlAngle3);
+
+    // Noise still flows over time for nice movement
+    float n1 = fbm(swirled * 3.0 + vec2(slowTime * 0.3, slowTime * 0.15));
+    float n2 = fbm(swirled * 2.0 - vec2(slowTime * 0.2, -slowTime * 0.3));
+    float n3 = fbm(swirled * 4.0 + vec2(-slowTime * 0.15, slowTime * 0.4));
 
     float pattern = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
 
@@ -96,7 +102,8 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
         col = mix(mix(surfaceColor, cyanColor, 0.15), mix(surfaceColor, coralColor, 0.1), coralAmount);
     }
 
-    col *= (0.7 + vignette * 0.3);
+    // Slightly dimmed for better UI visibility (was 0.7 + vignette * 0.3)
+    col *= (0.55 + vignette * 0.3);
 
     float pulse = sin(time * 0.5) * 0.02 + 1.0;
     col *= pulse;

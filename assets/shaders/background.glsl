@@ -57,18 +57,20 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
     // Center the UV coordinates
     vec2 centered = uv - 0.5;
     
-    // Apply swirling distortion (Balatro-style)
-    float slowTime = time * 0.15;
-    vec2 swirled = swirl(centered, vec2(0.0), 1.5, slowTime * 0.5);
+    // Use oscillating swirl angles instead of accumulating - prevents infinite curl
+    float slowTime = time * 0.08;
+    float swirlAngle1 = sin(slowTime * 0.5) * 0.8;  // Oscillate between -0.8 and 0.8 radians
+    float swirlAngle2 = sin(slowTime * 0.3 + 1.0) * 0.5;
+    float swirlAngle3 = sin(slowTime * 0.4 + 2.0) * 0.6;
     
-    // Add additional swirl centers for complexity
-    swirled = swirl(swirled, vec2(-0.3, 0.2), 0.6, -slowTime * 0.3);
-    swirled = swirl(swirled, vec2(0.3, -0.2), 0.6, slowTime * 0.4);
+    vec2 swirled = swirl(centered, vec2(0.0), 1.5, swirlAngle1);
+    swirled = swirl(swirled, vec2(-0.3, 0.2), 0.6, -swirlAngle2);
+    swirled = swirl(swirled, vec2(0.3, -0.2), 0.6, swirlAngle3);
     
-    // Create flowing noise patterns
-    float n1 = fbm(swirled * 3.0 + vec2(slowTime * 0.2, slowTime * 0.1));
-    float n2 = fbm(swirled * 2.0 - vec2(slowTime * 0.15, -slowTime * 0.25));
-    float n3 = fbm(swirled * 4.0 + vec2(-slowTime * 0.1, slowTime * 0.3));
+    // Noise still flows over time for nice movement
+    float n1 = fbm(swirled * 3.0 + vec2(slowTime * 0.3, slowTime * 0.15));
+    float n2 = fbm(swirled * 2.0 - vec2(slowTime * 0.2, -slowTime * 0.3));
+    float n3 = fbm(swirled * 4.0 + vec2(-slowTime * 0.15, slowTime * 0.4));
     
     // Combine noise layers
     float pattern = n1 * 0.5 + n2 * 0.3 + n3 * 0.2;
@@ -101,8 +103,8 @@ vec4 effect(vec4 color, Image tex, vec2 texture_coords, vec2 screen_coords) {
         col = mix(mix(surfaceColor, cyanColor, 0.15), mix(surfaceColor, coralColor, 0.1), coralAmount);
     }
     
-    // Apply vignette
-    col *= (0.7 + vignette * 0.3);
+    // Slightly dimmed for better UI visibility
+    col *= (0.55 + vignette * 0.3);
     
     // Subtle pulsing glow
     float pulse = sin(time * 0.5) * 0.02 + 1.0;
