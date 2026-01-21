@@ -98,6 +98,9 @@ Theme.images = {
     diceFaces = {},  -- Array for dice faces 1-6
 }
 
+-- Dice spritesheet (loaded in Theme:load())
+Theme.diceSpritesheet = nil
+
 -- Layout constants for new 2-column UI (1080p)
 -- NEW LAYOUT: Info on LEFT, Center has item strip + selection panels + dice + CTAs
 Theme.layout = {
@@ -185,12 +188,17 @@ function Theme:load()
     self.images.lock = love.graphics.newImage("assets/icons/ui/lock.png")
     self.images.lock:setFilter("nearest", "nearest")
 
-    -- Load dice face images
+    -- Load dice face images (kept for hand icons and other UI uses)
     for i = 1, 6 do
         local path = "assets/icons/hands/" .. i .. "die.png"
         self.images.diceFaces[i] = love.graphics.newImage(path)
         self.images.diceFaces[i]:setFilter("nearest", "nearest")
     end
+
+    -- Load dice spritesheet for animated dice rendering
+    local Spritesheet = require("src.dice.spritesheet")
+    Spritesheet:load()
+    self.diceSpritesheet = Spritesheet
 end
 
 -- Helper function to draw text centered

@@ -30,10 +30,10 @@ function Die.new(slotIndex, slotCenterX, groundY, size)
     self.velocityY = 0
     self.velocityZ = 0  -- Vertical velocity for bouncing
 
-    -- Rotation
-    self.rotation = 0
-    self.angularVelocity = 0
-    self.targetRotation = 0
+    -- Orientation (sprite column 1-4, replaces rotation)
+    self.orientation = math.random(1, 4)
+    self.targetOrientation = 1
+    self.orientationTimer = 0
 
     -- Scale (for squash/stretch)
     self.scaleX = 1
@@ -83,9 +83,10 @@ function Die:startRoll(params)
     self.velocityY = params.velocityY
     self.velocityZ = params.velocityZ or 0
 
-    -- Set rotation
-    self.angularVelocity = params.angularVelocity
-    self.targetRotation = params.targetRotation
+    -- Set orientation (replaces rotation)
+    self.orientation = math.random(1, 4)
+    self.targetOrientation = params.targetOrientation or math.random(1, 4)
+    self.orientationTimer = 0
 
     -- Set target position
     self.targetX = params.targetX - self.size / 2
@@ -97,7 +98,6 @@ function Die:startRoll(params)
 
     -- Reset state
     self.bounceCount = 0
-    self.rotation = self.targetRotation  -- Start at final rotation, will spin
     self.scaleX = 1
     self.scaleY = 1
     self.squashTimer = 0
@@ -158,7 +158,7 @@ function Die:onStateChange(oldState, newState)
         -- Ensure final state is clean
         self.scaleX = 1
         self.scaleY = 1
-        self.rotation = self.targetRotation
+        self.orientation = self.targetOrientation
     end
 end
 
@@ -206,11 +206,15 @@ end
 
 -- Draw the die
 function Die:draw()
-    local diceImage = Theme.images.diceFaces[self.currentFace]
-    if not diceImage then return end
+    local Spritesheet = Theme.diceSpritesheet
+    if not Spritesheet then return end
 
-    local iw, ih = diceImage:getDimensions()
-    local baseScale = self.size / math.max(iw, ih)
+    local quad = Spritesheet:getQuad(self.currentFace, self.orientation)
+    local image = Spritesheet:getImage()
+    local spriteW, spriteH = Spritesheet:getSpriteSize()
+
+    -- Calculate scale to fit desired size
+    local baseScale = self.size / math.max(spriteW, spriteH)
 
     -- Apply squash/stretch
     local scaleX = baseScale * self.scaleX
@@ -220,20 +224,21 @@ function Die:draw()
     local drawX = self.x
     local drawY = self.y - self.height
 
-    -- Center point for rotation
+    -- Center point for drawing
     local centerX = drawX + self.size / 2
     local centerY = drawY + self.size / 2
 
     -- Set color (could tint based on state if needed)
     love.graphics.setColor(1, 1, 1, 1)
 
-    -- Draw the die face
+    -- Draw the die using quad (no rotation - orientation is handled by sprite)
     love.graphics.draw(
-        diceImage,
+        image,
+        quad,
         centerX, centerY,
-        self.rotation,
+        0,  -- No rotation
         scaleX, scaleY,
-        iw / 2, ih / 2
+        spriteW / 2, spriteH / 2
     )
 end
 
@@ -270,8 +275,8 @@ function Die:resetToIdle(x, y)
     self.velocityX = 0
     self.velocityY = 0
     self.velocityZ = 0
-    self.rotation = 0
-    self.angularVelocity = 0
+    self.orientation = self.targetOrientation or math.random(1, 4)
+    self.orientationTimer = 0
     self.scaleX = 1
     self.scaleY = 1
     self.squashTimer = 0

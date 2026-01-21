@@ -16,7 +16,7 @@ function SelectionPanel.new(config)
     self.height = config.height or 180
 
     self.title = config.title or "Selection"
-    self.section = config.section or "upper"  -- "upper" for Zahlen, "lower" for Kombinationen
+    self.section = config.section or "upper" -- "upper" for Zahlen, "lower" for Kombinationen
 
     -- Callbacks for getting data
     self.getSelectedDice = config.getSelectedDice or function() return {} end
@@ -37,7 +37,7 @@ end
 function SelectionPanel:calculateSlotPositions()
     local totalSlotsWidth = self.slotCount * self.slotSize + (self.slotCount - 1) * self.slotSpacing
     local startX = self.x + (self.width - totalSlotsWidth) / 2
-    local slotY = self.y + self.height - self.slotSize - 20  -- Position slots near bottom
+    local slotY = self.y + self.height - self.slotSize - 20 -- Position slots near bottom
 
     self.slotPositions = {}
     for i = 1, self.slotCount do
@@ -51,7 +51,7 @@ end
 function SelectionPanel:getSlotAtPoint(px, py)
     for i, slot in ipairs(self.slotPositions) do
         if px >= slot.x and px < slot.x + self.slotSize and
-           py >= slot.y and py < slot.y + self.slotSize then
+            py >= slot.y and py < slot.y + self.slotSize then
             return i
         end
     end
@@ -60,7 +60,7 @@ end
 
 function SelectionPanel:containsPoint(px, py)
     return px >= self.x and px < self.x + self.width and
-           py >= self.y and py < self.y + self.height
+        py >= self.y and py < self.y + self.height
 end
 
 function SelectionPanel:getSlotCenter(slotIndex)
@@ -83,7 +83,7 @@ function SelectionPanel:mousepressed(x, y, button)
         if i <= self.slotCount then
             local slot = self.slotPositions[i]
             if x >= slot.x and x < slot.x + self.slotSize and
-               y >= slot.y and y < slot.y + self.slotSize then
+                y >= slot.y and y < slot.y + self.slotSize then
                 -- Clicked on a dice - remove it from selection
                 self.onDiceClick(diceIdx)
                 return true
@@ -102,7 +102,7 @@ function SelectionPanel:draw()
     local nineSlice = NineSlice.getInstance()
 
     -- Draw panel background (darker shade)
-    nineSlice:draw(self.x, self.y, self.width, self.height, Theme.colors.panelDark)
+    nineSlice:draw(self.x, self.y, self.width, self.height, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
     -- Draw title label (subtle, at top)
     local titleColor = Theme.colors.textMuted
@@ -117,7 +117,7 @@ function SelectionPanel:draw()
 
         -- Slot background color
         local slotColor = hasDice and Theme.colors.surface2 or Theme.colors.bg2
-        nineSlice:draw(slot.x, slot.y, self.slotSize, self.slotSize, slotColor)
+        nineSlice:draw(slot.x, slot.y, self.slotSize, self.slotSize, slotColor, Theme.nineSlice.borderScale)
 
         -- Draw dice face if occupied
         if hasDice then

@@ -9,7 +9,6 @@ local Physics = {
     baseBounceStrength = 650, -- Initial upward velocity on bounce
     bounceDamping = 0.68,     -- Multiplier per bounce (0.5 = half strength)
     horizontalDamping = 0.7,  -- How much horizontal speed is lost per bounce
-    angularDamping = 0.6,     -- How much rotation slows per bounce
 
     -- Settling
     settleSpeed = 8, -- Lerp speed when settling to final position
@@ -19,14 +18,14 @@ local Physics = {
     squashAmount = 0.7,    -- Scale Y multiplier during squash
     stretchAmount = 1.2,   -- Scale Y multiplier during fast fall
 
-    -- Face changes during animation
-    faceChangeInterval = 0.04, -- How fast faces cycle during roll (~25fps)
+    -- Face and orientation changes during animation
+    faceChangeInterval = 0.04,    -- How fast faces cycle during roll (~25fps)
+    orientationInterval = 0.06,   -- How fast orientation cycles (tumble effect)
 
     -- Initial drop parameters (ranges for randomization)
     dropHeight = { min = 200, max = 350 },
     initialVelocityX = { min = -80, max = 80 },
     initialVelocityY = { min = 20, max = 60 },
-    initialAngularVelocity = { min = -15, max = 15 },
 
     -- Bounce count range
     bounceCount = { min = 2, max = 5 },
@@ -71,14 +70,13 @@ function Physics.generateRollParams(slotIndex, slotCenterX, groundY)
     params.velocityX = Physics.randomInRange(Physics.initialVelocityX)
     params.velocityY = Physics.randomInRange(Physics.initialVelocityY)
     params.velocityZ = 0 -- Start with no vertical velocity (will accelerate down)
-    params.angularVelocity = Physics.randomInRange(Physics.initialAngularVelocity)
 
     -- Final target position (use the passed-in position - now correctly calculated as a row)
     params.targetX = slotCenterX
     params.targetY = groundY
 
-    -- Final rotation (no tilt for clean alignment)
-    params.targetRotation = 0
+    -- Final orientation (random for visual variety)
+    params.targetOrientation = math.random(1, 4)
 
     -- Stagger start time for more organic feel
     params.startDelay = slotIndex * Physics.staggerDelay + math.random() * Physics.staggerRandom

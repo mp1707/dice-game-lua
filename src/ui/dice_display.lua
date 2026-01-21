@@ -116,6 +116,8 @@ function DiceDisplay:stopAnimation()
     -- Update face from game state
     local data = self.getDiceData()
     self.die:setFace(data.value)
+    -- Set a random orientation for visual variety
+    self.die.orientation = math.random(1, 4)
 end
 
 -- Start dragging the die
@@ -244,15 +246,17 @@ function DiceDisplay:draw()
         -- Draw die
         self.die:draw()
     else
-        -- Static rendering (not animating)
+        -- Static rendering (not animating) using spritesheet
         local value = data.value
+        local Spritesheet = Theme.diceSpritesheet
 
-        -- Draw dice face image
-        local diceImage = Theme.images.diceFaces[value]
-        if diceImage then
-            local iw, ih = diceImage:getDimensions()
-            local baseScale = self.size / math.max(iw, ih)
+        if Spritesheet then
+            local orientation = self.die.orientation or 1
+            local quad = Spritesheet:getQuad(value, orientation)
+            local image = Spritesheet:getImage()
+            local spriteW, spriteH = Spritesheet:getSpriteSize()
 
+            local baseScale = self.size / math.max(spriteW, spriteH)
             local centerX = self.x + self.size / 2
             local centerY = self.y + self.size / 2
 
@@ -260,11 +264,12 @@ function DiceDisplay:draw()
             love.graphics.setColor(1, 1, 1, 1)
 
             love.graphics.draw(
-                diceImage,
+                image,
+                quad,
                 centerX, centerY,
-                0, -- no rotation when static
+                0, -- no rotation
                 baseScale, baseScale,
-                iw / 2, ih / 2
+                spriteW / 2, spriteH / 2
             )
         end
     end
