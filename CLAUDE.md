@@ -86,6 +86,7 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
   6.  **Three of a Kind** (3 matching)
   7.  **Upper section** - falls back to the face with highest count (e.g., 2,2,6 → "Twos" not "Sixes")
 - **Hand Preview**: The info panel displays the auto-detected best hand.
+- **Dice Reordering**: Drag dice horizontally to reorder them. Other dice animate to make room while dragging. The visual order resets when a new hand starts.
 
 ### Dice Animation System
 

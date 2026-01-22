@@ -100,3 +100,4 @@ Key colors defined in `theme.lua`:
 - **Auto-Detection**: Game automatically detects the best playable hand from selection
 - **Hand Preview**: Info panel displays the auto-detected best hand
 - **Visual Feedback**: Selected dice are raised
+- **Horizontal Reorder**: Drag dice left/right to reorder. Other dice animate to make room using spring physics. Visual order resets on new hand.

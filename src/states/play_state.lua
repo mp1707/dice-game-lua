@@ -31,6 +31,13 @@ function PlayState.new()
     -- Dice home positions (center area)
     self.diceHomePositions = {}
 
+    -- Visual order of dice (slot index -> dice index)
+    -- e.g., {3, 1, 2, 4, 5} means slot 1 shows die 3, slot 2 shows die 1, etc.
+    self.diceVisualOrder = { 1, 2, 3, 4, 5 }
+
+    -- Hover slot during drag (which slot the dragged die is hovering over)
+    self.hoverSlot = nil
+
     -- Drag state
     self.draggingDice = nil
 
@@ -287,6 +294,9 @@ function PlayState:resetForNextHand()
     -- Clear selections and reset game state
     GameState:resetForHand()
 
+    -- Reset visual order to default
+    self.diceVisualOrder = { 1, 2, 3, 4, 5 }
+
     -- Reset dice positions to home area
     for i, display in ipairs(self.diceDisplays) do
         display.isInHeldTray = false
@@ -327,24 +337,128 @@ function PlayState:update(dt)
 end
 
 function PlayState:updateDicePositions()
-    -- Selected dice move up, unselected stay at home
-    for i, display in ipairs(self.diceDisplays) do
-        local homePos = self.diceHomePositions[i]
-        local homeX, homeY = homePos.x, homePos.y
+    -- Calculate target positions for all dice based on:
+    -- 1. Their slot in diceVisualOrder
+    -- 2. Whether another die is being dragged and hovering over a slot
+    -- 3. Selection state (Y offset)
 
-        if GameState:isDiceSelected(i) then
-            -- Selected dice move up
-            local selectedY = homeY + Theme.layout.diceSelectedOffsetY
-            if not display.isDragging then
-                display:animateTo(homeX, selectedY)
-            end
-        else
-            -- Unselected dice stay at home
-            if not display.isDragging then
-                display:animateTo(homeX, homeY)
+    local layout = Theme.layout
+    local diceSize = layout.diceSize
+    local diceSpacing = layout.diceSpacing
+
+    -- Update hover slot if dragging
+    if self.draggingDice then
+        self.hoverSlot = self:getSlotFromX(self.draggingDice.x + diceSize / 2)
+    else
+        self.hoverSlot = nil
+    end
+
+    -- Find the current slot of the dragged die
+    local draggedDiceIndex = self.draggingDiceIndex
+    local draggedCurrentSlot = nil
+    if draggedDiceIndex then
+        for slot, dieIndex in ipairs(self.diceVisualOrder) do
+            if dieIndex == draggedDiceIndex then
+                draggedCurrentSlot = slot
+                break
             end
         end
     end
+
+    -- Calculate target positions for each die
+    for slot, dieIndex in ipairs(self.diceVisualOrder) do
+        local display = self.diceDisplays[dieIndex]
+
+        -- Skip the die being dragged
+        if display.isDragging then
+            goto continue
+        end
+
+        -- Calculate base X position for this slot
+        local targetSlot = slot
+        local targetX = self.diceHomePositions[slot].x
+
+        -- If we're dragging a die and hovering, shift other dice
+        if self.hoverSlot and draggedCurrentSlot then
+            if self.hoverSlot < draggedCurrentSlot then
+                -- Dragging left: dice between hoverSlot and draggedCurrentSlot shift right
+                if slot >= self.hoverSlot and slot < draggedCurrentSlot then
+                    targetX = self.diceHomePositions[slot + 1].x
+                end
+            elseif self.hoverSlot > draggedCurrentSlot then
+                -- Dragging right: dice between draggedCurrentSlot and hoverSlot shift left
+                if slot > draggedCurrentSlot and slot <= self.hoverSlot then
+                    targetX = self.diceHomePositions[slot - 1].x
+                end
+            end
+        end
+
+        -- Calculate Y based on selection state
+        local baseY = self.diceHomePositions[slot].y
+        local targetY = baseY
+        if GameState:isDiceSelected(dieIndex) then
+            targetY = baseY + Theme.layout.diceSelectedOffsetY
+        end
+
+        -- Animate to target position
+        display:animateTo(targetX, targetY)
+
+        ::continue::
+    end
+end
+
+-- Get slot index (1-5) from X coordinate
+function PlayState:getSlotFromX(x)
+    local layout = Theme.layout
+    local diceSize = layout.diceSize
+    local diceSpacing = layout.diceSpacing
+
+    -- Calculate slot boundaries
+    for slot = 1, 5 do
+        local slotX = self.diceHomePositions[slot].x
+        local slotCenterX = slotX + diceSize / 2
+
+        -- First slot: anything to the left of center goes here
+        if slot == 1 then
+            if x < slotCenterX + (diceSize + diceSpacing) / 2 then
+                return 1
+            end
+            -- Last slot: anything to the right goes here
+        elseif slot == 5 then
+            if x >= slotCenterX - (diceSize + diceSpacing) / 2 then
+                return 5
+            end
+            -- Middle slots: check if x is within half-spacing of slot center
+        else
+            local leftBound = slotCenterX - (diceSize + diceSpacing) / 2
+            local rightBound = slotCenterX + (diceSize + diceSpacing) / 2
+            if x >= leftBound and x < rightBound then
+                return slot
+            end
+        end
+    end
+
+    return 3 -- Default to middle slot
+end
+
+-- Reorder dice: move die from oldSlot to newSlot
+function PlayState:reorderDice(dieIndex, newSlot)
+    -- Find current slot
+    local oldSlot = nil
+    for slot, idx in ipairs(self.diceVisualOrder) do
+        if idx == dieIndex then
+            oldSlot = slot
+            break
+        end
+    end
+
+    if not oldSlot or oldSlot == newSlot then return end
+
+    -- Remove from old position
+    table.remove(self.diceVisualOrder, oldSlot)
+
+    -- Insert at new position
+    table.insert(self.diceVisualOrder, newSlot, dieIndex)
 end
 
 function PlayState:draw()
@@ -463,20 +577,39 @@ function PlayState:mousereleased(x, y, button)
     if button == 1 and self.draggingDice then
         local display = self.draggingDice
         local index = self.draggingDiceIndex
-        local homePos = self.diceHomePositions[index]
+
+        -- Find current slot index for this die
+        local currentSlot = nil
+        for slot, dieIndex in ipairs(self.diceVisualOrder) do
+            if dieIndex == index then
+                currentSlot = slot
+                break
+            end
+        end
+
+        -- Get home position for this die's current slot
+        local homePos = self.diceHomePositions[currentSlot]
 
         -- Stop dragging/holding
         local currentY = display:endDrag()
 
         -- Check if it was a simple click (moved less than threshold)
-        local dragDist = math.sqrt((x - self.dragStartX) ^ 2 + (y - self.dragStartY) ^ 2)
+        local dragDistX = math.abs(x - self.dragStartX)
+        local dragDistY = math.abs(y - self.dragStartY)
+        local dragDist = math.sqrt(dragDistX ^ 2 + dragDistY ^ 2)
         local clickThreshold = 6
+        local horizontalDragThreshold = 20 -- Minimum X movement to trigger reorder
 
         if dragDist < clickThreshold then
             -- Simple click: toggle selection
             GameState:toggleDiceSelection(index)
+        elseif dragDistX > horizontalDragThreshold then
+            -- Horizontal drag: reorder dice
+            local layout = Theme.layout
+            local dropSlot = self:getSlotFromX(display.x + layout.diceSize / 2)
+            self:reorderDice(index, dropSlot)
         else
-            -- Drag release: determine selection based on Y position
+            -- Primarily vertical drag: determine selection based on Y position
             local homeY = homePos.y
             local selectedY = homeY + Theme.layout.diceSelectedOffsetY
             local midpointY = (homeY + selectedY) / 2
@@ -491,11 +624,12 @@ function PlayState:mousereleased(x, y, button)
             end
         end
 
-        -- Clear drag state
+        -- Clear drag state and hover slot
         self.draggingDice = nil
         self.draggingDiceIndex = nil
         self.dragStartX = nil
         self.dragStartY = nil
+        self.hoverSlot = nil
     end
 end
 
