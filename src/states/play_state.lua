@@ -204,10 +204,7 @@ function PlayState:getDetectedHand()
     local indices = GameState:getSelectedDiceIndices()
     local hand = Scoring.detectBestHand(indices, GameState.dice)
 
-    -- Filter out used hands
-    if hand and GameState:isHandUsed(hand.id) then
-        return nil
-    end
+
 
     return hand
 end

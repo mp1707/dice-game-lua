@@ -41,7 +41,7 @@ Requires Love2D 11.4+ installed on the system.
 
 **State Machine** (`src/core/state_machine.lua`): Manages game states with lazy instantiation. States implement `enter`, `exit`, `update`, `draw`, and input methods.
 
-**Game State** (`src/game/game_state.lua`): Central singleton holding all persistent game data (level, money, score, dice, hands used). Provides methods for game logic like rolling, locking dice, and hand management.
+**Game State** (`src/game/game_state.lua`): Central singleton holding all persistent game data (level, money, score, dice, hands remaining). Provides methods for game logic like rolling, locking dice, and hand management. Hands can be played multiple times per round.
 
 **Hot Reload** (`src/core/hot_reload.lua`): Watches `src/` for file changes and reloads modules while preserving state. Clears `package.loaded` for `src.*` modules.
 
@@ -120,6 +120,7 @@ All in `src/ui/`:
 When "Play Hand" is pressed, a satisfying counting animation plays instead of instant calculation. See `src/ui/CLAUDE_COUNTING.md` for detailed documentation.
 
 **Animation Sequence:**
+
 1. Scoring dice highlight left-to-right (0.08s per die)
 2. Pip numbers pop up above each die (0.12s per die)
 3. Formula boxes fade, hand score appears (0.6s)

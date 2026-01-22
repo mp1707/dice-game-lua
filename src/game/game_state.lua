@@ -20,7 +20,7 @@ local GameState = {
     dice = {},
 
     -- Used hands this level (set of hand IDs)
-    usedHands = {},
+
 
     -- Rolling animation state
     isRolling = false,
@@ -52,7 +52,6 @@ end
 function GameState:resetForLevel()
     self.currentScore = 0
     self.handsRemaining = Levels.handsPerLevel
-    self.usedHands = {}
     self:resetForHand()
 end
 
@@ -146,14 +145,8 @@ function GameState:canRoll()
     return true
 end
 
--- Check if hand is used
-function GameState:isHandUsed(handId)
-    return self.usedHands[handId] == true
-end
-
--- Use a hand (mark as used, add score)
+-- Use a hand (add score, hands can be repeated)
 function GameState:useHand(handId, score)
-    self.usedHands[handId] = true
     self.currentScore = self.currentScore + score
     self.handsRemaining = self.handsRemaining - 1
     self.selectedHandId = nil
@@ -161,7 +154,6 @@ end
 
 -- Select a hand
 function GameState:selectHand(handId)
-    if self:isHandUsed(handId) then return false end
     self.selectedHandId = handId
     return true
 end
