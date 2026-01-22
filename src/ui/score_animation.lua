@@ -11,11 +11,11 @@ ScoreAnimation.__index = ScoreAnimation
 
 -- Timing constants
 local TIMING = {
-    countDelay = 0.6,        -- Delay between counting each die
-    calcDuration = 0.8,      -- Duration of calculating phase (snappier)
-    calcBoxFadeStart = 0.1,  -- Start fading almost immediately
-    calcScoreAppear = 0.4,   -- Reveal score faster
-    completeHold = 0.45,     -- Hold before firing callback
+    countDelay = 0.6,       -- Delay between counting each die
+    calcDuration = 0.5,     -- Duration of calculating phase (faster)
+    calcBoxFadeStart = 0.0, -- Start fading immediately
+    calcScoreAppear = 0.15, -- Reveal score much sooner
+    completeHold = 0.35,    -- Hold before firing callback
 }
 
 -- Spring parameters
@@ -47,8 +47,9 @@ function ScoreAnimation:reset()
     self.popTexts = {}
     self.displayedScore = 0
 
-    -- Box animation state (boxes themselves don't scale, only fade)
+    -- Box animation state (fade out + scale down for juice)
     self.boxAlpha = 1
+    self.boxScale = 1
 
     -- Chips text animation (only the number pulses, not the box)
     self.chipsTextScale = 1
@@ -159,14 +160,14 @@ function ScoreAnimation:updateCounting(dt)
 
                 -- Create pop text above die (use huge font for visibility)
                 local popX = display.x + display.size / 2
-                local popY = display.y - 60  -- Higher up for bigger text
+                local popY = display.y - 60 -- Higher up for bigger text
 
                 local popText = PopText.new({
                     text = "+" .. pipValue,
                     x = popX,
                     y = popY,
                     color = Theme.colors.text,
-                    font = Theme.fonts.huge,  -- Bigger font!
+                    font = Theme.fonts.huge, -- Bigger font!
                 })
                 table.insert(self.popTexts, popText)
 
@@ -189,17 +190,22 @@ function ScoreAnimation:updateCalculating(dt)
     -- Animate the formula boxes disappearing and hand score appearing
     local progress = self.timer / TIMING.calcDuration
 
-    -- Fade out boxes
+    -- Fade out and scale down boxes together (much faster and juicier)
     if self.timer >= TIMING.calcBoxFadeStart then
-        local fadeProgress = (self.timer - TIMING.calcBoxFadeStart) / (TIMING.calcScoreAppear - TIMING.calcBoxFadeStart)
-        self.boxAlpha = math.max(0, 1 - fadeProgress)
+        local fadeDuration = TIMING.calcScoreAppear - TIMING.calcBoxFadeStart
+        local fadeProgress = math.min(1, (self.timer - TIMING.calcBoxFadeStart) / fadeDuration)
+        -- Use ease-out-cubic for snappy fade
+        local easedFade = 1 - (1 - fadeProgress) ^ 3
+        self.boxAlpha = math.max(0, 1 - easedFade)
+        -- Scale down from 1 to 0.7 as boxes fade
+        self.boxScale = 1 - (easedFade * 0.3)
     end
 
-    -- Show hand score
+    -- Show hand score (appears sooner now)
     if self.timer >= TIMING.calcScoreAppear and not self.handScoreVisible then
         self.handScoreVisible = true
         self.handScoreScale = 0
-        self.handScoreScaleVelocity = 50  -- Initial velocity for pop
+        self.handScoreScaleVelocity = 60 -- Higher initial velocity for snappier pop
     end
 
     -- Move to updating total
@@ -271,6 +277,10 @@ end
 
 function ScoreAnimation:getBoxAlpha()
     return self.boxAlpha
+end
+
+function ScoreAnimation:getBoxScale()
+    return self.boxScale
 end
 
 function ScoreAnimation:isHandScoreVisible()

@@ -284,11 +284,11 @@ end
 
 -- Get scoring dice indices sorted by visual order (left to right)
 function PlayState:getScoringDiceIndicesInVisualOrder(handId)
-    local selectedIndices = GameState:getSelectedDiceIndices()
     local scoringIndices = {}
 
     if Scoring.isUpperSectionHand(handId) then
-        -- Upper section hands: only dice matching the target face
+        -- Upper section hands: only dice matching the target face (from selected dice)
+        local selectedIndices = GameState:getSelectedDiceIndices()
         local targetFace = Scoring.getFaceFromHandId(handId)
         for _, idx in ipairs(selectedIndices) do
             if GameState.dice[idx].value == targetFace then
@@ -296,9 +296,14 @@ function PlayState:getScoringDiceIndicesInVisualOrder(handId)
             end
         end
     else
-        -- Combination hands: all selected dice
-        for _, idx in ipairs(selectedIndices) do
-            table.insert(scoringIndices, idx)
+        -- Lower section hands (x of a kind, straights, full house): ALL 5 dice
+        -- The score formula uses sumAll(dice), so all dice contribute
+        for i = 1, 5 do
+            table.insert(scoringIndices, i)
+            -- Also ensure all dice are selected for the animation
+            if not GameState:isDiceSelected(i) then
+                GameState:toggleDiceSelection(i)
+            end
         end
     end
 

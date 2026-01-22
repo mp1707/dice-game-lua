@@ -307,7 +307,6 @@ function InfoPanel:drawHandPreview(x, y, width, height)
 
         -- Get animation values
         local boxAlpha = isAnimating and scoreAnim:getBoxAlpha() or 1
-        local chipsTextScale = isAnimating and scoreAnim:getChipsTextScale() or 1
         local showHandScore = isAnimating and scoreAnim:isHandScoreVisible()
 
         -- Calculate center for hand score
@@ -334,42 +333,51 @@ function InfoPanel:drawHandPreview(x, y, width, height)
         end
 
         if boxAlpha > 0.01 then
-            -- Draw boxes WITHOUT scaling (boxes stay stable)
+            -- Get box scale for shrinking animation
+            local boxScale = isAnimating and scoreAnim:getBoxScale() or 1
+
+            -- Calculate center point for scaling transform
+            local formulaCenterX = formulaX + formulaWidth / 2
+            local formulaCenterY = formulaY + boxHeightInner / 2
+
+            -- Apply scale transform around center
+            love.graphics.push()
+            love.graphics.translate(formulaCenterX, formulaCenterY)
+            love.graphics.scale(boxScale, boxScale)
+            love.graphics.translate(-formulaCenterX, -formulaCenterY)
+
             -- Chips box (blue)
             local chipsColor = Theme.colors.upgradePoints
             love.graphics.setColor(chipsColor[1], chipsColor[2], chipsColor[3], boxAlpha)
             love.graphics.rectangle("fill", formulaX, formulaY, boxWidth, boxHeightInner, 8)
 
-            -- Use animated chips value if available
-            local animatedChips = scoreAnim:getAnimatedChips()
-            local chipsValue = animatedChips or (breakdown.basePoints + breakdown.pips)
+            -- During animation use animated chips value, otherwise show BASE formula only
+            -- (dice pips will be added during counting animation)
+            local chipsValue
+            if isAnimating then
+                local animatedChips = scoreAnim:getAnimatedChips()
+                chipsValue = animatedChips or breakdown.basePoints
+            else
+                -- Preview mode: show only base points (no pips yet)
+                chipsValue = breakdown.basePoints
+            end
             local chipsText = tostring(chipsValue)
             local textCenterY = formulaY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
 
-            -- Draw chips text with subtle scale pulse (only the text, not the box)
-            local chipsCenterX = formulaX + boxWidth / 2
-            local chipsCenterY = textCenterY + Theme.fonts.large:getHeight() / 2
-
-            love.graphics.push()
-            love.graphics.translate(chipsCenterX, chipsCenterY)
-            love.graphics.scale(chipsTextScale, chipsTextScale)
-            love.graphics.translate(-chipsCenterX, -chipsCenterY)
-
+            -- Draw chips text
             local chipsTextWidth = Theme.fonts.large:getWidth(chipsText)
             local chipsTextX = formulaX + (boxWidth - chipsTextWidth) / 2
             love.graphics.setColor(1, 1, 1, boxAlpha)
             love.graphics.setFont(Theme.fonts.large)
             love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textCenterY))
 
-            love.graphics.pop()
-
-            -- "x" symbol (no scaling)
+            -- "x" symbol
             local xX = formulaX + boxWidth + spacing
             local mutedColor = Theme.colors.textMuted
             love.graphics.setColor(mutedColor[1], mutedColor[2], mutedColor[3], boxAlpha)
             love.graphics.print("x", xX, textCenterY)
 
-            -- Mult box (red) - no scaling
+            -- Mult box (red)
             local multBoxX = xX + xSymbolWidth + spacing
             local multColor = Theme.colors.upgradeMult
             love.graphics.setColor(multColor[1], multColor[2], multColor[3], boxAlpha)
@@ -380,6 +388,8 @@ function InfoPanel:drawHandPreview(x, y, width, height)
             local multTextX = multBoxX + (boxWidth - multTextWidth) / 2
             love.graphics.setColor(1, 1, 1, boxAlpha)
             love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
+
+            love.graphics.pop()
         end
     else
         -- Empty state - show just the formula boxes without numbers/text
