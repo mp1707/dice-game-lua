@@ -18,7 +18,7 @@ Requires Love2D 11.4+ installed on the system.
 
 ### Mouse
 
-- **Left-click dice** - Toggle selection (selected dice move up and are not rerolled)
+- **Left-click dice** - Toggle selection (Select dice to REROLL or PLAY)
 - **Click hand card** - Select which hand to play (radio-button style)
 
 ### Keyboard
@@ -66,22 +66,26 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
 │  - Settings/Info   │  │Hand Card│  │Hand Card│    │
 │                    │  └─────────┘  └─────────┘    │
 │                    │  [Play Hand] [Roll]          │
-└─────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────┐
 ```
 
 ### Selection Mechanics
 
-- **Unified Selection**: Click any die to toggle selection. Selected dice move up visually and are locked (not rerolled).
+- **Unified Selection**: Click any die to toggle selection. Selected dice move up visually.
+- **Rerolling**: **Selected dice are rerolled** (similar to Balatro discard). Unselected dice are kept.
+  - **Initial Roll**: The first roll of a hand automatically rolls ALL dice regardless of selection.
+  - **Immediate Unselect**: When Reroll is clicked, selected dice immediately unselect and drop to the table to roll.
+- **Play Hand**: "Play Hand" uses the **Selected dice** to score.
+  - _Strategy_: Select dice to Keep/Play (if playing hand), or Select dice to Discard/Reroll (if rolling).
 - **Auto-Detection**: Based on selected dice, the game automatically detects the BEST playable hand with this priority:
-  1. **Yahtzee** (5 matching)
-  2. **Large Straight** (5 consecutive)
-  3. **Small Straight** (4 consecutive)
-  4. **Full House** (3+2)
-  5. **Four of a Kind** (4 matching)
-  6. **Three of a Kind** (3 matching)
-  7. **Upper section** - falls back to the face with highest count (e.g., 2,2,6 → "Twos" not "Sixes")
+  1.  **Yahtzee** (5 matching)
+  2.  **Large Straight** (5 consecutive)
+  3.  **Small Straight** (4 consecutive)
+  4.  **Full House** (3+2)
+  5.  **Four of a Kind** (4 matching)
+  6.  **Three of a Kind** (3 matching)
+  7.  **Upper section** - falls back to the face with highest count (e.g., 2,2,6 → "Twos" not "Sixes")
 - **Hand Preview**: The info panel displays the auto-detected best hand.
-- **Rolling**: Selected dice stay locked, unselected dice get re-rolled.
 
 ### Dice Animation System
 

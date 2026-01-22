@@ -135,7 +135,7 @@ function DiceDisplay:startRollAnimation(duration)
     local params = Physics.generateRollParams(
         self.index,
         self.x + self.size / 2, -- slot center
-        self.y                  -- ground Y
+        self.homeY              -- ground Y (always use table level, even if elevated)
     )
 
     -- Get the target face from game state

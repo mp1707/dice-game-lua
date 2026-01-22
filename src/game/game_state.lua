@@ -26,8 +26,8 @@ local GameState = {
     isRolling = false,
 
     -- Selection state (unified system)
-    selectedDice = {},         -- Array of dice indices that are selected
-    selectedHandId = nil,      -- Currently selected hand card for playing
+    selectedDice = {},    -- Array of dice indices that are selected
+    selectedHandId = nil, -- Currently selected hand card for playing
 }
 
 -- Initialize dice
@@ -74,15 +74,23 @@ function GameState:unlockAllDice()
     end
 end
 
--- Roll all unlocked dice
+-- Roll all selected dice (or all dice if first roll)
 function GameState:rollDice()
     if not self:canRoll() then return false end
 
-    for _, die in ipairs(self.dice) do
-        if not die.locked then
+    local isFirstRoll = not self.hasRolledThisHand
+
+    for i, die in ipairs(self.dice) do
+        -- Reroll if it's the first roll OR if the die is selected (locked)
+        if isFirstRoll or die.locked then
             die.value = math.random(1, 6)
+            -- If rerolled, it should be unlocked immediately
+            die.locked = false
         end
     end
+
+    -- Clear selection list since we just used it/unlocked everything
+    self:clearSelection()
 
     self.rollsRemaining = self.rollsRemaining - 1
     self.hasRolledThisHand = true
@@ -126,7 +134,16 @@ end
 
 -- Check if can roll
 function GameState:canRoll()
-    return self.rollsRemaining > 0 and not self.isRolling
+    if self.rollsRemaining <= 0 or self.isRolling then
+        return false
+    end
+
+    -- If we have rolled already, we must have at least one die selected to reroll
+    if self.hasRolledThisHand and self:getSelectedCount() == 0 then
+        return false
+    end
+
+    return true
 end
 
 -- Check if hand is used

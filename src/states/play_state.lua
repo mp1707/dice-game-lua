@@ -254,14 +254,25 @@ end
 function PlayState:rollDice()
     if not GameState:canRoll() then return end
 
+    -- Capture selection state BEFORE rolling (because rolling clears it)
+    local selectedIndices = {}
+    for _, idx in ipairs(GameState:getSelectedDiceIndices()) do
+        selectedIndices[idx] = true
+    end
+    -- We can check if it's the first roll BEFORE calling rollDice which sets the flag
+    local isFirstRoll = not GameState.hasRolledThisHand
+
     -- Roll immediately so the new values are ready when animation ends
     if not GameState:rollDice() then return end
 
     GameState.isRolling = true
 
-    -- Start animations for unlocked dice only
+    -- Start animations based on captured logic
     for i, die in ipairs(GameState.dice) do
-        if not die.locked then
+        -- Animate if:
+        -- 1. It was the Initial Roll (no selection matters) -> Animate all
+        -- 2. This die WAS selected (Reroll) -> Animate
+        if isFirstRoll or selectedIndices[i] then
             self.diceDisplays[i]:startRollAnimation()
         end
     end
