@@ -105,6 +105,12 @@ function DiceDisplay.new(config)
     self.selectionRectYOffset = 0
     self.targetSelectionRectYOffset = 0
 
+    -- Count pulse animation (for score counting animation)
+    self.countPulseScale = 1
+    self.countPulseScaleVelocity = 0
+    self.countPulseRotation = 0
+    self.countPulseRotationVelocity = 0
+
     return self
 end
 
@@ -349,6 +355,18 @@ function DiceDisplay:update(dt)
         (self.targetSelectionRectScale - self.selectionRectScale) * hoverLerp
         self.selectionRectYOffset = self.selectionRectYOffset +
         (self.targetSelectionRectYOffset - self.selectionRectYOffset) * hoverLerp
+
+        -- Update count pulse spring animation
+        local countPulseStiffness = 600
+        local countPulseDamping = 28
+        self.countPulseScale, self.countPulseScaleVelocity = Juice.updateSpring(
+            self.countPulseScale, 1, self.countPulseScaleVelocity,
+            countPulseStiffness, countPulseDamping, dt
+        )
+        self.countPulseRotation, self.countPulseRotationVelocity = Juice.updateSpring(
+            self.countPulseRotation, 0, self.countPulseRotationVelocity,
+            countPulseStiffness, countPulseDamping, dt
+        )
     end
 end
 
@@ -363,6 +381,15 @@ function DiceDisplay:setInSelectionRect(isIn)
     self.isInSelectionRect = isIn
     self.targetSelectionRectScale = isIn and 1.08 or 1
     self.targetSelectionRectYOffset = isIn and -8 or 0
+end
+
+-- Trigger count pulse animation (for score counting)
+function DiceDisplay:triggerCountPulse()
+    self.countPulseScale = 1.12
+    self.countPulseScaleVelocity = 0
+    -- Small random rotation impulse (±3 degrees)
+    self.countPulseRotation = (math.random() - 0.5) * math.rad(6)
+    self.countPulseRotationVelocity = 0
 end
 
 function DiceDisplay:mousepressed(x, y, button)
@@ -403,15 +430,18 @@ function DiceDisplay:draw()
                 breathScale, breathY = Juice.getBreathingValues(self.breathingTime, self.index)
             end
 
-            -- Combine all scale effects (include held scale and selection rect feedback)
+            -- Combine all scale effects (include held scale, selection rect feedback, and count pulse)
             local finalScaleX = baseScale * breathScale * self.selectionScale * self.hoverScaleX * self.heldScale *
-            self.selectionRectScale
+            self.selectionRectScale * self.countPulseScale
             local finalScaleY = baseScale * breathScale * self.selectionScale * self.hoverScaleY * self.heldScale *
-            self.selectionRectScale
+            self.selectionRectScale * self.countPulseScale
 
             -- Calculate position with breathing, selection offsets, and selection rect feedback
             local centerX = self.x + self.size / 2
             local centerY = self.y + self.size / 2 + breathY + self.selectionYOffset + self.selectionRectYOffset
+
+            -- Combine rotation (hover tilt + count pulse)
+            local finalRotation = self.hoverRotation + self.countPulseRotation
 
             -- No tint - dice are distinguished by position only
             love.graphics.setColor(1, 1, 1, 1)
@@ -420,7 +450,7 @@ function DiceDisplay:draw()
                 image,
                 quad,
                 centerX, centerY,
-                self.hoverRotation, -- Balatro-style tilt
+                finalRotation, -- Balatro-style tilt + count pulse
                 finalScaleX, finalScaleY,
                 spriteW / 2, spriteH / 2
             )

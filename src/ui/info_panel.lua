@@ -5,6 +5,7 @@ local Theme = require("src.ui.theme")
 local NineSlice = require("src.ui.nine_slice")
 local Button = require("src.ui.button")
 local HandFormula = require("src.ui.hand_formula")
+local ScoreAnimation = require("src.ui.score_animation")
 
 local InfoPanel = {}
 InfoPanel.__index = InfoPanel
@@ -258,8 +259,10 @@ function InfoPanel:drawScoreSection(x, y, width, height)
     local textY = y + (boxHeight - Theme.fonts.large:getHeight()) / 2
     Theme:drawTextWithShadow("Score", labelX, textY, Theme.fonts.large, Theme.colors.text)
 
-    -- Score value on right
-    local score = self.getScore()
+    -- Score value on right (use animated value if available)
+    local scoreAnim = ScoreAnimation.getInstance()
+    local animatedScore = scoreAnim:getAnimatedTotalScore()
+    local score = animatedScore or self.getScore()
     local scoreText = tostring(score)
     local scoreWidth = Theme.fonts.huge:getWidth(scoreText)
     local scoreX = x + width - scoreWidth - 16
@@ -272,6 +275,10 @@ function InfoPanel:drawHandPreview(x, y, width, height)
 
     -- Hand preview box (always visible)
     self.nineSlice:draw(x, y, width, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
+
+    -- Check if score animation is running
+    local scoreAnim = ScoreAnimation.getInstance()
+    local isAnimating = scoreAnim:isAnimating()
 
     local detectedHand = self.getDetectedHand()
     local breakdown = self.getHandBreakdown()
@@ -298,33 +305,82 @@ function InfoPanel:drawHandPreview(x, y, width, height)
         local spacing = 12
         local boxWidth = (formulaWidth - spacing * 2 - xSymbolWidth) / 2
 
-        -- Chips box (blue)
-        love.graphics.setColor(Theme.colors.upgradePoints)
-        love.graphics.rectangle("fill", formulaX, formulaY, boxWidth, boxHeightInner, 8)
+        -- Get animation values
+        local boxAlpha = isAnimating and scoreAnim:getBoxAlpha() or 1
+        local chipsTextScale = isAnimating and scoreAnim:getChipsTextScale() or 1
+        local showHandScore = isAnimating and scoreAnim:isHandScoreVisible()
 
-        local chipsText = tostring(breakdown.basePoints + breakdown.pips)
-        local chipsTextWidth = Theme.fonts.large:getWidth(chipsText)
-        local chipsTextX = formulaX + (boxWidth - chipsTextWidth) / 2
-        local textCenterY = formulaY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
-        love.graphics.setColor(Theme.colors.text)
-        love.graphics.setFont(Theme.fonts.large)
-        love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textCenterY))
+        -- Calculate center for hand score
+        local formulaCenterX = formulaX + formulaWidth / 2
+        local formulaCenterY = formulaY + boxHeightInner / 2
 
-        -- "x" symbol
-        local xX = formulaX + boxWidth + spacing
-        love.graphics.setColor(Theme.colors.textMuted)
-        love.graphics.print("x", xX, textCenterY)
+        if showHandScore then
+            -- Draw hand score instead of formula boxes
+            local handScore = scoreAnim:getHandScore()
+            local handScoreScale = scoreAnim:getHandScoreScale()
+            local scoreText = "+" .. tostring(handScore)
 
-        -- Mult box (red)
-        local multBoxX = xX + xSymbolWidth + spacing
-        love.graphics.setColor(Theme.colors.upgradeMult)
-        love.graphics.rectangle("fill", multBoxX, formulaY, boxWidth, boxHeightInner, 8)
+            love.graphics.push()
+            love.graphics.translate(formulaCenterX, formulaCenterY)
+            love.graphics.scale(handScoreScale, handScoreScale)
+            love.graphics.translate(-formulaCenterX, -formulaCenterY)
 
-        local multText = tostring(breakdown.mult)
-        local multTextWidth = Theme.fonts.large:getWidth(multText)
-        local multTextX = multBoxX + (boxWidth - multTextWidth) / 2
-        love.graphics.setColor(Theme.colors.text)
-        love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
+            local scoreWidth = Theme.fonts.huge:getWidth(scoreText)
+            local scoreX = formulaCenterX - scoreWidth / 2
+            local scoreY = formulaCenterY - Theme.fonts.huge:getHeight() / 2
+            Theme:drawTextWithShadow(scoreText, scoreX, scoreY, Theme.fonts.huge, Theme.colors.gold)
+
+            love.graphics.pop()
+        end
+
+        if boxAlpha > 0.01 then
+            -- Draw boxes WITHOUT scaling (boxes stay stable)
+            -- Chips box (blue)
+            local chipsColor = Theme.colors.upgradePoints
+            love.graphics.setColor(chipsColor[1], chipsColor[2], chipsColor[3], boxAlpha)
+            love.graphics.rectangle("fill", formulaX, formulaY, boxWidth, boxHeightInner, 8)
+
+            -- Use animated chips value if available
+            local animatedChips = scoreAnim:getAnimatedChips()
+            local chipsValue = animatedChips or (breakdown.basePoints + breakdown.pips)
+            local chipsText = tostring(chipsValue)
+            local textCenterY = formulaY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
+
+            -- Draw chips text with subtle scale pulse (only the text, not the box)
+            local chipsCenterX = formulaX + boxWidth / 2
+            local chipsCenterY = textCenterY + Theme.fonts.large:getHeight() / 2
+
+            love.graphics.push()
+            love.graphics.translate(chipsCenterX, chipsCenterY)
+            love.graphics.scale(chipsTextScale, chipsTextScale)
+            love.graphics.translate(-chipsCenterX, -chipsCenterY)
+
+            local chipsTextWidth = Theme.fonts.large:getWidth(chipsText)
+            local chipsTextX = formulaX + (boxWidth - chipsTextWidth) / 2
+            love.graphics.setColor(1, 1, 1, boxAlpha)
+            love.graphics.setFont(Theme.fonts.large)
+            love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textCenterY))
+
+            love.graphics.pop()
+
+            -- "x" symbol (no scaling)
+            local xX = formulaX + boxWidth + spacing
+            local mutedColor = Theme.colors.textMuted
+            love.graphics.setColor(mutedColor[1], mutedColor[2], mutedColor[3], boxAlpha)
+            love.graphics.print("x", xX, textCenterY)
+
+            -- Mult box (red) - no scaling
+            local multBoxX = xX + xSymbolWidth + spacing
+            local multColor = Theme.colors.upgradeMult
+            love.graphics.setColor(multColor[1], multColor[2], multColor[3], boxAlpha)
+            love.graphics.rectangle("fill", multBoxX, formulaY, boxWidth, boxHeightInner, 8)
+
+            local multText = tostring(breakdown.mult)
+            local multTextWidth = Theme.fonts.large:getWidth(multText)
+            local multTextX = multBoxX + (boxWidth - multTextWidth) / 2
+            love.graphics.setColor(1, 1, 1, boxAlpha)
+            love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
+        end
     else
         -- Empty state - show just the formula boxes without numbers/text
         local formulaX = x + 16

@@ -12,6 +12,7 @@ local ItemStrip = require("src.ui.item_strip")
 local InfoPanel = require("src.ui.info_panel")
 local DualCta = require("src.ui.dual_cta")
 local Juice = require("src.dice.juice")
+local ScoreAnimation = require("src.ui.score_animation")
 
 local PlayState = {}
 PlayState.__index = PlayState
@@ -215,6 +216,10 @@ function PlayState:canPlayHand()
     if GameState.isRolling then return false end
     if not GameState.hasRolledThisHand then return false end
 
+    -- Block during score animation
+    local scoreAnim = ScoreAnimation.getInstance()
+    if scoreAnim:isAnimating() then return false end
+
     -- Check if a valid hand is detected
     local detected = self:getDetectedHand()
     return detected ~= nil
@@ -223,6 +228,11 @@ end
 function PlayState:canRoll()
     if GameState.isRolling then return false end
     if not GameState:canRoll() then return false end
+
+    -- Block during score animation
+    local scoreAnim = ScoreAnimation.getInstance()
+    if scoreAnim:isAnimating() then return false end
+
     -- Can roll if we have rolls remaining
     return true
 end
@@ -232,6 +242,10 @@ function PlayState:onDiceClick(index)
     if GameState.isRolling then return end
     if not GameState.hasRolledThisHand then return end
 
+    -- Block during score animation
+    local scoreAnim = ScoreAnimation.getInstance()
+    if scoreAnim:isAnimating() then return end
+
     -- Toggle the dice selection
     GameState:toggleDiceSelection(index)
 end
@@ -239,12 +253,70 @@ end
 function PlayState:onPlayHandClick()
     if not self:canPlayHand() then return end
 
+    local scoreAnim = ScoreAnimation.getInstance()
+    if scoreAnim:isAnimating() then return end
+
     local detected = self:getDetectedHand()
     if not detected then return end
 
-    local score = Scoring.calculateScore(detected.id, GameState.dice)
-    GameState:useHand(detected.id, score)
+    local breakdown = Scoring.getBreakdown(detected.id, GameState.dice)
+    local oldScore = GameState.currentScore
 
+    -- Get scoring dice indices in visual order
+    local scoringIndices = self:getScoringDiceIndicesInVisualOrder(detected.id)
+
+    -- Start the counting animation
+    scoreAnim:start({
+        handId = detected.id,
+        breakdown = breakdown,
+        oldScore = oldScore,
+        scoringDiceIndices = scoringIndices,
+        diceDisplays = self.diceDisplays,
+        diceVisualOrder = self.diceVisualOrder,
+        infoPanel = self.infoPanel,
+        onComplete = function()
+            -- Update game state after animation completes
+            GameState:useHand(detected.id, breakdown.total)
+            self:handlePostScoreTransition()
+        end,
+    })
+end
+
+-- Get scoring dice indices sorted by visual order (left to right)
+function PlayState:getScoringDiceIndicesInVisualOrder(handId)
+    local selectedIndices = GameState:getSelectedDiceIndices()
+    local scoringIndices = {}
+
+    if Scoring.isUpperSectionHand(handId) then
+        -- Upper section hands: only dice matching the target face
+        local targetFace = Scoring.getFaceFromHandId(handId)
+        for _, idx in ipairs(selectedIndices) do
+            if GameState.dice[idx].value == targetFace then
+                table.insert(scoringIndices, idx)
+            end
+        end
+    else
+        -- Combination hands: all selected dice
+        for _, idx in ipairs(selectedIndices) do
+            table.insert(scoringIndices, idx)
+        end
+    end
+
+    -- Sort by visual order (position in diceVisualOrder)
+    table.sort(scoringIndices, function(a, b)
+        local slotA, slotB = 0, 0
+        for slot, dieIndex in ipairs(self.diceVisualOrder) do
+            if dieIndex == a then slotA = slot end
+            if dieIndex == b then slotB = slot end
+        end
+        return slotA < slotB
+    end)
+
+    return scoringIndices
+end
+
+-- Handle transition after score animation completes
+function PlayState:handlePostScoreTransition()
     -- Check end conditions
     if GameState:hasLostLevel() then
         self.stateMachine:change("result", {
@@ -252,7 +324,7 @@ function PlayState:onPlayHandClick()
             stateMachine = self.stateMachine,
         })
     elseif GameState:hasReachedGoal() then
-        -- Goal reached! Immediately cash out
+        -- Goal reached! Cash out
         self:cashOut()
     elseif GameState:allHandsUsed() then
         -- All hands used but goal not reached
@@ -328,6 +400,10 @@ function PlayState:update(dt)
 
     -- Update juice effects (screen shake)
     Juice.updateShake(dt)
+
+    -- Update score animation
+    local scoreAnim = ScoreAnimation.getInstance()
+    scoreAnim:update(dt)
 
     -- Update dice displays
     for _, display in ipairs(self.diceDisplays) do
@@ -532,6 +608,10 @@ function PlayState:draw()
         self:drawSelectionRect()
     end
 
+    -- Draw score animation pop texts (on top of dice)
+    local scoreAnim = ScoreAnimation.getInstance()
+    scoreAnim:draw()
+
     love.graphics.pop()
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -710,6 +790,15 @@ function PlayState:mousereleased(x, y, button)
 end
 
 function PlayState:keypressed(key)
+    -- Check if score animation is running - Space/Enter can skip it
+    local scoreAnim = ScoreAnimation.getInstance()
+    if scoreAnim:isAnimating() then
+        if key == "space" or key == "return" then
+            scoreAnim:skip()
+        end
+        return
+    end
+
     if key == "space" then
         -- Roll if possible, otherwise play hand if possible
         if self:canRoll() then

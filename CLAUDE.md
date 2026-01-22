@@ -112,6 +112,20 @@ All in `src/ui/`:
 - **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
 - **dual_cta.lua**: Two action buttons - "Play Hand" and "Roll"
 - **item_strip.lua**: 5+2 item slots at top center
+- **score_animation.lua**: Counting animation when playing a hand
+- **pop_text.lua**: Floating text with spring animation
+
+### Counting Animation
+
+When "Play Hand" is pressed, a satisfying counting animation plays instead of instant calculation. See `src/ui/CLAUDE_COUNTING.md` for detailed documentation.
+
+**Animation Sequence:**
+1. Scoring dice highlight left-to-right (0.08s per die)
+2. Pip numbers pop up above each die (0.12s per die)
+3. Formula boxes fade, hand score appears (0.6s)
+4. Total score counts up (0.4-1.2s)
+
+**Skip:** Press Space or Enter during animation to skip to the end.
 
 ### Text Rendering
 
