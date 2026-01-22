@@ -240,6 +240,41 @@ function Scoring.detectBestKombinationFromIndices(selectedIndices, dice)
     return nil
 end
 
+-- Detect the single best hand from selected dice
+-- Priority: Yahtzee > Large Straight > Small Straight > Full House > 4-of-Kind > 3-of-Kind > Upper (by count)
+-- Returns {id, name, level, scoringDice} or nil
+function Scoring.detectBestHand(selectedIndices, dice)
+    if #selectedIndices == 0 then
+        return nil
+    end
+
+    -- First check for combination hands (lower section) - these take priority
+    local kombiId = Scoring.detectBestKombinationFromIndices(selectedIndices, dice)
+    if kombiId then
+        local def = require("src.game.hands"):get(kombiId)
+        return {
+            id = kombiId,
+            name = def.name,
+            level = def.level or 1,
+            scoringDice = Scoring.getScoringDiceForHand(kombiId, selectedIndices, dice)
+        }
+    end
+
+    -- Fall back to upper section (Zahlen) hand
+    local zahlenId = Scoring.detectZahlenHand(selectedIndices, dice)
+    if zahlenId then
+        local def = require("src.game.hands"):get(zahlenId)
+        return {
+            id = zahlenId,
+            name = def.name,
+            level = def.level or 1,
+            scoringDice = Scoring.getScoringDiceForHand(zahlenId, selectedIndices, dice)
+        }
+    end
+
+    return nil
+end
+
 -- Map face values to hand IDs for Zahlen
 local faceToHandId = {
     [1] = "ones",
@@ -251,7 +286,8 @@ local faceToHandId = {
 }
 
 -- Detect the Zahlen hand based on selected dice indices
--- Returns the hand ID for the highest face value among selected dice
+-- Returns the hand ID for the face with the HIGHEST COUNT (not highest face value)
+-- On ties, prefers higher face value
 function Scoring.detectZahlenHand(selectedIndices, dice)
     if #selectedIndices == 0 then
         return nil
@@ -268,9 +304,9 @@ function Scoring.detectZahlenHand(selectedIndices, dice)
     end
 
     local bestFace = 0
-    local maxCount = -1
+    local maxCount = 0
 
-    -- Iterate from 6 down to 1 to prioritize higher face value on ties
+    -- Find face with highest count, on ties prefer higher face value
     for face = 6, 1, -1 do
         if counts[face] > maxCount then
             maxCount = counts[face]
@@ -278,7 +314,7 @@ function Scoring.detectZahlenHand(selectedIndices, dice)
         end
     end
 
-    if bestFace == 0 then return nil end
+    if bestFace == 0 or maxCount == 0 then return nil end
     return faceToHandId[bestFace]
 end
 

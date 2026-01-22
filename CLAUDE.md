@@ -27,7 +27,6 @@ Requires Love2D 11.4+ installed on the system.
 - **Space** - Roll dice or play hand (context-dependent)
 - **Backspace** - Roll dice (shortcut for "Roll")
 - **1-5** - Toggle dice selection
-- **Left/Right arrows** - Navigate between hand cards
 - **F3** - Toggle scaling debug
 - **F10** - Toggle fullscreen
 - **Escape** - Quit
@@ -73,11 +72,15 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
 ### Selection Mechanics
 
 - **Unified Selection**: Click any die to toggle selection. Selected dice move up visually and are locked (not rerolled).
-- **Hand Detection**: Based on selected dice, the game detects playable hands:
-  - **Numbers** (upper section): The highest face value among selected dice determines the hand (e.g., selecting dice 5,5,3 → "Fives")
-  - **Combinations** (lower section): Best pattern match is detected (priority: Yahtzee > Large Straight > Small Straight > Full House > 4ofKind > 3ofKind)
-- **Hand Cards**: 1 or 2 hand cards appear above CTAs showing playable hands. If both Numbers and Combinations match, two cards are shown.
-- **Hand Selection**: Click a hand card (or use arrow keys) to select which hand to play. Only one can be selected at a time.
+- **Auto-Detection**: Based on selected dice, the game automatically detects the BEST playable hand with this priority:
+  1. **Yahtzee** (5 matching)
+  2. **Large Straight** (5 consecutive)
+  3. **Small Straight** (4 consecutive)
+  4. **Full House** (3+2)
+  5. **Four of a Kind** (4 matching)
+  6. **Three of a Kind** (3 matching)
+  7. **Upper section** - falls back to the face with highest count (e.g., 2,2,6 → "Twos" not "Sixes")
+- **Hand Preview**: The info panel displays the auto-detected best hand.
 - **Rolling**: Selected dice stay locked, unselected dice get re-rolled.
 
 ### Dice Animation System
@@ -98,8 +101,6 @@ All in `src/ui/`:
 - **panel.lua**, **button.lua**: Basic UI primitives
 - **dice_display.lua**: Wraps Die with animation support
 - **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
-- **hand_card.lua**: Single hand card showing hand name, level, and scoring dice
-- **hand_card_area.lua**: Container managing 0-2 hand cards with radio-button selection
 - **dual_cta.lua**: Two action buttons - "Play Hand" and "Roll"
 - **item_strip.lua**: 5+2 item slots at top center
 
@@ -129,9 +130,8 @@ Theme:drawTextRightWithShadow(text, x, y, width, font, color, shadowOffset)
 - `Scoring.isValidHand(handId, dice)` - Check if pattern matches
 - `Scoring.calculateScore(handId, dice)` - Returns `(basePoints + pips) * mult`
 - `Scoring.getBreakdown(handId, dice)` - Detailed breakdown for UI
-- `Scoring.detectZahlenHand(selectedIndices, dice)` - Detect upper hand from selection
-- `Scoring.detectBestKombinationFromIndices(selectedIndices, dice)` - Detect highest priority pattern from selected dice
-- `Scoring.getScoringDiceForHand(handId, selectedIndices, dice)` - Get dice values that contribute to score (for hand card display)
+- `Scoring.detectBestHand(selectedIndices, dice)` - Detect the single best hand from selected dice (combination > upper)
+- `Scoring.getScoringDiceForHand(handId, selectedIndices, dice)` - Get dice values that contribute to score
 
 ## Module Pattern
 

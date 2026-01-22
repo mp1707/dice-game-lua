@@ -1,17 +1,14 @@
 -- Play State - Main gameplay
--- Left: Info panel | Center: Item strip + Dice + Hand Cards + CTAs
+-- Left: Info panel | Center: Item strip + Dice + CTAs
 
 local Theme = require("src.ui.theme")
 local Timer = require("src.core.timer")
 local GameState = require("src.game.game_state")
-local Hands = require("src.game.hands")
 local Scoring = require("src.game.scoring")
-local Levels = require("src.game.levels")
 
 local NineSlice = require("src.ui.nine_slice")
 local DiceDisplay = require("src.ui.dice_display")
 local ItemStrip = require("src.ui.item_strip")
-local HandCardArea = require("src.ui.hand_card_area")
 local InfoPanel = require("src.ui.info_panel")
 local DualCta = require("src.ui.dual_cta")
 local Juice = require("src.dice.juice")
@@ -28,7 +25,6 @@ function PlayState.new()
     -- UI Components
     self.diceDisplays = {}
     self.itemStrip = nil
-    self.handCardArea = nil
     self.infoPanel = nil
     self.dualCta = nil
 
@@ -54,7 +50,6 @@ function PlayState:enter(params)
     self:initDiceHomePositions()
     self:initDiceDisplays()
     self:initItemStrip()
-    self:initHandCardArea()
     self:initInfoPanel()
     self:initDualCta()
 end
@@ -115,16 +110,6 @@ function PlayState:initItemStrip()
     self.itemStrip = ItemStrip.new({
         x = stripX,
         y = layout.itemStripY,
-    })
-end
-
-function PlayState:initHandCardArea()
-    local layout = Theme.layout
-
-    self.handCardArea = HandCardArea.new({
-        x = layout.centerX,
-        y = layout.handCardAreaY,
-        width = layout.centerWidth,
     })
 end
 
@@ -198,68 +183,26 @@ function PlayState:initDualCta()
     })
 end
 
--- Get the currently selected hand from the hand card area
+-- Auto-detect the best hand from selected dice
 function PlayState:getDetectedHand()
-    local selectedHand = self.handCardArea:getSelectedHand()
-    if selectedHand then
-        return {
-            id = selectedHand.id,
-            name = selectedHand.name,
-            level = selectedHand.level or 1,
-        }
-    end
-    return nil
-end
-
--- Update hand cards based on current dice selection
-function PlayState:updateHandCards()
     local indices = GameState:getSelectedDiceIndices()
-    if #indices == 0 then
-        self.handCardArea:setHands(nil, nil)
-        return
+    local hand = Scoring.detectBestHand(indices, GameState.dice)
+
+    -- Filter out used hands
+    if hand and GameState:isHandUsed(hand.id) then
+        return nil
     end
 
-    -- Detect both hand types
-    local zahlenId = Scoring.detectZahlenHand(indices, GameState.dice)
-    local kombiId = Scoring.detectBestKombinationFromIndices(indices, GameState.dice)
-
-    local zahlenHand = nil
-    if zahlenId and not GameState:isHandUsed(zahlenId) then
-        local def = Hands:get(zahlenId)
-        zahlenHand = {
-            id = zahlenId,
-            name = def.name,
-            level = def.level or 1,
-            scoringDice = Scoring.getScoringDiceForHand(zahlenId, indices, GameState.dice)
-        }
-    end
-
-    local kombiHand = nil
-    if kombiId and not GameState:isHandUsed(kombiId) then
-        local def = Hands:get(kombiId)
-        kombiHand = {
-            id = kombiId,
-            name = def.name,
-            level = def.level or 1,
-            scoringDice = Scoring.getScoringDiceForHand(kombiId, indices, GameState.dice)
-        }
-    end
-
-    self.handCardArea:setHands(zahlenHand, kombiHand)
+    return hand
 end
 
 function PlayState:canPlayHand()
     if GameState.isRolling then return false end
     if not GameState.hasRolledThisHand then return false end
 
-    -- Check if a hand card is selected
-    local selectedHand = self.handCardArea:getSelectedHand()
-    if not selectedHand then return false end
-
-    -- Check if the hand is already used
-    if GameState:isHandUsed(selectedHand.id) then return false end
-
-    return true
+    -- Check if a valid hand is detected
+    local detected = self:getDetectedHand()
+    return detected ~= nil
 end
 
 function PlayState:canRoll()
@@ -276,9 +219,6 @@ function PlayState:onDiceClick(index)
 
     -- Toggle the dice selection
     GameState:toggleDiceSelection(index)
-
-    -- Update hand cards to reflect new selection
-    self:updateHandCards()
 end
 
 function PlayState:onPlayHandClick()
@@ -336,9 +276,6 @@ function PlayState:resetForNextHand()
     -- Clear selections and reset game state
     GameState:resetForHand()
 
-    -- Explicitly clear displayed hand cards
-    self.handCardArea:setHands(nil, nil)
-
     -- Reset dice positions to home area
     for i, display in ipairs(self.diceDisplays) do
         display.isInHeldTray = false
@@ -367,9 +304,6 @@ function PlayState:update(dt)
     for _, display in ipairs(self.diceDisplays) do
         display:update(dt)
     end
-
-    -- Update hand card area
-    self.handCardArea:update(dt)
 
     -- Update info panel
     self.infoPanel:update(dt)
@@ -405,9 +339,6 @@ end
 function PlayState:draw()
     -- Draw item strip (top center)
     self.itemStrip:draw()
-
-    -- Draw hand card area (between dice and CTAs)
-    self.handCardArea:draw()
 
     -- Draw info panel (left panel)
     self.infoPanel:draw()
@@ -491,13 +422,6 @@ function PlayState:mousepressed(x, y, button)
         return
     end
 
-    -- Check hand card area clicks
-    if button == 1 then
-        if self.handCardArea:mousepressed(x, y, button) then
-            return
-        end
-    end
-
     -- Check if clicking on a dice - start drag (selection happens on release)
     if GameState.hasRolledThisHand and not GameState.isRolling then
         for i, display in ipairs(self.diceDisplays) do
@@ -540,7 +464,6 @@ function PlayState:mousereleased(x, y, button)
         if dragDist < clickThreshold then
             -- Simple click: toggle selection
             GameState:toggleDiceSelection(index)
-            self:updateHandCards()
         else
             -- Drag release: determine selection based on Y position
             local homeY = homePos.y
@@ -554,7 +477,6 @@ function PlayState:mousereleased(x, y, button)
             -- Change state if dropped in different zone
             if shouldBeSelected ~= isCurrentlySelected then
                 GameState:toggleDiceSelection(index)
-                self:updateHandCards()
             end
         end
 
@@ -579,9 +501,6 @@ function PlayState:keypressed(key)
         if self:canRoll() then
             self:rollDice()
         end
-    elseif key == "left" or key == "right" then
-        -- Arrow keys navigate hand cards
-        self.handCardArea:keypressed(key)
     elseif key == "1" or key == "2" or key == "3" or key == "4" or key == "5" then
         local index = tonumber(key)
         self:onDiceClick(index)
