@@ -127,10 +127,10 @@ Theme.layout = {
     itemSlotGap = 50, -- Gap between first 5 and last 2 slots
     itemSlotCount = 7,
 
-    -- Dice home area
-    diceHomeY = 380,
+    -- Dice home area (vertically centered between item strip and CTAs)
+    diceHomeY = 475,
     diceHomeHeight = 200,
-    diceSize = 100,
+    diceSize = 110,
     diceSpacing = 40,
     diceSelectedOffsetY = -80, -- How far up selected dice move
 
