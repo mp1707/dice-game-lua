@@ -113,6 +113,7 @@ function HandCard:draw()
 end
 
 function HandCard:containsPoint(px, py)
+    if not px or not py then return false end
     return px >= self.x and px <= self.x + self.width and
         py >= self.y and py <= self.y + self.height
 end

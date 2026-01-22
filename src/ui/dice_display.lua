@@ -34,10 +34,15 @@ function DiceDisplay.new(config)
     -- Animation state tracking
     self.isAnimating = false
 
-    -- Position animation state (for moving to/from held tray)
+    -- Spring position animation state
     self.targetX = nil
     self.targetY = nil
-    self.animationSpeed = 1200 -- pixels per second
+    self.velocityX = 0
+    self.velocityY = 0
+    -- Stiffness: How strong the spring is (speed)
+    -- Damping: friction (prevents endless oscillation)
+    self.moveStiffness = 180
+    self.moveDamping = 20
 
     -- Home position (loose area position)
     self.homeX = config.x or 0
@@ -160,6 +165,8 @@ function DiceDisplay:startDrag(mouseX, mouseY)
     -- Cancel any position animation
     self.targetX = nil
     self.targetY = nil
+    self.velocityX = 0
+    self.velocityY = 0
     -- Stop roll animation if in progress
     if self.isAnimating then
         self:stopAnimation()
@@ -183,6 +190,8 @@ function DiceDisplay:endDrag()
     self.isDragging = false
     self.isHeld = false
     self.targetHeldScale = 1
+    self.velocityX = 0
+    self.velocityY = 0
     return self.y -- Return current Y position for selection logic
 end
 
@@ -218,6 +227,8 @@ function DiceDisplay:snapTo(x, y)
     self.y = y
     self.targetX = nil
     self.targetY = nil
+    self.velocityX = 0
+    self.velocityY = 0
     -- Update die position
     self.die.x = x
     self.die.y = y
@@ -238,33 +249,38 @@ function DiceDisplay:update(dt)
         end
     end
 
-    -- Position animation (lerp towards target) - for tray movement
+    -- Spring Position Animation (Snap-back)
+    -- Uses spring physics for a "rubber band" effect
     if self.targetX and self.targetY and not self.isDragging and not self.isAnimating then
-        local dx = self.targetX - self.x
-        local dy = self.targetY - self.y
-        local dist = math.sqrt(dx * dx + dy * dy)
+        local finishedX = false
+        local finishedY = false
 
-        if dist < 2 then
-            -- Snap to target
-            self.x = self.targetX
-            self.y = self.targetY
+        -- Update X spring
+        self.x, self.velocityX = Juice.updateSpring(
+            self.x, self.targetX, self.velocityX,
+            self.moveStiffness, self.moveDamping, dt
+        )
+
+        -- Update Y spring
+        self.y, self.velocityY = Juice.updateSpring(
+            self.y, self.targetY, self.velocityY,
+            self.moveStiffness, self.moveDamping, dt
+        )
+
+        -- Check stability (Juice.updateSpring snaps if very close and slow)
+        if self.x == self.targetX and self.velocityX == 0 then finishedX = true end
+        if self.y == self.targetY and self.velocityY == 0 then finishedY = true end
+
+        -- Clear target if stable
+        if finishedX and finishedY then
             self.targetX = nil
             self.targetY = nil
-            -- Update die position
-            self.die.x = self.x
-            self.die.y = self.y
-            self.die.slotCenterX = self.x + self.size / 2
-        else
-            -- Move towards target
-            local moveAmount = self.animationSpeed * dt
-            local ratio = math.min(moveAmount / dist, 1)
-            self.x = self.x + dx * ratio
-            self.y = self.y + dy * ratio
-            -- Update die position
-            self.die.x = self.x
-            self.die.y = self.y
-            self.die.slotCenterX = self.x + self.size / 2
         end
+
+        -- Sync die position
+        self.die.x = self.x
+        self.die.y = self.y
+        self.die.slotCenterX = self.x + self.size / 2
     end
 
     -- =========================================================================

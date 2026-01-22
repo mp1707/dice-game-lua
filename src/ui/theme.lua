@@ -109,14 +109,15 @@ Theme.layout = {
     innerGap = 12, -- Consistent small gap between elements
 
     -- Left Panel (Info/Stats) - NOW ON LEFT
-    leftPanelX = 24,
+    leftPanelX = 100, -- Adjusted to 100px padding
     leftPanelY = 24,
     leftPanelWidth = 380,
     leftPanelHeight = 1032,
 
     -- Center Area (Item Strip + Selection Panels + Dice + CTAs)
-    centerX = 428,      -- 24 + 380 + 24
-    centerWidth = 1468, -- 1920 - 428 - 24
+    -- Padding (100) + Panel (380) + Padding (24) = 504
+    centerX = 504,
+    centerWidth = 1392, -- 1920 - 504 - 24
 
     -- Item strip (top center) - 5 + gap + 2 slots
     itemStripY = 24,

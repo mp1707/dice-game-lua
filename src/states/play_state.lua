@@ -406,6 +406,15 @@ function PlayState:draw()
     -- Draw item strip (top center)
     self.itemStrip:draw()
 
+    -- Draw hand card area (between dice and CTAs)
+    self.handCardArea:draw()
+
+    -- Draw info panel (left panel)
+    self.infoPanel:draw()
+
+    -- Draw dual CTA buttons (bottom center)
+    self.dualCta:draw()
+
     -- Apply screen shake to dice area
     local shakeX, shakeY = Juice.getShakeOffset()
     love.graphics.push()
@@ -455,15 +464,6 @@ function PlayState:draw()
     end
 
     love.graphics.pop()
-
-    -- Draw hand card area (between dice and CTAs)
-    self.handCardArea:draw()
-
-    -- Draw info panel (left panel)
-    self.infoPanel:draw()
-
-    -- Draw dual CTA buttons (bottom center)
-    self.dualCta:draw()
 
     love.graphics.setColor(1, 1, 1, 1)
 end
