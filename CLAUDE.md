@@ -20,6 +20,10 @@ Requires Love2D 11.4+ installed on the system.
 
 - **Left-click dice** - Toggle selection (Select dice to REROLL or PLAY)
 - **Click hand card** - Select which hand to play (radio-button style)
+- **Drag on background** - Draw a selection rectangle to select multiple dice at once (desktop-style selection)
+  - Left-click drag: Cyan rectangle, selects dice
+  - Right-click drag: Purple rectangle, deselects dice
+  - Dice inside the rectangle show visual feedback (elevation + scale)
 
 ### Keyboard
 

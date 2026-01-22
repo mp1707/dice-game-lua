@@ -47,6 +47,14 @@ function PlayState.new()
     -- Round counter (mock for now)
     self.currentRound = 1
 
+    -- Selection rectangle state (drag-to-select)
+    self.isSelectingRect = false
+    self.isDeselecting = false -- true if right-click (deselect mode)
+    self.selectRectStartX = nil
+    self.selectRectStartY = nil
+    self.selectRectEndX = nil
+    self.selectRectEndY = nil
+
     return self
 end
 
@@ -519,12 +527,25 @@ function PlayState:draw()
         )
     end
 
+    -- Draw selection rectangle on top of dice (but below UI)
+    if self.isSelectingRect then
+        self:drawSelectionRect()
+    end
+
     love.graphics.pop()
 
     love.graphics.setColor(1, 1, 1, 1)
 end
 
 function PlayState:mousemoved(x, y)
+    -- Update selection rectangle if active
+    if self.isSelectingRect then
+        self.selectRectEndX = x
+        self.selectRectEndY = y
+        -- Update dice feedback (which dice are inside the rectangle)
+        self:updateDiceInSelectionRect()
+    end
+
     -- Update dragging dice position
     if self.draggingDice then
         self.draggingDice:updateDrag(x, y)
@@ -562,6 +583,44 @@ function PlayState:mousepressed(x, y, button)
                     return
                 end
             end
+        end
+    end
+
+    -- Background click - start selection rectangle (works anytime for fidgeting)
+    if button == 1 and not GameState.isRolling then
+        -- Check if click is NOT on the info panel
+        local layout = Theme.layout
+        local isOnInfoPanel = x >= layout.leftPanelX and
+            x <= layout.leftPanelX + layout.leftPanelWidth and
+            y >= layout.leftPanelY and
+            y <= layout.leftPanelY + layout.leftPanelHeight
+
+        if not isOnInfoPanel then
+            self.isSelectingRect = true
+            self.isDeselecting = false
+            self.selectRectStartX = x
+            self.selectRectStartY = y
+            self.selectRectEndX = x
+            self.selectRectEndY = y
+        end
+    end
+
+    -- Right-click background - start deselection rectangle
+    if button == 2 and not GameState.isRolling then
+        -- Check if click is NOT on the info panel
+        local layout = Theme.layout
+        local isOnInfoPanel = x >= layout.leftPanelX and
+            x <= layout.leftPanelX + layout.leftPanelWidth and
+            y >= layout.leftPanelY and
+            y <= layout.leftPanelY + layout.leftPanelHeight
+
+        if not isOnInfoPanel then
+            self.isSelectingRect = true
+            self.isDeselecting = true
+            self.selectRectStartX = x
+            self.selectRectStartY = y
+            self.selectRectEndX = x
+            self.selectRectEndY = y
         end
     end
 end
@@ -631,6 +690,23 @@ function PlayState:mousereleased(x, y, button)
         self.dragStartY = nil
         self.hoverSlot = nil
     end
+
+    -- Handle selection rectangle release
+    if (button == 1 or button == 2) and self.isSelectingRect then
+        -- Select or deselect all dice inside the rectangle
+        self:selectDiceInRect()
+        -- Clear selection rectangle state
+        self.isSelectingRect = false
+        self.isDeselecting = false
+        self.selectRectStartX = nil
+        self.selectRectStartY = nil
+        self.selectRectEndX = nil
+        self.selectRectEndY = nil
+        -- Clear dice feedback
+        for _, display in ipairs(self.diceDisplays) do
+            display:setInSelectionRect(false)
+        end
+    end
 end
 
 function PlayState:keypressed(key)
@@ -649,6 +725,91 @@ function PlayState:keypressed(key)
     elseif key == "1" or key == "2" or key == "3" or key == "4" or key == "5" then
         local index = tonumber(key)
         self:onDiceClick(index)
+    end
+end
+
+-- =========================================================================
+-- SELECTION RECTANGLE HELPERS
+-- =========================================================================
+
+-- Draw the selection rectangle
+function PlayState:drawSelectionRect()
+    if not self.selectRectStartX then return end
+
+    -- Calculate rectangle bounds (handle reverse dragging)
+    local x1 = math.min(self.selectRectStartX, self.selectRectEndX)
+    local y1 = math.min(self.selectRectStartY, self.selectRectEndY)
+    local x2 = math.max(self.selectRectStartX, self.selectRectEndX)
+    local y2 = math.max(self.selectRectStartY, self.selectRectEndY)
+    local w = x2 - x1
+    local h = y2 - y1
+
+    -- Draw filled rectangle (use purple for deselect mode)
+    if self.isDeselecting then
+        love.graphics.setColor(Theme.colors.deselectionRect)
+    else
+        love.graphics.setColor(Theme.colors.selectionRect)
+    end
+    love.graphics.rectangle("fill", x1, y1, w, h)
+
+    -- Draw border
+    if self.isDeselecting then
+        love.graphics.setColor(Theme.colors.deselectionRectBorder)
+    else
+        love.graphics.setColor(Theme.colors.selectionRectBorder)
+    end
+    love.graphics.setLineWidth(2)
+    love.graphics.rectangle("line", x1, y1, w, h)
+    love.graphics.setLineWidth(1)
+
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+-- Check if a dice display intersects with the selection rectangle
+function PlayState:isDiceInSelectionRect(display)
+    if not self.selectRectStartX then return false end
+
+    -- Calculate rectangle bounds
+    local rectX1 = math.min(self.selectRectStartX, self.selectRectEndX)
+    local rectY1 = math.min(self.selectRectStartY, self.selectRectEndY)
+    local rectX2 = math.max(self.selectRectStartX, self.selectRectEndX)
+    local rectY2 = math.max(self.selectRectStartY, self.selectRectEndY)
+
+    -- Dice bounds
+    local diceX1 = display.x
+    local diceY1 = display.y
+    local diceX2 = display.x + display.size
+    local diceY2 = display.y + display.size
+
+    -- Check for intersection (AABB collision)
+    return rectX1 < diceX2 and rectX2 > diceX1 and
+        rectY1 < diceY2 and rectY2 > diceY1
+end
+
+-- Update which dice are inside the selection rectangle (for visual feedback)
+function PlayState:updateDiceInSelectionRect()
+    for _, display in ipairs(self.diceDisplays) do
+        local isIn = self:isDiceInSelectionRect(display)
+        display:setInSelectionRect(isIn)
+    end
+end
+
+-- Select or deselect dice that are inside the selection rectangle
+function PlayState:selectDiceInRect()
+    for i, display in ipairs(self.diceDisplays) do
+        if self:isDiceInSelectionRect(display) then
+            if self.isDeselecting then
+                -- Deselect the dice (if currently selected)
+                if GameState:isDiceSelected(i) then
+                    GameState:toggleDiceSelection(i)
+                end
+            else
+                -- Select the dice (if not currently selected)
+                if not GameState:isDiceSelected(i) then
+                    GameState:toggleDiceSelection(i)
+                end
+            end
+        end
     end
 end
 

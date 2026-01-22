@@ -43,6 +43,13 @@ Theme.colors = {
     overlayWhite = { 1, 1, 1, 0.2 },
     overlayBlack = { 0, 0, 0, 0.3 },
     overlayCyan = { 0.302, 0.933, 0.918, 0.15 },
+
+    -- Selection rectangle (drag-to-select)
+    selectionRect = { 0.302, 0.933, 0.918, 0.15 },      -- Cyan fill with low opacity
+    selectionRectBorder = { 0.302, 0.933, 0.918, 0.5 }, -- Cyan border
+    -- Deselection rectangle (right-click to deselect)
+    deselectionRect = { 0.55, 0.35, 0.75, 0.15 },       -- Purple fill with low opacity
+    deselectionRectBorder = { 0.55, 0.35, 0.75, 0.5 },  -- Purple border
 }
 
 -- Spacing scale (pixels)

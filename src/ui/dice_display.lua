@@ -98,6 +98,13 @@ function DiceDisplay.new(config)
     self.mouseX = 0
     self.mouseY = 0
 
+    -- Selection rectangle feedback (when dice is inside drag selection)
+    self.isInSelectionRect = false
+    self.selectionRectScale = 1
+    self.targetSelectionRectScale = 1
+    self.selectionRectYOffset = 0
+    self.targetSelectionRectYOffset = 0
+
     return self
 end
 
@@ -336,6 +343,12 @@ function DiceDisplay:update(dt)
 
         -- Update held scale smoothly
         self.heldScale = self.heldScale + (self.targetHeldScale - self.heldScale) * hoverLerp
+
+        -- Update selection rectangle feedback smoothly
+        self.selectionRectScale = self.selectionRectScale +
+        (self.targetSelectionRectScale - self.selectionRectScale) * hoverLerp
+        self.selectionRectYOffset = self.selectionRectYOffset +
+        (self.targetSelectionRectYOffset - self.selectionRectYOffset) * hoverLerp
     end
 end
 
@@ -343,6 +356,13 @@ end
 function DiceDisplay:updateHover(mouseX, mouseY)
     self.mouseX = mouseX
     self.mouseY = mouseY
+end
+
+-- Set whether this die is inside the selection rectangle
+function DiceDisplay:setInSelectionRect(isIn)
+    self.isInSelectionRect = isIn
+    self.targetSelectionRectScale = isIn and 1.08 or 1
+    self.targetSelectionRectYOffset = isIn and -8 or 0
 end
 
 function DiceDisplay:mousepressed(x, y, button)
@@ -383,13 +403,15 @@ function DiceDisplay:draw()
                 breathScale, breathY = Juice.getBreathingValues(self.breathingTime, self.index)
             end
 
-            -- Combine all scale effects (include held scale)
-            local finalScaleX = baseScale * breathScale * self.selectionScale * self.hoverScaleX * self.heldScale
-            local finalScaleY = baseScale * breathScale * self.selectionScale * self.hoverScaleY * self.heldScale
+            -- Combine all scale effects (include held scale and selection rect feedback)
+            local finalScaleX = baseScale * breathScale * self.selectionScale * self.hoverScaleX * self.heldScale *
+            self.selectionRectScale
+            local finalScaleY = baseScale * breathScale * self.selectionScale * self.hoverScaleY * self.heldScale *
+            self.selectionRectScale
 
-            -- Calculate position with breathing and selection offsets
+            -- Calculate position with breathing, selection offsets, and selection rect feedback
             local centerX = self.x + self.size / 2
-            local centerY = self.y + self.size / 2 + breathY + self.selectionYOffset
+            local centerY = self.y + self.size / 2 + breathY + self.selectionYOffset + self.selectionRectYOffset
 
             -- No tint - dice are distinguished by position only
             love.graphics.setColor(1, 1, 1, 1)
