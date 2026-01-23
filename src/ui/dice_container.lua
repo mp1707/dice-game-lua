@@ -5,6 +5,7 @@
 local Theme = require("src.ui.theme")
 local DiceDisplay = require("src.ui.dice_display")
 local Juice = require("src.ui.juice")
+local Sound = require("src.core.sound")
 
 local DiceContainer = {}
 DiceContainer.__index = DiceContainer

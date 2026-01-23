@@ -2,6 +2,7 @@
 -- Holds all game data that persists across states
 
 local Levels = require("src.game.levels")
+local Sound = require("src.core.sound")
 
 local GameState = {
     -- Run state (persists across levels)
@@ -223,6 +224,7 @@ function GameState:toggleDiceSelection(index)
     for i, idx in ipairs(self.selectedDice) do
         if idx == index then
             -- Deselect: remove from array and unlock
+            Sound:play("click")
             table.remove(self.selectedDice, i)
             self.dice[index].locked = false
             -- Clear hand selection when dice change
@@ -232,6 +234,7 @@ function GameState:toggleDiceSelection(index)
     end
 
     -- Select: add to array and lock
+    Sound:play("lightClick")
     table.insert(self.selectedDice, index)
     self.dice[index].locked = true
     -- Clear hand selection when dice change

@@ -5,6 +5,7 @@ local Theme = require("src.ui.theme")
 local Timer = require("src.core.timer")
 local GameState = require("src.game.game_state")
 local Scoring = require("src.game.scoring")
+local Sound = require("src.core.sound")
 
 local NineSlice = require("src.ui.nine_slice")
 local ItemStrip = require("src.ui.item_strip")
@@ -234,10 +235,20 @@ function PlayState:getScoringDiceIndicesInVisualOrder(handId)
         -- Upper section hands: only dice matching the target face (from selected dice)
         local selectedIndices = GameState:getSelectedDiceIndices()
         local targetFace = Scoring.getFaceFromHandId(handId)
+
+        -- Collect indices to deselect (those that don't match target face)
+        local toDeselect = {}
         for _, idx in ipairs(selectedIndices) do
             if GameState.dice[idx].value == targetFace then
                 table.insert(scoringIndices, idx)
+            else
+                table.insert(toDeselect, idx)
             end
+        end
+
+        -- Deselect the non-matching dice
+        for _, idx in ipairs(toDeselect) do
+            GameState:toggleDiceSelection(idx)
         end
     else
         -- Lower section hands (x of a kind, straights, full house): ALL 5 dice
@@ -302,6 +313,12 @@ function PlayState:rollDice()
     if not GameState:rollDice() then return end
 
     GameState.isRolling = true
+
+    -- Play dice roll sound with delay to match when dice hit the table
+    -- Drop time is approximately 0.35s based on physics (height 200-350px, gravity 1800px/s²)
+    self.timer:after(0.35, function()
+        Sound:play("diceroll")
+    end)
 
     -- Start animations in container
     self.diceContainer:startRollAnimation(selectedIndices, isFirstRoll)

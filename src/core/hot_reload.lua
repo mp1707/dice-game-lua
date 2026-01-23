@@ -107,4 +107,7 @@ function HotReload:draw()
     end
 end
 
+-- Initialize mod times on load to prevent immediate reload
+HotReload.fileModTimes = getLuaFiles("src")
+
 return HotReload

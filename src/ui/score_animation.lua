@@ -5,6 +5,7 @@
 local Theme = require("src.ui.theme")
 local Juice = require("src.ui.juice")
 local PopText = require("src.ui.pop_text")
+local Sound = require("src.core.sound")
 
 local ScoreAnimation = {}
 ScoreAnimation.__index = ScoreAnimation
@@ -155,6 +156,9 @@ function ScoreAnimation:updateCounting(dt)
             local display = self.data.diceDisplays[dieIndex]
 
             if display then
+                -- Play tick sound for this die being counted
+                Sound:play("tick2")
+
                 -- Trigger BOTH selection pop AND count pulse at the same time
                 display.selectionScale = 1.15
                 display.selectionYOffset = -20

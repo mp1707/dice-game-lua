@@ -178,6 +178,7 @@ Singletons use direct table returns with `:method()` syntax.
 
 ## Assets
 
+- **Sound Effects**: `assets/soundfx/` - See `assets/soundfx/CLAUDE.md` for documentation
 - **Fonts**: `assets/fonts/m6x11plus.ttf` (pixel font)
 - **Icons**: `assets/icons/hands/` (dice faces, hand types), `assets/icons/ui/` (coin, glove, die, lock)
 - **UI**: `assets/ui/pixelSurface.png` (9-slice panel texture)

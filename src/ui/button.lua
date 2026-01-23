@@ -2,6 +2,7 @@
 
 local Theme = require("src.ui.theme")
 local NineSlice = require("src.ui.nine_slice")
+local Sound = require("src.core.sound")
 
 local Button = {}
 Button.__index = Button
@@ -79,6 +80,7 @@ function Button:mousereleased(x, y, button)
     if button == 1 and self.isPressed then
         self.isPressed = false
         if self:containsPoint(x, y) and self.enabled then
+            Sound:play("lightClick")
             self.onClick()
             return true
         end

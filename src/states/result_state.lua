@@ -8,6 +8,7 @@ local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
 local InfoPanel = require("src.ui.info_panel")
 local Juice = require("src.ui.juice")
+local Sound = require("src.core.sound")
 
 local ResultState = {}
 ResultState.__index = ResultState
@@ -34,6 +35,9 @@ function ResultState.new()
     self.staggerDelay = 0.4 -- Slower stagger (was 0.15)
     self.itemFadeDuration = 0.3
 
+    -- Track which rows have played their sound
+    self.rowSoundsPlayed = {}
+
     return self
 end
 
@@ -53,6 +57,8 @@ function ResultState:enter(params)
 
     -- Reset animation timer
     self.timer = 0
+    -- Reset row sounds tracking
+    self.rowSoundsPlayed = {}
 
     -- Initialize info panel for cashout phase
     self:initInfoPanel()
@@ -224,6 +230,12 @@ function ResultState:draw()
         local function drawRow(index, yOffset, drawFn)
             local startT = self.staggerStart + (index - 1) * self.staggerDelay
             if self.timer < startT then return end
+
+            -- Play cash sound when row first appears
+            if not self.rowSoundsPlayed[index] then
+                self.rowSoundsPlayed[index] = true
+                Sound:play("cash")
+            end
 
             local progress = math.min(1, (self.timer - startT) / self.itemFadeDuration)
             local eased = Juice.easeOutBack(progress) -- Juicy pop!

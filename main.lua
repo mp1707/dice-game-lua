@@ -10,6 +10,7 @@ local Theme
 local StateMachine
 local GameState
 local Scaling
+local Sound
 local stateMachine
 
 function love.load()
@@ -21,6 +22,7 @@ function love.load()
     StateMachine = require("src.core.state_machine")
     GameState = require("src.game.game_state")
     Scaling = require("src.core.scaling")
+    Sound = require("src.core.sound")
 
     -- Initialize systems
     Theme:load()
@@ -30,6 +32,10 @@ function love.load()
 
     -- Initialize Game State
     GameState:reset()
+
+    -- Start background music
+    love.audio.stop() -- Stop any previous audio (e.g. from hot reload)
+    Sound:startMusic()
 
     -- Initialize State Machine
     stateMachine = StateMachine.new({
