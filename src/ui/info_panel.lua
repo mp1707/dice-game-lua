@@ -26,6 +26,9 @@ function InfoPanel.new(config)
     -- Phase: "play", "cashout", or "shop"
     self.phase = config.phase or "play"
 
+    -- Callbacks
+    self.onInfoClick = config.onInfoClick
+
     -- Data callbacks
     self.getLevel = config.getLevel or function() return 1 end
     self.getRound = config.getRound or function() return 1 end
@@ -79,7 +82,9 @@ function InfoPanel.new(config)
         textColor = Theme.colors.text,
         font = Theme.fonts.normal,
         onClick = function()
-            -- Mock functionality for now
+            if self.onInfoClick then
+                self.onInfoClick()
+            end
         end,
     })
 

@@ -14,6 +14,7 @@ local DualCta = require("src.ui.dual_cta")
 local Juice = require("src.ui.juice")
 local ScoreAnimation = require("src.ui.score_animation")
 local DiceContainer = require("src.ui.dice_container")
+local HandsModal = require("src.ui.hands_modal")
 
 local PlayState = {}
 PlayState.__index = PlayState
@@ -29,6 +30,7 @@ function PlayState.new()
     self.infoPanel = nil
     self.dualCta = nil
     self.diceContainer = nil
+    self.handsModal = nil
 
     -- Reference to state machine (set in enter)
     self.stateMachine = nil
@@ -45,8 +47,17 @@ function PlayState:enter(params)
     -- Initialize UI components
     self:initDiceContainer()
     self:initItemStrip()
+    self:initHandsModal()
     self:initInfoPanel()
     self:initDualCta()
+end
+
+function PlayState:initHandsModal()
+    self.handsModal = HandsModal.new({
+        onClose = function()
+            -- Modal closed
+        end,
+    })
 end
 
 function PlayState:exit()
@@ -123,6 +134,9 @@ function PlayState:initInfoPanel()
                 return Scoring.getBreakdown(detected.id, GameState.dice)
             end
             return nil
+        end,
+        onInfoClick = function()
+            self.handsModal:open()
         end,
     })
 end
@@ -363,6 +377,9 @@ function PlayState:update(dt)
 
     -- Update dual CTA buttons
     self.dualCta:update(dt)
+
+    -- Update hands modal
+    self.handsModal:update(dt)
 end
 
 function PlayState:draw()
@@ -402,6 +419,9 @@ function PlayState:draw()
     local scoreAnim = ScoreAnimation.getInstance()
     scoreAnim:draw()
 
+    -- Draw hands modal (on top of everything)
+    self.handsModal:draw()
+
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -410,6 +430,13 @@ function PlayState:mousemoved(x, y)
 end
 
 function PlayState:mousepressed(x, y, button)
+    -- Check hands modal first when open
+    if self.handsModal.isOpen then
+        if self.handsModal:mousepressed(x, y, button) then
+            return
+        end
+    end
+
     -- Check info panel clicks (settings/info buttons)
     if self.infoPanel:mousepressed(x, y, button) then
         return
@@ -445,6 +472,11 @@ function PlayState:mousepressed(x, y, button)
 end
 
 function PlayState:mousereleased(x, y, button)
+    -- Release hands modal
+    if self.handsModal:mousereleased(x, y, button) then
+        return
+    end
+
     -- Release dual CTA
     self.dualCta:mousereleased(x, y, button)
 
@@ -456,6 +488,11 @@ function PlayState:mousereleased(x, y, button)
 end
 
 function PlayState:keypressed(key)
+    -- Check hands modal first
+    if self.handsModal:keypressed(key) then
+        return
+    end
+
     -- Check if score animation is running - Space/Enter can skip it
     local scoreAnim = ScoreAnimation.getInstance()
     if scoreAnim:isAnimating() then
