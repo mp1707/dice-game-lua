@@ -314,17 +314,13 @@ function PlayState:rollDice()
 
     GameState.isRolling = true
 
-    -- Play dice roll sound with delay to match when dice hit the table
-    -- Drop time is approximately 0.35s based on physics (height 200-350px, gravity 1800px/s²)
-    self.timer:after(0.35, function()
-        Sound:play("diceroll")
-    end)
+    -- Sound is now played per-die on impact (in dice_display.lua onBounce callback)
 
     -- Start animations in container
     self.diceContainer:startRollAnimation(selectedIndices, isFirstRoll)
 
-    -- Finish rolling state after animation
-    self.timer:after(1.5, function()
+    -- Finish rolling state after animation (shortened to match faster physics)
+    self.timer:after(0.8, function()
         GameState.isRolling = false
     end)
 end

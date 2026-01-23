@@ -3,31 +3,31 @@
 
 local Physics = {
     -- Gravity (pixels per second squared)
-    gravity = 1800,
+    gravity = 2200,
 
     -- Bounce behavior
-    baseBounceStrength = 650, -- Initial upward velocity on bounce
-    bounceDamping = 0.68,     -- Multiplier per bounce (0.5 = half strength)
-    horizontalDamping = 0.7,  -- How much horizontal speed is lost per bounce
+    baseBounceStrength = 380, -- Reduced for quicker settle
+    bounceDamping = 0.55,     -- More damping per bounce
+    horizontalDamping = 0.6,  -- More damping to settle faster
 
     -- Settling
-    settleSpeed = 8, -- Lerp speed when settling to final position
+    settleSpeed = 14, -- Faster lerp to final position
 
     -- Squash/stretch
-    squashDuration = 0.08, -- How long squash effect lasts
-    squashAmount = 0.7,    -- Scale Y multiplier during squash
-    stretchAmount = 1.2,   -- Scale Y multiplier during fast fall
+    squashDuration = 0.06, -- Slightly faster squash
+    squashAmount = 0.75,   -- Scale Y multiplier during squash
+    stretchAmount = 1.15,  -- Less stretch for snappier feel
 
     -- Roll animation
-    faceChangeInterval = 0.04,    -- How fast roll frames cycle during animation (~25fps)
+    faceChangeInterval = 0.035, -- Slightly faster face cycling
 
-    -- Initial drop parameters (ranges for randomization)
-    dropHeight = { min = 200, max = 350 },
-    initialVelocityX = { min = -80, max = 80 },
-    initialVelocityY = { min = 20, max = 60 },
+    -- Initial drop parameters (ranges for randomization) - REDUCED for shorter animation
+    dropHeight = { min = 120, max = 200 },
+    initialVelocityX = { min = -50, max = 50 },
+    initialVelocityY = { min = 10, max = 40 },
 
-    -- Bounce count range
-    bounceCount = { min = 2, max = 5 },
+    -- Bounce count range - REDUCED for faster settling
+    bounceCount = { min = 1, max = 2 },
 
     -- Slot constraints
     slotWidth = 70, -- How much horizontal freedom within slot

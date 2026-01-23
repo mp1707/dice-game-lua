@@ -14,6 +14,8 @@ love .
 
 Requires Love2D 11.4+ installed on the system.
 
+**Testing:** User tests manually. Do not start browser agents or run automated tests.
+
 ## Controls
 
 ### Mouse

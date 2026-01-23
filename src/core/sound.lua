@@ -15,7 +15,11 @@ local soundConfig = {
     click = { file = "assets/soundfx/click.wav", volume = 0.7 },
     button = { file = "assets/soundfx/button.wav", volume = 0.8 },
     cash = { file = "assets/soundfx/cash.wav", volume = 0.6 },
-    diceroll = { file = "assets/soundfx/diceroll.wav", volume = 0.8 },
+    -- New dice roll sounds (per-die impact sounds)
+    diceroll1 = { file = "assets/soundfx/diceroll1.wav", volume = 0.7 },
+    diceroll2 = { file = "assets/soundfx/diceroll2.wav", volume = 0.7 },
+    diceroll3 = { file = "assets/soundfx/diceroll3.wav", volume = 0.7 },
+    diceroll4 = { file = "assets/soundfx/diceroll4.wav", volume = 0.7 },
     tick2 = { file = "assets/soundfx/tick2.wav", volume = 0.6 },
     -- Additional sounds (available for future use)
     select = { file = "assets/soundfx/select.wav", volume = 0.7 },
@@ -85,6 +89,17 @@ function Sound:play(name, opts)
 
     -- Play the sound
     love.audio.play(source)
+end
+
+-- Play a random dice roll sound (for impact)
+-- @param opts table (optional) - { volume, pitch, pitchVariance }
+function Sound:playDiceRoll(opts)
+    local rollSounds = { "diceroll1", "diceroll2", "diceroll3", "diceroll4" }
+    local randomSound = rollSounds[math.random(1, 4)]
+    opts = opts or {}
+    -- Add slight pitch variance for natural feel
+    opts.pitchVariance = opts.pitchVariance or 0.08
+    self:play(randomSound, opts)
 end
 
 -- Start background music

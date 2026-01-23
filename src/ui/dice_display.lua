@@ -9,6 +9,7 @@ local Die = require("src.dice.die")
 local Physics = require("src.dice.physics")
 local Shadow = require("src.dice.shadow")
 local Juice = require("src.ui.juice")
+local Sound = require("src.core.sound")
 
 local DiceDisplay = {}
 DiceDisplay.__index = DiceDisplay
@@ -60,10 +61,17 @@ function DiceDisplay.new(config)
     -- 9-slice renderer (for potential UI elements)
     self.nineSlice = NineSlice.getInstance()
 
-    -- Bounce callback for screen shake
+    -- Bounce callback for screen shake AND sound effects
     self.die.onBounce = function(bounceNum, maxBounces)
+        -- Screen shake (more intense on early bounces)
         local intensity, duration = Juice.getBounceShake(bounceNum, maxBounces)
         Juice.triggerShake(intensity, duration)
+
+        -- Play dice roll sound on first bounce (impact with floor)
+        -- Each die plays its own random sound for juicy variety
+        if bounceNum == 1 then
+            Sound:playDiceRoll()
+        end
     end
 
     -- =========================================================================
