@@ -12,6 +12,7 @@ Theme.colors = {
     surface2 = { 0.290, 0.239, 0.478, 1 },         -- #4A3D7A
     surfaceHighlight = { 0.365, 0.302, 0.561, 1 }, -- #5D4D8F
     panelDark = { 0.12, 0.10, 0.18, 1 },           -- Darker containers inside panels
+    panelGlass = { 0.12, 0.10, 0.18, 0.5 },        -- Semi-transparent panel background
 
     -- Text
     text = { 1, 1, 1, 1 },

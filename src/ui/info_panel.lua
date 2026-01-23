@@ -120,15 +120,13 @@ function InfoPanel:mousereleased(x, y, button)
 end
 
 function InfoPanel:draw()
-    -- Main panel background (50% transparent)
-    local surfaceColor = Theme.colors.panelDark
-    local transparentSurface = { surfaceColor[1], surfaceColor[2], surfaceColor[3], 0.5 }
+    -- Main panel background (semi-transparent glass)
     self.nineSlice:draw(
         self.x,
         self.y,
         self.width,
         self.height,
-        transparentSurface,
+        Theme.colors.panelGlass,
         Theme.nineSlice.borderScale
     )
 
@@ -270,10 +268,27 @@ function InfoPanel:drawScoreSection(x, y, width, height)
     local animatedScore = scoreAnim:getAnimatedTotalScore()
     local score = animatedScore or self.getScore()
     local scoreText = tostring(score)
+
+    -- Get scale for punch effect
+    local scale = scoreAnim:getTotalScoreScale()
+
     local scoreWidth = Theme.fonts.huge:getWidth(scoreText)
+    local scoreHeight = Theme.fonts.huge:getHeight()
     local scoreX = x + width - scoreWidth - 16
-    local scoreY = y + (boxHeight - Theme.fonts.huge:getHeight()) / 2
+    local scoreY = y + (boxHeight - scoreHeight) / 2
+
+    -- Apply scale transform around center of text
+    local centerX = scoreX + scoreWidth / 2
+    local centerY = scoreY + scoreHeight / 2
+
+    love.graphics.push()
+    love.graphics.translate(centerX, centerY)
+    love.graphics.scale(scale, scale)
+    love.graphics.translate(-centerX, -centerY)
+
     Theme:drawTextWithShadow(scoreText, scoreX, scoreY, Theme.fonts.huge, Theme.colors.text)
+
+    love.graphics.pop()
 end
 
 function InfoPanel:drawHandPreview(x, y, width, height)

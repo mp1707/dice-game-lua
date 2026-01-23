@@ -7,6 +7,7 @@ local Levels = require("src.game.levels")
 local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
 local InfoPanel = require("src.ui.info_panel")
+local Juice = require("src.dice.juice")
 
 local ResultState = {}
 ResultState.__index = ResultState
@@ -25,6 +26,14 @@ function ResultState.new()
     self.baseReward = 0
     self.unusedHandsBonus = 0
 
+    -- Animation state
+    self.timer = 0
+    -- Timings
+    self.slideDuration = 0.5
+    self.staggerStart = 0.5
+    self.staggerDelay = 0.4 -- Slower stagger (was 0.15)
+    self.itemFadeDuration = 0.3
+
     return self
 end
 
@@ -41,6 +50,9 @@ function ResultState:enter(params)
         -- Add money
         GameState:addMoney(self.reward)
     end
+
+    -- Reset animation timer
+    self.timer = 0
 
     -- Initialize info panel for cashout phase
     self:initInfoPanel()
@@ -144,11 +156,15 @@ function ResultState:onActionButtonClick()
 end
 
 function ResultState:update(dt)
+    self.timer = self.timer + dt
+
     self.actionButton:update(dt)
     if self.infoPanel then
         self.infoPanel:update(dt)
     end
 end
+
+-- Helper for easing (removed, using Juice)
 
 function ResultState:draw()
     local screenWidth = Theme.screen.width
@@ -162,70 +178,211 @@ function ResultState:draw()
     local centerAreaWidth = Theme.layout.centerWidth
 
     local panelX = centerAreaX + (centerAreaWidth - panelWidth) / 2
-    local panelY = (Theme.layout.ctaY - panelHeight) / 2
+    local finalPanelY = (Theme.layout.ctaY - panelHeight) / 2
 
-    self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
+    -- Animation: Slide in from top (Juicy Back/Overshoot)
+    local slideProgress = math.min(1, self.timer / self.slideDuration)
+    local easedSlide = Juice.easeOutBack(slideProgress)
+
+    -- Start above screen (-panelHeight), end at finalPanelY
+    local startY = -panelHeight - 50
+    local currentPanelY = startY + (finalPanelY - startY) * easedSlide
+
+    -- Draw Main Panel with Glass Effect
+    self.nineSlice:draw(panelX, currentPanelY, panelWidth, panelHeight, Theme.colors.panelGlass,
+        Theme.nineSlice.borderScale)
 
     -- Title
     local titleText = self.won and "LEVEL CLEARED!" or "GAME OVER!"
     local titleColor = self.won and Theme.colors.mint or Theme.colors.coral
-    Theme:drawTextCenteredWithShadow(titleText, panelX, panelY + 30, panelWidth, Theme.fonts.display, titleColor)
+    Theme:drawTextCenteredWithShadow(titleText, panelX, currentPanelY + 30, panelWidth, Theme.fonts.display, titleColor)
 
     -- Level and score summary
     local levelText = "Level " .. tostring(GameState.currentLevel)
-    Theme:drawTextCenteredWithShadow(levelText, panelX, panelY + 90, panelWidth, Theme.fonts.large, Theme.colors.text)
+    Theme:drawTextCenteredWithShadow(levelText, panelX, currentPanelY + 90, panelWidth, Theme.fonts.large,
+        Theme.colors.text)
 
     local scoreText = tostring(GameState.currentScore) .. " / " .. tostring(GameState:getCurrentGoal())
     local scoreColor = GameState:hasReachedGoal() and Theme.colors.mint or Theme.colors.coral
-    Theme:drawTextCenteredWithShadow(scoreText, panelX, panelY + 130, panelWidth, Theme.fonts.large, scoreColor)
+    Theme:drawTextCenteredWithShadow(scoreText, panelX, currentPanelY + 130, panelWidth, Theme.fonts.large, scoreColor)
 
     -- Reward breakdown (only if won)
     if self.won then
         local rewardPanelX = panelX + 40
-        local rewardPanelY = panelY + 180
+        local rewardPanelY = currentPanelY + 180
         local rewardPanelWidth = panelWidth - 80
         local rewardPanelHeight = 160
 
+        -- Background for rewards (slightly darker/opaque for readability)
         self.nineSlice:draw(rewardPanelX, rewardPanelY, rewardPanelWidth, rewardPanelHeight, Theme.colors.surface2,
             Theme.nineSlice.borderScale)
 
-        -- Title
-        Theme:drawTextWithShadow("REWARDS", rewardPanelX + 16, rewardPanelY + 12, Theme.fonts.normal,
-            Theme.colors.textMuted)
+        local contentX = rewardPanelX + 16
+        local contentW = rewardPanelWidth - 32
 
-        -- Base reward
-        Theme:drawTextWithShadow("Level Reward", rewardPanelX + 16, rewardPanelY + 45, Theme.fonts.normal,
-            Theme.colors.text)
-        local baseText = "+" .. tostring(self.baseReward)
-        Theme:drawTextRightWithShadow(baseText, rewardPanelX, rewardPanelY + 45, rewardPanelWidth - 16,
-            Theme.fonts.normal, Theme.colors.gold)
+        -- Function to draw a staggered row with POP effect
+        local function drawRow(index, yOffset, drawFn)
+            local startT = self.staggerStart + (index - 1) * self.staggerDelay
+            if self.timer < startT then return end
 
-        -- Unused hands bonus
-        local handsText = "Hands remaining (" .. tostring(GameState.handsRemaining) .. ")"
-        Theme:drawTextWithShadow(handsText, rewardPanelX + 16, rewardPanelY + 75, Theme.fonts.normal, Theme.colors.text)
-        local bonusText = "+" .. tostring(self.unusedHandsBonus)
-        Theme:drawTextRightWithShadow(bonusText, rewardPanelX, rewardPanelY + 75, rewardPanelWidth - 16,
-            Theme.fonts.normal, Theme.colors.gold)
+            local progress = math.min(1, (self.timer - startT) / self.itemFadeDuration)
+            local eased = Juice.easeOutBack(progress) -- Juicy pop!
+            local alpha = math.min(1, progress * 1.5) -- Fade in slightly faster than pop
 
-        -- Divider
-        love.graphics.setColor(Theme.colors.border)
-        love.graphics.rectangle("fill", rewardPanelX + 16, rewardPanelY + 105, rewardPanelWidth - 32, 2)
+            -- Pop from 0 to 1 but with dampened overshoot (50% less strength)
+            -- Normal BackOut overshoots to ~1.7 with default constants, we want less.
+            -- Or just mix it: lerp(1, eased, 0.5) would reduce overshoot but also start at 0.5.
+            -- Better: 1 + (eased - 1) * 0.5
+            -- This preserves 1.0 mapping, but halves the "distance from 1".
+            -- Since start is 0, (0-1)*0.5 = -0.5 -> 1 - 0.5 = 0.5 start.
+            -- This means rows pop from 50% scale instead of 0%. That looks cleaner/less jarring actually.
+            local scale = 1 + (eased - 1) * 0.5
 
-        -- Total
-        Theme:drawTextWithShadow("TOTAL", rewardPanelX + 16, rewardPanelY + 118, Theme.fonts.large, Theme.colors.text)
-        local totalText = "+" .. tostring(self.reward)
-        Theme:drawTextRightWithShadow(totalText, rewardPanelX, rewardPanelY + 118, rewardPanelWidth - 16,
-            Theme.fonts.large, Theme.colors.gold)
+            -- Center point for scaling (approximate center of row)
+            local centerX = contentX + contentW / 2
+            local centerY = yOffset + 10 -- Approx mid-height of text
+
+            love.graphics.push()
+            love.graphics.translate(centerX, centerY)
+            love.graphics.scale(scale, scale)
+            love.graphics.translate(-centerX, -centerY)
+
+            love.graphics.setColor(1, 1, 1, alpha) -- Apply alpha to context
+            drawFn(yOffset, alpha)
+
+            love.graphics.pop()
+        end
+
+        -- Title (Header) - Index 0 (appears with panel or first)
+        Theme:drawTextWithShadow("REWARDS", contentX, rewardPanelY + 12, Theme.fonts.normal, Theme.colors.textMuted)
+
+        -- 1. Base Reward
+        drawRow(1, rewardPanelY + 45, function(y, alpha)
+            local textColor = { Theme.colors.text[1], Theme.colors.text[2], Theme.colors.text[3], alpha }
+            local goldColor = { Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], alpha }
+            local shadowColor = { Theme.colors.textShadow[1], Theme.colors.textShadow[2], Theme.colors.textShadow[3],
+                Theme.colors.textShadow[4] * alpha }
+
+            -- Override shadow util temporarily or just draw manually for alpha support
+            -- Simplest is to set color and let drawTextWithShadow use current alpha if it supported it,
+            -- but Theme helper resets color. So we must be careful.
+            -- Actually Theme helpers reset color. I should probably copy the shadow logic locally for alpha control
+            -- or assume standard helpers don't support alpha well without modification.
+            -- Let's stick to standard opaque drawing if alpha is 1, and skip if 0.
+            -- For fade in, we can hack it by ignoring alpha if we trust the text helper doesn't clear it?
+            -- No, helper sets color.
+            -- Let's just mock the fade by drawing only when visible enough, or better:
+            -- Use love.graphics.setColor then print manually for full control.
+
+            -- Helper for alpha text
+            local function drawAlphaText(str, tx, ty, font, col)
+                love.graphics.setFont(font)
+                -- Shadow
+                love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+                love.graphics.print(str, tx + 2, ty + 2)
+                -- Text
+                love.graphics.setColor(col[1], col[2], col[3], alpha)
+                love.graphics.print(str, tx, ty)
+            end
+
+            local function drawAlphaTextRight(str, tx, ty, w, font, col)
+                love.graphics.setFont(font)
+                local width = font:getWidth(str)
+                local finalX = tx + w - width
+                -- Shadow
+                love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+                love.graphics.print(str, finalX + 2, ty + 2)
+                -- Text
+                love.graphics.setColor(col[1], col[2], col[3], alpha)
+                love.graphics.print(str, finalX, ty)
+            end
+
+            drawAlphaText("Level Reward", contentX, y, Theme.fonts.normal, Theme.colors.text)
+            drawAlphaTextRight("+" .. tostring(self.baseReward), contentX, y, contentW, Theme.fonts.normal,
+                Theme.colors.gold)
+        end)
+
+        -- 2. Bonus
+        drawRow(2, rewardPanelY + 75, function(y, alpha)
+            local function drawAlphaText(str, tx, ty, font, col)
+                love.graphics.setFont(font)
+                love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+                love.graphics.print(str, tx + 2, ty + 2)
+                love.graphics.setColor(col[1], col[2], col[3], alpha)
+                love.graphics.print(str, tx, ty)
+            end
+            local function drawAlphaTextRight(str, tx, ty, w, font, col)
+                love.graphics.setFont(font)
+                local width = font:getWidth(str)
+                local finalX = tx + w - width
+                love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+                love.graphics.print(str, finalX + 2, ty + 2)
+                love.graphics.setColor(col[1], col[2], col[3], alpha)
+                love.graphics.print(str, finalX, ty)
+            end
+
+            drawAlphaText("Hands remaining (" .. tostring(GameState.handsRemaining) .. ")", contentX, y,
+                Theme.fonts.normal, Theme.colors.text)
+            drawAlphaTextRight("+" .. tostring(self.unusedHandsBonus), contentX, y, contentW, Theme.fonts.normal,
+                Theme.colors.gold)
+        end)
+
+        -- Divider (fades in with Total)
+        drawRow(3, rewardPanelY + 105, function(y, alpha)
+            love.graphics.setColor(Theme.colors.border[1], Theme.colors.border[2], Theme.colors.border[3], alpha)
+            love.graphics.rectangle("fill", contentX, y, contentW, 2)
+        end)
+
+        -- 3. Total
+        drawRow(3, rewardPanelY + 118, function(y, alpha)
+            local function drawAlphaText(str, tx, ty, font, col)
+                love.graphics.setFont(font)
+                love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+                love.graphics.print(str, tx + 2, ty + 2)
+                love.graphics.setColor(col[1], col[2], col[3], alpha)
+                love.graphics.print(str, tx, ty)
+            end
+            local function drawAlphaTextRight(str, tx, ty, w, font, col)
+                love.graphics.setFont(font)
+                local width = font:getWidth(str)
+                local finalX = tx + w - width
+                love.graphics.setColor(0, 0, 0, 0.5 * alpha)
+                love.graphics.print(str, finalX + 2, ty + 2)
+                love.graphics.setColor(col[1], col[2], col[3], alpha)
+                love.graphics.print(str, finalX, ty)
+            end
+
+            drawAlphaText("TOTAL", contentX, y, Theme.fonts.large, Theme.colors.text)
+            drawAlphaTextRight("+" .. tostring(self.reward), contentX, y, contentW, Theme.fonts.large, Theme.colors.gold)
+        end)
     else
         -- Loss message
-        Theme:drawTextCenteredWithShadow("Goal not reached.", panelX, panelY + 200, panelWidth, Theme.fonts.large,
+        Theme:drawTextCenteredWithShadow("Goal not reached.", panelX, currentPanelY + 200, panelWidth, Theme.fonts.large,
             Theme.colors.textMuted)
-        Theme:drawTextCenteredWithShadow("Try again!", panelX, panelY + 250, panelWidth, Theme.fonts.large,
+        Theme:drawTextCenteredWithShadow("Try again!", panelX, currentPanelY + 250, panelWidth, Theme.fonts.large,
             Theme.colors.textMuted)
     end
 
-    -- Action button
-    self.actionButton:draw()
+    -- Action button (always visible? or fade in last?)
+    -- Let's fade it in with the last element
+    local btnAlpha = math.min(1, math.max(0, (self.timer - (self.staggerStart + self.staggerDelay * 2)) / 0.5))
+    if btnAlpha > 0 then
+        -- Hack: setting global color affects some parts of button depending on implementation
+        -- Button class likely resets color. We might just let it slide up?
+        -- For simplicity, let's just draw it. It has its own draw state.
+        -- If we want to animate it, we might need a setOpacity method on Button or just let it be there.
+        -- Let's just draw it normally for now, maybe it's fine if it waits?
+        -- Or better, slide it up with the panel!
+        -- The button y is fixed in init. We should update its y in draw or update based on panel position?
+        -- No, the button is outside the panel in the original layout.
+        -- Let's make the button also slide in from bottom or appear.
+        -- Let's keep it simple: Button slides in from bottom while panel slides from top?
+        -- Or just static at bottom?
+        -- The request was "animate the reward rows in in a staggered way and the total as last row."
+        -- It didn't explicitly ask for button animation, but "whole cashout panel" implies everything.
+        -- I'll stick to the original button position but maybe fade it in.
+        self.actionButton:draw()
+    end
 
     -- Draw info panel (left side)
     if self.infoPanel then
@@ -236,6 +393,9 @@ function ResultState:draw()
 end
 
 function ResultState:mousepressed(x, y, button)
+    -- Only allow interaction after animation settles largely?
+    if self.timer < 0.5 then return end
+
     self.actionButton:mousepressed(x, y, button)
     if self.infoPanel then
         self.infoPanel:mousepressed(x, y, button)
@@ -251,7 +411,12 @@ end
 
 function ResultState:keypressed(key)
     if key == "space" or key == "return" then
-        self:onActionButtonClick()
+        if self.timer > 0.5 then
+            self:onActionButtonClick()
+        else
+            -- Skip animation?
+            self.timer = 10
+        end
     end
 end
 

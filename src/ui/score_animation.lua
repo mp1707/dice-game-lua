@@ -10,11 +10,12 @@ local ScoreAnimation = {}
 ScoreAnimation.__index = ScoreAnimation
 
 -- Timing constants
+-- Timing constants
 local TIMING = {
-    countDelay = 0.6,       -- Delay between counting each die
-    calcDuration = 0.5,     -- Duration of calculating phase (faster)
+    countDelay = 0.6,       -- Reverted to slower checking (was 0.15)
+    calcDuration = 0.4,     -- Duration of calculating phase (faster)
     calcBoxFadeStart = 0.0, -- Start fading immediately
-    calcScoreAppear = 0.15, -- Reveal score much sooner
+    calcScoreAppear = 0.05, -- Reveal score almost immediately
     completeHold = 0.35,    -- Hold before firing callback
 }
 
@@ -63,6 +64,7 @@ function ScoreAnimation:reset()
     -- Total score count-up state
     self.totalCountProgress = 0
     self.totalCountDuration = 0
+    self.totalScoreScale = 1 -- Scale for punching the total score
 end
 
 function ScoreAnimation:start(config)
@@ -123,6 +125,12 @@ function ScoreAnimation:update(dt)
             SPRINGS.handScore.stiffness, SPRINGS.handScore.damping, dt
         )
     end
+
+    -- Update total score scale spring (punch effect)
+    self.totalScoreScale, self.totalScoreScaleVelocity = Juice.updateSpring(
+        self.totalScoreScale, 1, self.totalScoreScaleVelocity or 0,
+        SPRINGS.boxPop.stiffness, SPRINGS.boxPop.damping, dt
+    )
 
     -- State machine
     if self.state == "COUNTING" then
@@ -191,14 +199,15 @@ function ScoreAnimation:updateCalculating(dt)
     local progress = self.timer / TIMING.calcDuration
 
     -- Fade out and scale down boxes together (much faster and juicier)
+    -- Fade out and scale down boxes together (much faster and juicier)
     if self.timer >= TIMING.calcBoxFadeStart then
         local fadeDuration = TIMING.calcScoreAppear - TIMING.calcBoxFadeStart
         local fadeProgress = math.min(1, (self.timer - TIMING.calcBoxFadeStart) / fadeDuration)
-        -- Use ease-out-cubic for snappy fade
-        local easedFade = 1 - (1 - fadeProgress) ^ 3
+        -- Use linear for alpha, but back-in for scale? actually just simple cubic out is fine for fade
+        local easedFade = Juice.easeOutCubic(fadeProgress)
         self.boxAlpha = math.max(0, 1 - easedFade)
-        -- Scale down from 1 to 0.7 as boxes fade
-        self.boxScale = 1 - (easedFade * 0.3)
+        -- Scale down from 1 to 0.5 as boxes fade
+        self.boxScale = 1 - (easedFade * 0.5)
     end
 
     -- Show hand score (appears sooner now)
@@ -234,6 +243,10 @@ function ScoreAnimation:updateUpdatingTotal(dt)
         self.displayedScore = self.data.oldScore + self.data.breakdown.total
         self.state = "COMPLETE"
         self.timer = 0
+
+        -- PUNCH the total score display!
+        self.totalScoreScale = 1.3
+        self.totalScoreScaleVelocity = 0
     end
 end
 
@@ -303,6 +316,10 @@ function ScoreAnimation:getAnimatedTotalScore()
         return math.floor(self.displayedScore)
     end
     return nil
+end
+
+function ScoreAnimation:getTotalScoreScale()
+    return self.totalScoreScale or 1
 end
 
 -- Skip to end (for impatient players)

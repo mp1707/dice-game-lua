@@ -3,6 +3,47 @@
 
 local Juice = {}
 
+-- Easing functions
+function Juice.easeOutBack(t)
+    local c1 = 1.70158
+    local c3 = c1 + 1
+    return 1 + c3 * math.pow(t - 1, 3) + c1 * math.pow(t - 1, 2)
+end
+
+function Juice.easeOutElastic(t)
+    local c4 = (2 * math.pi) / 3
+
+    if t == 0 then
+        return 0
+    elseif t == 1 then
+        return 1
+    else
+        return math.pow(2, -10 * t) * math.sin((t * 10 - 0.75) * c4) + 1
+    end
+end
+
+function Juice.easeOutBounce(t)
+    local n1 = 7.5625
+    local d1 = 2.75
+
+    if t < 1 / d1 then
+        return n1 * t * t
+    elseif t < 2 / d1 then
+        t = t - 1.5 / d1
+        return n1 * t * t + 0.75
+    elseif t < 2.5 / d1 then
+        t = t - 2.25 / d1
+        return n1 * t * t + 0.9375
+    else
+        t = t - 2.625 / d1
+        return n1 * t * t + 0.984375
+    end
+end
+
+function Juice.easeOutCubic(t)
+    return 1 - math.pow(1 - t, 3)
+end
+
 -- Screen shake state
 Juice.shake = {
     intensity = 0,
