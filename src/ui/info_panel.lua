@@ -14,10 +14,12 @@ function InfoPanel.new(config)
     local self = setmetatable({}, InfoPanel)
 
     -- Position on LEFT side now
+    -- Apply 50px margin top and bottom (total 100px reduction in height)
     self.x = config.x or Theme.layout.leftPanelX
-    self.y = config.y or Theme.layout.leftPanelY
+    self.y = (config.y or Theme.layout.leftPanelY) + 50
     self.width = config.width or Theme.layout.leftPanelWidth
-    self.height = config.height or Theme.layout.leftPanelHeight
+    self.height = (config.height or Theme.layout.leftPanelHeight) - 100
+
     self.padding = Theme.layout.panelPadding or 20
     self.innerGap = Theme.layout.innerGap or 12
 
@@ -215,36 +217,40 @@ function InfoPanel:drawGoalSection(x, y, width, height)
     end
 
     -- Distribute content vertically within the box
-    local innerPadding = boxHeight * 0.08
+    -- Tighter spacing request: closer to the big number
     local erreicheHeight = Theme.fonts.large:getHeight()
     local goalNumHeight = Theme.fonts.giant:getHeight()
     local punkteHeight = Theme.fonts.large:getHeight()
-    local totalTextHeight = erreicheHeight + goalNumHeight + punkteHeight
-    local spacing = (boxHeight - 2 * innerPadding - totalTextHeight) / 2
+
+    local tightSpacing = -8 -- Negative spacing to pull them closer
+    local totalTextHeight = erreicheHeight + goalNumHeight + punkteHeight + (tightSpacing * 2)
+
+    -- Center the whole group
+    local startY = y + (boxHeight - totalTextHeight) / 2
 
     -- Cashout phase: "geschafft!" in mint above the goal number
     if self.phase == "cashout" then
-        local labelY = y + innerPadding
+        local labelY = startY
         Theme:drawTextCenteredWithShadow("cleared!", x, labelY, width, Theme.fonts.large, Theme.colors.mint)
 
         -- Big goal number in mint (no "Punkte" label in cashout)
         local goal = self.getGoal()
-        local goalY = labelY + erreicheHeight + spacing
+        local goalY = labelY + erreicheHeight + tightSpacing
         Theme:drawTextCenteredWithShadow(tostring(goal), x, goalY, width, Theme.fonts.giant, Theme.colors.mint)
         return
     end
 
     -- Play phase: normal "erreiche" label
-    local labelY = y + innerPadding
+    local labelY = startY
     Theme:drawTextCenteredWithShadow("Goal", x, labelY, width, Theme.fonts.large, Theme.colors.text)
 
     -- Big goal number (coral/red color)
     local goal = self.getGoal()
-    local goalY = labelY + erreicheHeight + spacing
+    local goalY = labelY + erreicheHeight + tightSpacing
     Theme:drawTextCenteredWithShadow(tostring(goal), x, goalY, width, Theme.fonts.giant, Theme.colors.coral)
 
     -- "Punkte" label below
-    local punkteY = goalY + goalNumHeight + spacing
+    local punkteY = goalY + goalNumHeight + tightSpacing
     Theme:drawTextCenteredWithShadow("Score", x, punkteY, width, Theme.fonts.large, Theme.colors.text)
 end
 
@@ -283,9 +289,27 @@ function InfoPanel:drawHandPreview(x, y, width, height)
     local detectedHand = self.getDetectedHand()
     local breakdown = self.getHandBreakdown()
 
+    -- Common layout measurements
+    local formulaWidth = width - 32
+    local boxHeightInner = 75 -- Increased height (was 50)
+    local xSymbolWidth = Theme.fonts.large:getWidth("x")
+    local spacing = 12
+    local boxWidth = (formulaWidth - spacing * 2 - xSymbolWidth) / 2
+    local bottomMargin = 12 -- Padding from bottom
+
     if detectedHand and breakdown then
-        -- Show hand name at top (10% from top)
-        local handY = y + boxHeight * 0.08
+        -- Formula boxes bottom aligned
+        local formulaX = x + 16
+        local formulaY = y + boxHeight - boxHeightInner - bottomMargin
+
+        -- Hand Name & Level section (centered in remaining space)
+        -- Remaining space is from top (y) to top of formula boxes (formulaY)
+        -- We want to center the content in this area.
+        local availableTopSpace = formulaY - y
+        local nameHeight = Theme.fonts.large:getHeight()
+
+        -- Center label vertically in the top area
+        local handY = y + (availableTopSpace - nameHeight) / 2
         local handName = string.upper(detectedHand.name or detectedHand.id or "")
         local levelText = "LV " .. tostring(detectedHand.level or 1)
 
@@ -293,17 +317,6 @@ function InfoPanel:drawHandPreview(x, y, width, height)
         Theme:drawTextWithShadow(handName, x + 16, handY, Theme.fonts.large, Theme.colors.text)
         local levelWidth = Theme.fonts.large:getWidth(levelText)
         Theme:drawTextWithShadow(levelText, x + width - levelWidth - 16, handY, Theme.fonts.large, Theme.colors.text)
-
-        -- Draw formula boxes (centered vertically in remaining space)
-        local formulaX = x + 16
-        local formulaWidth = width - 32
-        local boxHeightInner = boxHeight * 0.35 -- 35% of total height
-        local formulaY = y + boxHeight * 0.4    -- 40% from top
-
-        -- Calculate box sizes
-        local xSymbolWidth = Theme.fonts.large:getWidth("x")
-        local spacing = 12
-        local boxWidth = (formulaWidth - spacing * 2 - xSymbolWidth) / 2
 
         -- Get animation values
         local boxAlpha = isAnimating and scoreAnim:getBoxAlpha() or 1
@@ -392,24 +405,20 @@ function InfoPanel:drawHandPreview(x, y, width, height)
             love.graphics.pop()
         end
     else
-        -- Empty state - show just the formula boxes without numbers/text
+        -- Empty state - show just the formula boxes without numbers/text, BOTTOM ALIGNED
         local formulaX = x + 16
-        local formulaWidth = width - 32
-        local boxHeightInner = boxHeight * 0.35 -- 35% of total height
-        local formulaY = y + boxHeight * 0.4    -- 40% from top
+        local widthInner = width - 32
 
-        -- Calculate box sizes
-        local xSymbolWidth = Theme.fonts.large:getWidth("x")
-        local spacing = 12
-        local boxWidth = (formulaWidth - spacing * 2 - xSymbolWidth) / 2
+        -- Bottom aligned
+        local startY = y + boxHeight - boxHeightInner - bottomMargin
 
         -- Chips box (blue) - empty
         love.graphics.setColor(Theme.colors.upgradePoints)
-        love.graphics.rectangle("fill", formulaX, formulaY, boxWidth, boxHeightInner, 8)
+        love.graphics.rectangle("fill", formulaX, startY, boxWidth, boxHeightInner, 8)
 
         -- "x" symbol
         local xX = formulaX + boxWidth + spacing
-        local textCenterY = formulaY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
+        local textCenterY = startY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
         love.graphics.setColor(Theme.colors.textMuted)
         love.graphics.setFont(Theme.fonts.large)
         love.graphics.print("x", xX, textCenterY)
@@ -417,7 +426,7 @@ function InfoPanel:drawHandPreview(x, y, width, height)
         -- Mult box (red) - empty
         local multBoxX = xX + xSymbolWidth + spacing
         love.graphics.setColor(Theme.colors.upgradeMult)
-        love.graphics.rectangle("fill", multBoxX, formulaY, boxWidth, boxHeightInner, 8)
+        love.graphics.rectangle("fill", multBoxX, startY, boxWidth, boxHeightInner, 8)
     end
 end
 
@@ -428,12 +437,18 @@ function InfoPanel:drawCountersRow(x, y, width, height)
     -- Hände box
     self.nineSlice:draw(x, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
-    local labelY = y + boxHeight * 0.15
-    Theme:drawTextWithShadow("Hands", x + 16, labelY, Theme.fonts.normal, Theme.colors.text)
-
     local handsValue = tostring(self.getHandsRemaining())
+    local labelText = "Hands"
+
+    -- Vertically center elements
+    local labelY = y + (boxHeight - Theme.fonts.large:getHeight()) / 2
+    local valueY = y + (boxHeight - Theme.fonts.huge:getHeight()) / 2
+
+    -- Label on left (Large font now)
+    Theme:drawTextWithShadow(labelText, x + 16, labelY, Theme.fonts.large, Theme.colors.text)
+
+    -- Value on right
     local handsValueWidth = Theme.fonts.huge:getWidth(handsValue)
-    local valueY = y + boxHeight - Theme.fonts.huge:getHeight() - boxHeight * 0.1
     Theme:drawTextWithShadow(handsValue, x + boxWidth - handsValueWidth - 16, valueY, Theme.fonts.huge, Theme.colors
         .mint)
 
@@ -441,9 +456,13 @@ function InfoPanel:drawCountersRow(x, y, width, height)
     local wurfeX = x + boxWidth + self.innerGap
     self.nineSlice:draw(wurfeX, y, boxWidth, boxHeight, Theme.colors.panelDark, Theme.nineSlice.borderScale)
 
-    Theme:drawTextWithShadow("Rolls", wurfeX + 16, labelY, Theme.fonts.normal, Theme.colors.text)
-
     local rollsValue = tostring(self.getRollsRemaining())
+    local rollsLabel = "Rolls"
+
+    -- Label on left (Large font now)
+    Theme:drawTextWithShadow(rollsLabel, wurfeX + 16, labelY, Theme.fonts.large, Theme.colors.text)
+
+    -- Value on right
     local rollsValueWidth = Theme.fonts.huge:getWidth(rollsValue)
     Theme:drawTextWithShadow(rollsValue, wurfeX + boxWidth - rollsValueWidth - 16, valueY, Theme.fonts.huge,
         Theme.colors.cyan)
