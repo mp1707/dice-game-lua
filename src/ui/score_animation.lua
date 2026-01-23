@@ -90,7 +90,12 @@ function ScoreAnimation:start(config)
     if #self.data.scoringDiceIndices > 0 then
         self.state = "COUNTING"
         self.currentDieIndex = 0
+        -- Start with timer = 0 to wait full countDelay before first die
         self.timer = 0
+
+        -- Prime the tick sound to avoid first-sound-not-playing bug
+        -- Playing at zero volume initializes the audio source
+        Sound:play("tick", { volume = 0 })
     else
         -- No scoring dice, skip to calculating
         self.state = "CALCULATING"
@@ -156,8 +161,12 @@ function ScoreAnimation:updateCounting(dt)
             local display = self.data.diceDisplays[dieIndex]
 
             if display then
+                -- DEBUG: Print which die is being counted
+                print("[ScoreAnimation] Counting die #" ..
+                    tostring(self.currentDieIndex) .. " (dieIndex=" .. tostring(dieIndex) .. ")")
+
                 -- Play tick sound for this die being counted
-                Sound:play("tick2")
+                Sound:play("tick")
 
                 -- Trigger BOTH selection pop AND count pulse at the same time
                 display.selectionScale = 1.15
@@ -230,6 +239,9 @@ function ScoreAnimation:updateCalculating(dt)
         -- Calculate count-up duration based on score difference (slower and smoother)
         local diff = self.data.breakdown.total
         self.totalCountDuration = math.min(2.5, math.max(1.5, diff / 60))
+
+        -- Play bling sound for the total count up
+        Sound:play("bling")
     end
 end
 
@@ -251,6 +263,7 @@ function ScoreAnimation:updateUpdatingTotal(dt)
         -- PUNCH the total score display!
         self.totalScoreScale = 1.3
         self.totalScoreScaleVelocity = 0
+        Sound:play("tick")
     end
 end
 

@@ -60,6 +60,10 @@ function ResultState:enter(params)
     -- Reset row sounds tracking
     self.rowSoundsPlayed = {}
 
+    -- Initialize spring for total reward text
+    self.totalRewardScale = 1
+    self.totalRewardScaleVelocity = 0
+
     -- Initialize info panel for cashout phase
     self:initInfoPanel()
     self:initActionButton()
@@ -164,6 +168,12 @@ end
 function ResultState:update(dt)
     self.timer = self.timer + dt
 
+    -- Update total reward pulse spring
+    self.totalRewardScale, self.totalRewardScaleVelocity = Juice.updateSpring(
+        self.totalRewardScale, 1, self.totalRewardScaleVelocity,
+        400, 24, dt
+    )
+
     self.actionButton:update(dt)
     if self.infoPanel then
         self.infoPanel:update(dt)
@@ -235,29 +245,21 @@ function ResultState:draw()
             if not self.rowSoundsPlayed[index] then
                 self.rowSoundsPlayed[index] = true
                 Sound:play("cash")
+
+                -- Trigger pulse for Total row (index 3)
+                if index == 3 then
+                    self.totalRewardScale = 1.3
+                    self.totalRewardScaleVelocity = 0
+                end
             end
 
             local progress = math.min(1, (self.timer - startT) / self.itemFadeDuration)
-            local eased = Juice.easeOutBack(progress) -- Juicy pop!
             local alpha = math.min(1, progress * 1.5) -- Fade in slightly faster than pop
 
-            -- Pop from 0 to 1 but with dampened overshoot (50% less strength)
-            -- Normal BackOut overshoots to ~1.7 with default constants, we want less.
-            -- Or just mix it: lerp(1, eased, 0.5) would reduce overshoot but also start at 0.5.
-            -- Better: 1 + (eased - 1) * 0.5
-            -- This preserves 1.0 mapping, but halves the "distance from 1".
-            -- Since start is 0, (0-1)*0.5 = -0.5 -> 1 - 0.5 = 0.5 start.
-            -- This means rows pop from 50% scale instead of 0%. That looks cleaner/less jarring actually.
-            local scale = 1 + (eased - 1) * 0.5
-
-            -- Center point for scaling (approximate center of row)
-            local centerX = contentX + contentW / 2
-            local centerY = yOffset + 10 -- Approx mid-height of text
+            -- Removed scale animation
 
             love.graphics.push()
-            love.graphics.translate(centerX, centerY)
-            love.graphics.scale(scale, scale)
-            love.graphics.translate(-centerX, -centerY)
+            -- No scaling
 
             love.graphics.setColor(1, 1, 1, alpha) -- Apply alpha to context
             drawFn(yOffset, alpha)
@@ -358,10 +360,28 @@ function ResultState:draw()
                 love.graphics.setFont(font)
                 local width = font:getWidth(str)
                 local finalX = tx + w - width
+
+                -- Apply Pulse Scale if provided (global self.totalRewardScale)
+                local scale = 1
+                -- Check if this is the reward number (starts with +)
+                if string.sub(str, 1, 1) == "+" then
+                    scale = self.totalRewardScale
+                end
+
+                local cx = finalX + width / 2
+                local cy = ty + font:getHeight() / 2
+
+                love.graphics.push()
+                love.graphics.translate(cx, cy)
+                love.graphics.scale(scale, scale)
+                love.graphics.translate(-cx, -cy)
+
                 love.graphics.setColor(0, 0, 0, 0.5 * alpha)
                 love.graphics.print(str, finalX + 2, ty + 2)
                 love.graphics.setColor(col[1], col[2], col[3], alpha)
                 love.graphics.print(str, finalX, ty)
+
+                love.graphics.pop()
             end
 
             drawAlphaText("TOTAL", contentX, y, Theme.fonts.large, Theme.colors.text)

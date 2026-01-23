@@ -20,15 +20,15 @@ local soundConfig = {
     diceroll2 = { file = "assets/soundfx/diceroll2.wav", volume = 0.7 },
     diceroll3 = { file = "assets/soundfx/diceroll3.wav", volume = 0.7 },
     diceroll4 = { file = "assets/soundfx/diceroll4.wav", volume = 0.7 },
-    tick2 = { file = "assets/soundfx/tick2.wav", volume = 0.6 },
+    tick2 = { file = "assets/soundfx/tick2.wav", volume = 0.8 },
     -- Additional sounds (available for future use)
-    select = { file = "assets/soundfx/select.wav", volume = 0.7 },
     unselect = { file = "assets/soundfx/unselect.wav", volume = 0.7 },
     tick = { file = "assets/soundfx/tick.wav", volume = 0.5 },
     info = { file = "assets/soundfx/info.wav", volume = 0.6 },
     tap = { file = "assets/soundfx/tap.wav", volume = 0.6 },
     lost = { file = "assets/soundfx/lost.wav", volume = 0.7 },
     gameboy = { file = "assets/soundfx/gameboy.wav", volume = 0.7 },
+    bling = { file = "assets/soundfx/bling.wav", volume = 0.7 },
 }
 
 -- Initialize and preload all sounds

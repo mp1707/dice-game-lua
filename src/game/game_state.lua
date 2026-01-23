@@ -216,7 +216,7 @@ function GameState:clearSelection()
 end
 
 -- Toggle dice selection
-function GameState:toggleDiceSelection(index)
+function GameState:toggleDiceSelection(index, suppressSound)
     if not self.hasRolledThisHand then return false end
     if index < 1 or index > 5 then return false end
 
@@ -224,7 +224,9 @@ function GameState:toggleDiceSelection(index)
     for i, idx in ipairs(self.selectedDice) do
         if idx == index then
             -- Deselect: remove from array and unlock
-            Sound:play("click")
+            if not suppressSound then
+                Sound:play("click")
+            end
             table.remove(self.selectedDice, i)
             self.dice[index].locked = false
             -- Clear hand selection when dice change
@@ -234,7 +236,9 @@ function GameState:toggleDiceSelection(index)
     end
 
     -- Select: add to array and lock
-    Sound:play("lightClick")
+    if not suppressSound then
+        Sound:play("lightClick")
+    end
     table.insert(self.selectedDice, index)
     self.dice[index].locked = true
     -- Clear hand selection when dice change

@@ -357,6 +357,12 @@ function DiceContainer:selectDiceInRect()
     local y1 = math.min(self.selectRectStartY, self.selectRectEndY)
     local y2 = math.max(self.selectRectStartY, self.selectRectEndY)
 
+    local anyChanged = false
+    -- We'll track if we mostly selected or deselected to choose the sound,
+    -- but for now "lightClick" (select sound) is probably best for any positive action.
+    -- If we strictly deselected, maybe "click"?
+    -- Let's just default to "lightClick" as requested "ONE dice select sound".
+
     for i, display in ipairs(self.diceDisplays) do
         local dx = display.x + display.size / 2
         local dy = display.y + display.size / 2
@@ -364,12 +370,33 @@ function DiceContainer:selectDiceInRect()
         if dx >= x1 and dx <= x2 and dy >= y1 and dy <= y2 then
             local data = self.getDiceData(i)
             local isSelected = data.locked
+            local changed = false
 
             if self.isDeselecting then
-                if isSelected then self.onDiceClick(i) end
+                if isSelected then
+                    -- Pass true to suppress sound
+                    self.onDiceClick(i, true)
+                    changed = true
+                end
             else
-                if not isSelected then self.onDiceClick(i) end
+                if not isSelected then
+                    -- Pass true to suppress sound
+                    self.onDiceClick(i, true)
+                    changed = true
+                end
             end
+
+            if changed then
+                anyChanged = true
+            end
+        end
+    end
+
+    if anyChanged then
+        if self.isDeselecting then
+            Sound:play("click")
+        else
+            Sound:play("lightClick")
         end
     end
 end

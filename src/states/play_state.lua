@@ -54,17 +54,19 @@ function PlayState:exit()
 end
 
 function PlayState:initDiceContainer()
-    self.diceContainer = DiceContainer.new({
-        getDiceData = function(index)
-            return GameState.dice[index]
-        end,
-        onDiceClick = function(index)
-            self:onDiceClick(index)
-        end,
-        isRolling = function()
-            return GameState.isRolling
-        end,
-    })
+    self.diceContainer = DiceContainer.new(
+        {
+            getDiceData = function(index)
+                return GameState.dice[index]
+            end,
+            onDiceClick = function(index, suppressSound)
+                self:onDiceClick(index, suppressSound)
+            end,
+            isRolling = function()
+                return GameState.isRolling
+            end,
+        }
+    )
 end
 
 function PlayState:initItemStrip()
@@ -183,7 +185,7 @@ function PlayState:canRoll()
 end
 
 -- Handle unified click on dice (toggle selection)
-function PlayState:onDiceClick(index)
+function PlayState:onDiceClick(index, suppressSound)
     if GameState.isRolling then return end
     if not GameState.hasRolledThisHand then return end
 
@@ -192,7 +194,7 @@ function PlayState:onDiceClick(index)
     if scoreAnim:isAnimating() then return end
 
     -- Toggle the dice selection
-    GameState:toggleDiceSelection(index)
+    GameState:toggleDiceSelection(index, suppressSound)
 end
 
 function PlayState:onPlayHandClick()
