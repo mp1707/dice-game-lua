@@ -9,9 +9,8 @@ src/dice/
   animation_states.lua  -- State machine definitions and handlers
   physics.lua           -- Tunable physics configuration
   shadow.lua            -- Height-based shadow rendering
-  juice.lua             -- Screen shake and polish effects
   die.lua               -- Individual die class
-  dice_manager.lua      -- Orchestrator for all dice (optional)
+  spritesheet.lua       -- Dice spritesheet management
 ```
 
 ## Module Descriptions
@@ -57,14 +56,6 @@ Dynamic shadows that respond to die height:
 - **Scale**: Shadow grows larger when die is higher
 - **Alpha**: Shadow fades as die gets higher
 
-### `juice.lua`
-
-Screen shake system:
-
-- `Juice.triggerShake(intensity, duration)` - Start a shake
-- `Juice.updateShake(dt)` - Update shake decay
-- `Juice.getShakeOffset()` - Get current (x, y) offset for rendering
-
 ### `die.lua`
 
 The core Die class with:
@@ -86,14 +77,13 @@ Die:drawShadow()       -- Render shadow
 Die:isStable()         -- Check if idle/locked
 ```
 
-### `dice_manager.lua`
+### `spritesheet.lua`
 
-Optional orchestrator for managing multiple dice:
+Manages the dice spritesheet:
 
-- Creates and manages 5 Die instances
-- Coordinates rolling with staggered starts
-- Handles screen shake globally
-- Provides `onRollComplete` callback
+- Loads and configures the dice texture
+- Creates quads for face values (1-6) and rolling animation frames
+- Provides quad lookup methods for rendering
 
 ## Integration with DiceDisplay
 

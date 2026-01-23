@@ -7,7 +7,7 @@ local Levels = require("src.game.levels")
 local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
 local InfoPanel = require("src.ui.info_panel")
-local Juice = require("src.dice.juice")
+local Juice = require("src.ui.juice")
 
 local ResultState = {}
 ResultState.__index = ResultState

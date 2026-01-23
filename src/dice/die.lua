@@ -4,7 +4,7 @@
 local AnimStates = require("src.dice.animation_states")
 local Physics = require("src.dice.physics")
 local Shadow = require("src.dice.shadow")
-local Juice = require("src.dice.juice")
+local Juice = require("src.ui.juice")
 local Theme = require("src.ui.theme")
 
 local Die = {}
@@ -22,13 +22,13 @@ function Die.new(slotIndex, slotCenterX, groundY, size)
     -- Position (x, y are screen coordinates, height is "Z-axis" for 3D effect)
     self.x = slotCenterX - self.size / 2
     self.y = groundY
-    self.height = 0  -- 0 = on ground, positive = above ground
+    self.height = 0 -- 0 = on ground, positive = above ground
     self.groundY = groundY
 
     -- Velocity
     self.velocityX = 0
     self.velocityY = 0
-    self.velocityZ = 0  -- Vertical velocity for bouncing
+    self.velocityZ = 0 -- Vertical velocity for bouncing
 
     -- Roll animation frame (1-6, cycles during roll)
     self.rollFrame = 1
@@ -43,8 +43,8 @@ function Die.new(slotIndex, slotCenterX, groundY, size)
     self.stateTimer = 0
 
     -- Dice face
-    self.currentFace = 1   -- Which face is showing (1-6)
-    self.targetFace = 1    -- Final face to land on
+    self.currentFace = 1 -- Which face is showing (1-6)
+    self.targetFace = 1  -- Final face to land on
     self.faceChangeTimer = 0
 
     -- Bounce tracking
@@ -117,7 +117,7 @@ function Die:update(dt)
             self.isWaitingToStart = false
             self.state = AnimStates.DROPPING
         else
-            return  -- Still waiting, don't animate
+            return -- Still waiting, don't animate
         end
     end
 
@@ -249,14 +249,14 @@ end
 -- Check if die is currently animating
 function Die:isAnimating()
     return self.state ~= AnimStates.IDLE and
-           self.state ~= AnimStates.LOCKED and
-           not self.isWaitingToStart == false  -- Still counts as animating if waiting
+        self.state ~= AnimStates.LOCKED and
+        not self.isWaitingToStart == false    -- Still counts as animating if waiting
 end
 
 -- Check if die is in a stable state (idle or locked)
 function Die:isStable()
     return (self.state == AnimStates.IDLE or self.state == AnimStates.LOCKED) and
-           not self.isWaitingToStart
+        not self.isWaitingToStart
 end
 
 -- Set the die face directly (for when not animating)

@@ -8,7 +8,7 @@ local NineSlice = require("src.ui.nine_slice")
 local Die = require("src.dice.die")
 local Physics = require("src.dice.physics")
 local Shadow = require("src.dice.shadow")
-local Juice = require("src.dice.juice")
+local Juice = require("src.ui.juice")
 
 local DiceDisplay = {}
 DiceDisplay.__index = DiceDisplay
@@ -352,9 +352,9 @@ function DiceDisplay:update(dt)
 
         -- Update selection rectangle feedback smoothly
         self.selectionRectScale = self.selectionRectScale +
-        (self.targetSelectionRectScale - self.selectionRectScale) * hoverLerp
+            (self.targetSelectionRectScale - self.selectionRectScale) * hoverLerp
         self.selectionRectYOffset = self.selectionRectYOffset +
-        (self.targetSelectionRectYOffset - self.selectionRectYOffset) * hoverLerp
+            (self.targetSelectionRectYOffset - self.selectionRectYOffset) * hoverLerp
 
         -- Update count pulse spring animation
         local countPulseStiffness = 600
@@ -432,9 +432,9 @@ function DiceDisplay:draw()
 
             -- Combine all scale effects (include held scale, selection rect feedback, and count pulse)
             local finalScaleX = baseScale * breathScale * self.selectionScale * self.hoverScaleX * self.heldScale *
-            self.selectionRectScale * self.countPulseScale
+                self.selectionRectScale * self.countPulseScale
             local finalScaleY = baseScale * breathScale * self.selectionScale * self.hoverScaleY * self.heldScale *
-            self.selectionRectScale * self.countPulseScale
+                self.selectionRectScale * self.countPulseScale
 
             -- Calculate position with breathing, selection offsets, and selection rect feedback
             local centerX = self.x + self.size / 2

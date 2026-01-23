@@ -3,7 +3,7 @@
 -- State machine: IDLE -> COUNTING -> CALCULATING -> UPDATING_TOTAL -> COMPLETE
 
 local Theme = require("src.ui.theme")
-local Juice = require("src.dice.juice")
+local Juice = require("src.ui.juice")
 local PopText = require("src.ui.pop_text")
 
 local ScoreAnimation = {}

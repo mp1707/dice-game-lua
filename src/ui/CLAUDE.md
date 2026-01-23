@@ -63,18 +63,20 @@ local handHeight = unit * 2 + gap * 1
 
 ## Component Files
 
-| File               | Purpose                                         |
-| ------------------ | ----------------------------------------------- |
-| `theme.lua`        | Colors, fonts, spacing, layout constants        |
-| `nine_slice.lua`   | Singleton for drawing 9-slice panel backgrounds |
-| `panel.lua`        | Basic panel container                           |
-| `button.lua`       | Clickable button with hover/press states        |
-| `info_panel.lua`   | Left panel with game stats and hand preview     |
-| `dice_display.lua` | Single die with animation support               |
-| `dual_cta.lua`     | "Play Hand" + "Roll" button pair                |
-| `item_strip.lua`   | 5+2 item slots at top center                    |
-| `hand_button.lua`  | Individual hand selection button                |
-| `hand_formula.lua` | Chips × Mult formula display                    |
+| File                 | Purpose                                          |
+| -------------------- | ------------------------------------------------ |
+| `theme.lua`          | Colors, fonts, spacing, layout constants         |
+| `nine_slice.lua`     | Singleton for drawing 9-slice panel backgrounds  |
+| `panel.lua`          | Basic panel container                            |
+| `button.lua`         | Clickable button with hover/press states         |
+| `info_panel.lua`     | Left panel with game stats and hand preview      |
+| `dice_display.lua`   | Single die with animation support                |
+| `dice_container.lua` | Manages dice layout, interaction, and reordering |
+| `dual_cta.lua`       | "Play Hand" + "Roll" button pair                 |
+| `item_strip.lua`     | 5+2 item slots at top center                     |
+| `hand_button.lua`    | Individual hand selection button                 |
+| `hand_formula.lua`   | Chips × Mult formula display                     |
+| `juice.lua`          | Animation utilities (easing, spring, shake)      |
 
 ## 9-Slice System
 

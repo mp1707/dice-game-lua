@@ -2,7 +2,7 @@
 -- Pops up with scale overshoot and horizontal stretch, then fades out
 
 local Theme = require("src.ui.theme")
-local Juice = require("src.dice.juice")
+local Juice = require("src.ui.juice")
 
 local PopText = {}
 PopText.__index = PopText
@@ -30,14 +30,14 @@ function PopText.new(config)
     self.font = config.font or Theme.fonts.large
 
     -- Animation state
-    self.scale = 0           -- Current scale (starts at 0, targets 1)
+    self.scale = 0    -- Current scale (starts at 0, targets 1)
     self.scaleVelocity = 0
-    self.scaleX = 1.5        -- Horizontal stretch (starts wide)
+    self.scaleX = 1.5 -- Horizontal stretch (starts wide)
     self.scaleXVelocity = 0
 
     -- Timing
     self.timer = 0
-    self.phase = "popping"   -- "popping" | "holding" | "fading" | "done"
+    self.phase = "popping" -- "popping" | "holding" | "fading" | "done"
     self.alpha = 1
 
     -- Y offset for initial pop-up movement
@@ -81,13 +81,11 @@ function PopText:update(dt)
             self.phase = "holding"
             self.timer = 0
         end
-
     elseif self.phase == "holding" then
         if self.timer >= HOLD_DURATION then
             self.phase = "fading"
             self.timer = 0
         end
-
     elseif self.phase == "fading" then
         local progress = self.timer / FADE_DURATION
         self.alpha = 1 - progress
