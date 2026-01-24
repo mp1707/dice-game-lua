@@ -228,6 +228,7 @@ function DiceContainer:mousepressed(x, y, button)
     for i, display in ipairs(self.diceDisplays) do
         if display:containsPoint(x, y) then
             if button == 1 then
+                print("Dice Clicked! Index:", i)
                 -- Start dragging
                 self.draggingDice = display
                 self.draggingDiceIndex = i

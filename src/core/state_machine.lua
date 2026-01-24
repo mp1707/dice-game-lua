@@ -48,7 +48,7 @@ end
 
 function StateMachine:mousepressed(x, y, button)
     if self.current.mousepressed then
-        self.current:mousepressed(x, y, button)
+        return self.current:mousepressed(x, y, button)
     end
 end
 

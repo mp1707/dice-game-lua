@@ -453,30 +453,31 @@ function PlayState:mousepressed(x, y, button)
     -- Check settings modal first when open
     if self.settingsModal.isOpen then
         if self.settingsModal:mousepressed(x, y, button) then
-            return
+            return true
         end
     end
 
     -- Check hands modal when open
     if self.handsModal.isOpen then
         if self.handsModal:mousepressed(x, y, button) then
-            return
+            return true
         end
     end
 
     -- Check info panel clicks (settings/info buttons)
     if self.infoPanel:mousepressed(x, y, button) then
-        return
+        return true
     end
 
     -- Check dual CTA clicks
     if self.dualCta:mousepressed(x, y, button) then
-        return
+        return true
     end
 
     -- Forward to dice container
     if self.diceContainer:mousepressed(x, y, button) then
-        return
+        print("PlayState handled by DiceContainer")
+        return true
     end
 end
 

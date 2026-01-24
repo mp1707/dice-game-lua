@@ -76,9 +76,12 @@ function love.mousepressed(x, y, button)
     local gameX, gameY = Scaling.screenToGame(x, y)
     if gameX and gameY then
         -- Process game state first
-        stateMachine:mousepressed(gameX, gameY, button)
-        -- Then track selection rectangle
-        if MouseSelection then MouseSelection:mousepressed(gameX, gameY, button) end
+        local handled = stateMachine:mousepressed(gameX, gameY, button)
+        print("Main handled:", handled)
+        -- Then track selection rectangle ONLY if not handled by game logic
+        if not handled and MouseSelection then
+            MouseSelection:mousepressed(gameX, gameY, button)
+        end
     end
 end
 
