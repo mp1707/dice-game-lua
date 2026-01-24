@@ -17,8 +17,15 @@ local GameState = {
     rollsRemaining = 3,
     hasRolledThisHand = false,
 
-    -- Dice state (5 dice)
+    -- Dice state (5 dice with customizable faces)
     dice = {},
+
+    -- Consumables (stickers in slots 6-7 of item strip)
+    consumables = { nil, nil }, -- Max 2 consumable slots
+
+    -- Dice editor state
+    editorMode = false,      -- True when editing dice faces
+    activeSticker = nil,     -- Currently selected sticker for editing
 
     -- Used hands this level (set of hand IDs)
 
@@ -31,14 +38,26 @@ local GameState = {
     selectedHandId = nil, -- Currently selected hand card for playing
 }
 
--- Initialize dice
+-- Initialize dice (preserves custom faces if they exist)
 function GameState:initDice()
-    self.dice = {}
     for i = 1, 5 do
-        self.dice[i] = {
-            value = 1,
-            locked = false,
-        }
+        if not self.dice[i] then
+            self.dice[i] = {
+                value = 1,
+                locked = false,
+                faces = { 1, 2, 3, 4, 5, 6 }, -- Default standard faces
+                rolledFaceIndex = nil,        -- Which face index was rolled
+            }
+        else
+            -- Reset per-hand state but preserve faces
+            self.dice[i].value = 1
+            self.dice[i].locked = false
+            self.dice[i].rolledFaceIndex = nil
+            -- Ensure faces array exists (for backwards compatibility)
+            if not self.dice[i].faces then
+                self.dice[i].faces = { 1, 2, 3, 4, 5, 6 }
+            end
+        end
     end
 end
 
@@ -46,6 +65,12 @@ end
 function GameState:reset()
     self.currentLevel = 1
     self.money = 0
+    -- Reset dice to default faces
+    self.dice = {}
+    -- Clear consumables
+    self.consumables = { nil, nil }
+    self.editorMode = false
+    self.activeSticker = nil
     self:resetForLevel()
 end
 
@@ -83,7 +108,11 @@ function GameState:rollDice()
     for i, die in ipairs(self.dice) do
         -- Reroll if it's the first roll OR if the die is selected (locked)
         if isFirstRoll or die.locked then
-            die.value = math.random(1, 6)
+            -- Pick a random face from this die's faces array
+            local faceIndex = math.random(1, 6)
+            die.rolledFaceIndex = faceIndex
+            -- Get the value from the faces array (supports custom faces)
+            die.value = die.faces[faceIndex]
             -- If rerolled, it should be unlocked immediately
             die.locked = false
         end
@@ -272,6 +301,130 @@ end
 -- Get the selected hand
 function GameState:getSelectedHand()
     return self.selectedHandId
+end
+
+-- ============================================
+-- Consumable System
+-- ============================================
+
+-- Add a consumable (sticker) to inventory
+-- Returns slot index (1 or 2) if successful, nil if no room
+function GameState:addConsumable(stickerId)
+    for i = 1, 2 do
+        if not self.consumables[i] then
+            self.consumables[i] = { stickerId = stickerId }
+            return i
+        end
+    end
+    return nil -- No room
+end
+
+-- Remove a consumable from inventory
+-- Returns the removed consumable data or nil
+function GameState:removeConsumable(index)
+    if index < 1 or index > 2 then return nil end
+    local removed = self.consumables[index]
+    self.consumables[index] = nil
+    return removed
+end
+
+-- Get consumable at index
+function GameState:getConsumable(index)
+    if index < 1 or index > 2 then return nil end
+    return self.consumables[index]
+end
+
+-- Check if there's room for another consumable
+function GameState:hasConsumableRoom()
+    return not self.consumables[1] or not self.consumables[2]
+end
+
+-- Get count of consumables
+function GameState:getConsumableCount()
+    local count = 0
+    for i = 1, 2 do
+        if self.consumables[i] then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- ============================================
+-- Dice Face Customization
+-- ============================================
+
+-- Set a specific face value on a die
+-- dieIndex: 1-5 (which die)
+-- faceIndex: 1-6 (which face position)
+-- value: the new value for that face (1-6)
+function GameState:setDieFace(dieIndex, faceIndex, value)
+    if dieIndex < 1 or dieIndex > 5 then return false end
+    if faceIndex < 1 or faceIndex > 6 then return false end
+    if not self.dice[dieIndex] then return false end
+
+    -- Ensure faces array exists
+    if not self.dice[dieIndex].faces then
+        self.dice[dieIndex].faces = { 1, 2, 3, 4, 5, 6 }
+    end
+
+    self.dice[dieIndex].faces[faceIndex] = value
+
+    -- If this is the currently rolled face, update the displayed value too
+    if self.dice[dieIndex].rolledFaceIndex == faceIndex then
+        self.dice[dieIndex].value = value
+    end
+
+    return true
+end
+
+-- Get all faces for a die
+function GameState:getDieFaces(dieIndex)
+    if dieIndex < 1 or dieIndex > 5 then return nil end
+    if not self.dice[dieIndex] then return nil end
+    return self.dice[dieIndex].faces or { 1, 2, 3, 4, 5, 6 }
+end
+
+-- Get a specific face value from a die
+function GameState:getDieFace(dieIndex, faceIndex)
+    local faces = self:getDieFaces(dieIndex)
+    if not faces then return nil end
+    if faceIndex < 1 or faceIndex > 6 then return nil end
+    return faces[faceIndex]
+end
+
+-- ============================================
+-- Dice Editor Mode
+-- ============================================
+
+-- Enter dice editor mode with a sticker
+function GameState:enterEditorMode(consumableIndex)
+    if consumableIndex < 1 or consumableIndex > 2 then return false end
+    local consumable = self.consumables[consumableIndex]
+    if not consumable then return false end
+
+    self.editorMode = true
+    self.activeSticker = {
+        consumableIndex = consumableIndex,
+        stickerId = consumable.stickerId,
+    }
+    return true
+end
+
+-- Exit dice editor mode
+function GameState:exitEditorMode()
+    self.editorMode = false
+    self.activeSticker = nil
+end
+
+-- Check if in editor mode
+function GameState:isInEditorMode()
+    return self.editorMode
+end
+
+-- Get active sticker info
+function GameState:getActiveSticker()
+    return self.activeSticker
 end
 
 return GameState

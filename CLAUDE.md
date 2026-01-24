@@ -103,6 +103,22 @@ Located in `src/dice/`, see `src/dice/CLAUDE.md` for detailed documentation. Key
 - **die.lua**: Individual die with state machine, physics, squash/stretch
 - **dice_manager.lua**: Orchestrates multiple dice with callbacks
 
+### Dice Editor System (Roguelike Core)
+
+See `src/dice/CLAUDE_DICE_EDITOR.md` for detailed documentation. Core roguelike mechanic:
+
+- **Custom Dice Faces**: Each die has 6 customizable faces stored in `GameState.dice[i].faces`
+- **Stickers**: Consumable items that replace die faces (buy $8, sell $2)
+- **Consumable Slots**: 2 slots in item strip (positions 6-7) for stickers
+- **Usage Flow**: Click consumable → USE → Select die → Select face → Confirm replacement
+
+Key files:
+- **stickers.lua**: Registry of all sticker definitions
+- **consumable_slot.lua**: Interactive slot component with USE/SELL buttons
+- **dice_editor.lua**: Singleton managing editor mode (dimming, selection, confirmation)
+- **dice_tooltip.lua**: Shows all 6 faces on die hover (1 sec delay)
+- **drag_zones.lua**: DELETE (bottom-right) and SELL (top-middle) drop zones
+
 ### UI Components
 
 All in `src/ui/`:
@@ -113,7 +129,11 @@ All in `src/ui/`:
 - **dice_display.lua**: Wraps Die with animation support
 - **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
 - **dual_cta.lua**: Two action buttons - "Play Hand" and "Roll"
-- **item_strip.lua**: 5+2 item slots at top center
+- **item_strip.lua**: 5+2 item slots at top center (slots 6-7 are consumable slots)
+- **consumable_slot.lua**: Interactive consumable slot with USE/SELL buttons and drag support
+- **dice_tooltip.lua**: Horizontal tooltip showing all 6 faces of a die
+- **dice_editor.lua**: Singleton managing dice face editing mode
+- **drag_zones.lua**: DELETE and SELL drop zones for consumables
 - **score_animation.lua**: Counting animation when playing a hand
 - **pop_text.lua**: Floating text with spring animation
 

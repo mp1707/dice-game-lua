@@ -1,9 +1,11 @@
 -- Item Strip component
--- Visual-only container for 5 + 2 item/consumable slots at the top center
+-- Container for 5 item slots + 2 consumable slots at the top center
 -- Layout: [1][2][3][4][5]   GAP   [6][7]
+-- Slots 6-7 are interactive consumable slots for stickers
 
 local Theme = require("src.ui.theme")
 local NineSlice = require("src.ui.nine_slice")
+local ConsumableSlot = require("src.ui.consumable_slot")
 
 local ItemStrip = {}
 ItemStrip.__index = ItemStrip
@@ -19,6 +21,36 @@ function ItemStrip.new(config)
     self.slotCount = config.slotCount or Theme.layout.itemSlotCount or 7
 
     self.nineSlice = NineSlice.getInstance()
+
+    -- Callbacks for consumable actions
+    self.onConsumableUse = config.onConsumableUse or function() end
+    self.onConsumableSell = config.onConsumableSell or function() end
+    self.onConsumableDragStart = config.onConsumableDragStart or function() end
+    self.onConsumableDragEnd = config.onConsumableDragEnd or function() end
+
+    -- Create consumable slots for positions 6 and 7
+    self.consumableSlots = {}
+    for i = 1, 2 do
+        local slotX = self:getSlotX(i + 5) -- Slots 6 and 7
+        self.consumableSlots[i] = ConsumableSlot.new({
+            x = slotX,
+            y = self.y,
+            size = self.slotSize,
+            slotIndex = i,
+            onUse = function(slotIndex)
+                self.onConsumableUse(slotIndex)
+            end,
+            onSell = function(slotIndex)
+                self.onConsumableSell(slotIndex)
+            end,
+            onDragStart = function(slotIndex)
+                self.onConsumableDragStart(slotIndex)
+            end,
+            onDragEnd = function(slotIndex, x, y)
+                self.onConsumableDragEnd(slotIndex, x, y)
+            end,
+        })
+    end
 
     return self
 end
@@ -41,8 +73,70 @@ function ItemStrip:getSlotX(index)
     end
 end
 
+function ItemStrip:update(dt)
+    -- Update consumable slots
+    for _, slot in ipairs(self.consumableSlots) do
+        slot:update(dt)
+    end
+end
+
+function ItemStrip:mousepressed(x, y, button)
+    -- Check consumable slots first
+    for _, slot in ipairs(self.consumableSlots) do
+        if slot:mousepressed(x, y, button) then
+            -- Deselect other slots
+            for _, otherSlot in ipairs(self.consumableSlots) do
+                if otherSlot ~= slot then
+                    otherSlot:deselect()
+                end
+            end
+            return true
+        end
+    end
+    return false
+end
+
+function ItemStrip:mousereleased(x, y, button)
+    for _, slot in ipairs(self.consumableSlots) do
+        if slot:mousereleased(x, y, button) then
+            return true
+        end
+    end
+    return false
+end
+
+function ItemStrip:mousemoved(x, y, dx, dy)
+    for _, slot in ipairs(self.consumableSlots) do
+        slot:mousemoved(x, y, dx, dy)
+    end
+end
+
+function ItemStrip:deselectAll()
+    for _, slot in ipairs(self.consumableSlots) do
+        slot:deselect()
+    end
+end
+
+function ItemStrip:isDragging()
+    for _, slot in ipairs(self.consumableSlots) do
+        if slot:isDraggingSticker() then
+            return true
+        end
+    end
+    return false
+end
+
+function ItemStrip:getDraggingSlot()
+    for _, slot in ipairs(self.consumableSlots) do
+        if slot:isDraggingSticker() then
+            return slot
+        end
+    end
+    return nil
+end
+
 function ItemStrip:draw()
-    -- Draw first 5 slots
+    -- Draw first 5 slots (passive items - visual only for now)
     for i = 1, 5 do
         local slotX = self:getSlotX(i)
         local slotY = self.y
@@ -58,20 +152,9 @@ function ItemStrip:draw()
         )
     end
 
-    -- Draw last 2 slots (after gap)
-    for i = 6, 7 do
-        local slotX = self:getSlotX(i)
-        local slotY = self.y
-
-        -- Draw dark slot background
-        self.nineSlice:draw(
-            slotX,
-            slotY,
-            self.slotSize,
-            self.slotSize,
-            Theme.colors.panelDark,
-            Theme.nineSlice.borderScale
-        )
+    -- Draw consumable slots (6-7)
+    for _, slot in ipairs(self.consumableSlots) do
+        slot:draw()
     end
 
     love.graphics.setColor(1, 1, 1, 1)
