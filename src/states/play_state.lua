@@ -15,6 +15,7 @@ local Juice = require("src.ui.juice")
 local ScoreAnimation = require("src.ui.score_animation")
 local DiceContainer = require("src.ui.dice_container")
 local HandsModal = require("src.ui.hands_modal")
+local SettingsModal = require("src.ui.settings_modal")
 
 local PlayState = {}
 PlayState.__index = PlayState
@@ -31,6 +32,7 @@ function PlayState.new()
     self.dualCta = nil
     self.diceContainer = nil
     self.handsModal = nil
+    self.settingsModal = nil
 
     -- Reference to state machine (set in enter)
     self.stateMachine = nil
@@ -48,12 +50,21 @@ function PlayState:enter(params)
     self:initDiceContainer()
     self:initItemStrip()
     self:initHandsModal()
+    self:initSettingsModal()
     self:initInfoPanel()
     self:initDualCta()
 end
 
 function PlayState:initHandsModal()
     self.handsModal = HandsModal.new({
+        onClose = function()
+            -- Modal closed
+        end,
+    })
+end
+
+function PlayState:initSettingsModal()
+    self.settingsModal = SettingsModal.new({
         onClose = function()
             -- Modal closed
         end,
@@ -137,6 +148,9 @@ function PlayState:initInfoPanel()
         end,
         onInfoClick = function()
             self.handsModal:open()
+        end,
+        onSettingsClick = function()
+            self.settingsModal:open()
         end,
     })
 end
@@ -380,6 +394,9 @@ function PlayState:update(dt)
 
     -- Update hands modal
     self.handsModal:update(dt)
+
+    -- Update settings modal
+    self.settingsModal:update(dt)
 end
 
 function PlayState:draw()
@@ -422,6 +439,9 @@ function PlayState:draw()
     -- Draw hands modal (on top of everything)
     self.handsModal:draw()
 
+    -- Draw settings modal (on top of everything)
+    self.settingsModal:draw()
+
     love.graphics.setColor(1, 1, 1, 1)
 end
 
@@ -430,7 +450,14 @@ function PlayState:mousemoved(x, y)
 end
 
 function PlayState:mousepressed(x, y, button)
-    -- Check hands modal first when open
+    -- Check settings modal first when open
+    if self.settingsModal.isOpen then
+        if self.settingsModal:mousepressed(x, y, button) then
+            return
+        end
+    end
+
+    -- Check hands modal when open
     if self.handsModal.isOpen then
         if self.handsModal:mousepressed(x, y, button) then
             return
@@ -472,6 +499,11 @@ function PlayState:mousepressed(x, y, button)
 end
 
 function PlayState:mousereleased(x, y, button)
+    -- Release settings modal
+    if self.settingsModal:mousereleased(x, y, button) then
+        return
+    end
+
     -- Release hands modal
     if self.handsModal:mousereleased(x, y, button) then
         return
@@ -488,7 +520,12 @@ function PlayState:mousereleased(x, y, button)
 end
 
 function PlayState:keypressed(key)
-    -- Check hands modal first
+    -- Check settings modal first
+    if self.settingsModal:keypressed(key) then
+        return
+    end
+
+    -- Check hands modal
     if self.handsModal:keypressed(key) then
         return
     end

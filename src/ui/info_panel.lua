@@ -28,6 +28,7 @@ function InfoPanel.new(config)
 
     -- Callbacks
     self.onInfoClick = config.onInfoClick
+    self.onSettingsClick = config.onSettingsClick
 
     -- Data callbacks
     self.getLevel = config.getLevel or function() return 1 end
@@ -68,7 +69,9 @@ function InfoPanel.new(config)
         textColor = Theme.colors.text,
         font = Theme.fonts.normal,
         onClick = function()
-            -- Mock functionality for now
+            if self.onSettingsClick then
+                self.onSettingsClick()
+            end
         end,
     })
 
