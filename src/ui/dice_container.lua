@@ -6,6 +6,7 @@ local Theme = require("src.ui.theme")
 local DiceDisplay = require("src.ui.dice_display")
 local Juice = require("src.ui.juice")
 local Sound = require("src.core.sound")
+local MouseSelection = require("src.ui.mouse_selection")
 
 local DiceContainer = {}
 DiceContainer.__index = DiceContainer
@@ -239,30 +240,16 @@ function DiceContainer:mousepressed(x, y, button)
         end
     end
 
-    -- Background click for selection rect
-    -- NOTE: PlayState currently checks if click is NOT on InfoPanel before calling this
-    -- We assume the caller handles that check or we check bounds if we had them.
-    -- For now, we'll return false if no dice clicked, ensuring PlayState can handle background logic if it wants,
-    -- OR we handle it here if we assume this takes up the "game area".
-    -- To keep it clean, we'll provide a separate method `startSelectionRect` or handle it if passed.
-
     return false
 end
 
-function DiceContainer:startSelectionRect(x, y, isDeselect)
-    self.isSelectingRect = true
-    self.isDeselecting = isDeselect
-    self.selectRectStartX = x
-    self.selectRectStartY = y
-    self.selectRectEndX = x
-    self.selectRectEndY = y
-end
-
 function DiceContainer:mousemoved(x, y)
-    if self.isSelectingRect then
-        self.selectRectEndX = x
-        self.selectRectEndY = y
-        self:updateDiceInSelectionRect()
+    -- Update visual feedback based on global selection rect
+    if MouseSelection.isActive then
+        local rect = MouseSelection:getRect()
+        if rect then
+            self:updateSelectionFeedback(rect)
+        end
     end
 
     if self.draggingDice then
@@ -326,21 +313,32 @@ function DiceContainer:mousereleased(x, y, button)
         self.hoverSlot = nil
     end
 
-    if (button == 1 or button == 2) and self.isSelectingRect then
-        self:selectDiceInRect()
-        self.isSelectingRect = false
-        self.isDeselecting = false
+    -- Commit selection if MouseSelection was active
+    if MouseSelection.isActive and (button == 1 or button == 2) then
+        local rect = MouseSelection:getRect()
+        if rect then
+            self:commitSelection(rect)
+        end
+
+        -- Always clear local feedback
         for _, display in ipairs(self.diceDisplays) do
             display:setInSelectionRect(false)
         end
     end
 end
 
-function DiceContainer:updateDiceInSelectionRect()
-    local x1 = math.min(self.selectRectStartX, self.selectRectEndX)
-    local x2 = math.max(self.selectRectStartX, self.selectRectEndX)
-    local y1 = math.min(self.selectRectStartY, self.selectRectEndY)
-    local y2 = math.max(self.selectRectStartY, self.selectRectEndY)
+function DiceContainer:updateSelectionFeedback(rect)
+    if self.isRolling() then
+        for _, display in ipairs(self.diceDisplays) do
+            display:setInSelectionRect(false)
+        end
+        return
+    end
+
+    local x1 = rect.x1
+    local x2 = rect.x2
+    local y1 = rect.y1
+    local y2 = rect.y2
 
     for _, display in ipairs(self.diceDisplays) do
         local dx = display.x + display.size / 2
@@ -351,17 +349,16 @@ function DiceContainer:updateDiceInSelectionRect()
     end
 end
 
-function DiceContainer:selectDiceInRect()
-    local x1 = math.min(self.selectRectStartX, self.selectRectEndX)
-    local x2 = math.max(self.selectRectStartX, self.selectRectEndX)
-    local y1 = math.min(self.selectRectStartY, self.selectRectEndY)
-    local y2 = math.max(self.selectRectStartY, self.selectRectEndY)
+function DiceContainer:commitSelection(rect)
+    if self.isRolling() then return end
+
+    local x1 = rect.x1
+    local x2 = rect.x2
+    local y1 = rect.y1
+    local y2 = rect.y2
+    local isDeselecting = rect.isDeselecting
 
     local anyChanged = false
-    -- We'll track if we mostly selected or deselected to choose the sound,
-    -- but for now "lightClick" (select sound) is probably best for any positive action.
-    -- If we strictly deselected, maybe "click"?
-    -- Let's just default to "lightClick" as requested "ONE dice select sound".
 
     for i, display in ipairs(self.diceDisplays) do
         local dx = display.x + display.size / 2
@@ -372,9 +369,9 @@ function DiceContainer:selectDiceInRect()
             local isSelected = data.locked
             local changed = false
 
-            if self.isDeselecting then
+            if isDeselecting then
                 if isSelected then
-                    -- Pass true to suppress sound
+                    -- Pass true to suppress sound (we play one sound at end)
                     self.onDiceClick(i, true)
                     changed = true
                 end
@@ -393,7 +390,7 @@ function DiceContainer:selectDiceInRect()
     end
 
     if anyChanged then
-        if self.isDeselecting then
+        if isDeselecting then
             Sound:play("click")
         else
             Sound:play("lightClick")
@@ -429,30 +426,9 @@ function DiceContainer:draw()
         end
     end
 
-    -- Selection Rect
-    if self.isSelectingRect then
-        self:drawSelectionRect()
-    end
+    -- Selection Rect is now drawn globally by MouseSelection
 
     love.graphics.pop()
-end
-
-function DiceContainer:drawSelectionRect()
-    local x = self.selectRectStartX
-    local y = self.selectRectStartY
-    local w = self.selectRectEndX - x
-    local h = self.selectRectEndY - y
-
-    -- Draw semi-transparent fill
-    love.graphics.setColor(1, 1, 1, 0.1)
-    love.graphics.rectangle("fill", x, y, w, h)
-
-    -- Draw border
-    love.graphics.setColor(1, 1, 1, 0.4)
-    love.graphics.setLineWidth(1)
-    love.graphics.rectangle("line", x, y, w, h)
-
-    love.graphics.setColor(1, 1, 1, 1)
 end
 
 return DiceContainer

@@ -478,24 +478,6 @@ function PlayState:mousepressed(x, y, button)
     if self.diceContainer:mousepressed(x, y, button) then
         return
     end
-
-    -- Background click handling (Selection Rect)
-    if not GameState.isRolling then
-        -- Check if click is NOT on the info panel
-        local layout = Theme.layout
-        local isOnInfoPanel = x >= layout.leftPanelX and
-            x <= layout.leftPanelX + layout.leftPanelWidth and
-            y >= layout.leftPanelY and
-            y <= layout.leftPanelY + layout.leftPanelHeight
-
-        if not isOnInfoPanel then
-            -- Left click select, Right click deselect
-            local isDeselect = (button == 2)
-            if button == 1 or button == 2 then
-                self.diceContainer:startSelectionRect(x, y, isDeselect)
-            end
-        end
-    end
 end
 
 function PlayState:mousereleased(x, y, button)

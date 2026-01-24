@@ -13,6 +13,8 @@ local Scaling
 local Sound
 local stateMachine
 
+local MouseSelection
+
 function love.load()
     -- Set default filter for pixel art
     love.graphics.setDefaultFilter("nearest", "nearest")
@@ -23,6 +25,7 @@ function love.load()
     GameState = require("src.game.game_state")
     Scaling = require("src.core.scaling")
     Sound = require("src.core.sound")
+    MouseSelection = require("src.ui.mouse_selection")
 
     -- Initialize systems
     Theme:load()
@@ -60,6 +63,8 @@ end
 function love.draw()
     Scaling.draw(function()
         stateMachine:draw()
+        -- Draw selection rectangle on top of everything
+        if MouseSelection then MouseSelection:draw() end
     end)
 
     -- Hot reload notification
@@ -70,14 +75,20 @@ end
 function love.mousepressed(x, y, button)
     local gameX, gameY = Scaling.screenToGame(x, y)
     if gameX and gameY then
+        -- Process game state first
         stateMachine:mousepressed(gameX, gameY, button)
+        -- Then track selection rectangle
+        if MouseSelection then MouseSelection:mousepressed(gameX, gameY, button) end
     end
 end
 
 function love.mousereleased(x, y, button)
     local gameX, gameY = Scaling.screenToGame(x, y)
     if gameX and gameY then
+        -- Process game state first (so it can read selection state before it clears)
         stateMachine:mousereleased(gameX, gameY, button)
+        -- Then clear selection
+        if MouseSelection then MouseSelection:mousereleased(gameX, gameY, button) end
     end
 end
 
@@ -85,6 +96,7 @@ function love.mousemoved(x, y)
     local gameX, gameY = Scaling.screenToGame(x, y)
     if gameX and gameY then
         stateMachine:mousemoved(gameX, gameY)
+        if MouseSelection then MouseSelection:mousemoved(gameX, gameY) end
     end
 end
 
