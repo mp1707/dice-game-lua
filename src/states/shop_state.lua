@@ -137,7 +137,8 @@ function ShopState:initItemStrip()
     local layout = Theme.layout
 
     -- Calculate centered position for item strip
-    local totalWidth = 7 * layout.itemSlotSize + 4 * layout.itemSlotSpacing + layout.itemSlotGap + layout.itemSlotSpacing
+    local totalWidth = 7 * layout.itemSlotSize + 4 * layout.itemSlotSpacing + layout.itemSlotGap + layout
+        .itemSlotSpacing
     local stripX = layout.centerX + (layout.centerWidth - totalWidth) / 2
 
     self.itemStrip = ItemStrip.new({
@@ -378,7 +379,8 @@ function ShopState:draw()
 
         -- Current money
         local moneyText = "$" .. tostring(GameState.money)
-        Theme:drawTextCenteredWithShadow(moneyText, panelX, panelY + 80, panelWidth, Theme.fonts.large, Theme.colors.gold)
+        Theme:drawTextCenteredWithShadow(moneyText, panelX, panelY + 80, panelWidth, Theme.fonts.large, Theme.colors
+            .gold)
 
         -- Stickers section label
         Theme:drawTextCenteredWithShadow("Stickers", panelX, panelY + 130, panelWidth, Theme.fonts.normal,
@@ -398,7 +400,8 @@ function ShopState:draw()
 
         -- Level info
         local levelText = "Level " .. tostring(GameState.currentLevel) .. " / " .. tostring(Levels.totalLevels)
-        Theme:drawTextCenteredWithShadow(levelText, panelX, panelY + 340, panelWidth, Theme.fonts.normal, Theme.colors.text)
+        Theme:drawTextCenteredWithShadow(levelText, panelX, panelY + 340, panelWidth, Theme.fonts.normal,
+            Theme.colors.text)
 
         -- Next goal preview
         if not Levels:isLastLevel(GameState.currentLevel) then
@@ -639,7 +642,7 @@ function ShopState:keypressed(key)
         return
     end
 
-    if key == "space" or key == "return" then
+    if key == "return" then
         self:onActionButtonClick()
     end
 end

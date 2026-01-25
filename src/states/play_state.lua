@@ -226,7 +226,16 @@ function PlayState:canPlayHand()
 
     -- Check if a valid hand is detected
     local detected = self:getDetectedHand()
-    return detected ~= nil
+    if detected then return true end
+
+    -- If no dice selected, check if ALL dice would make a valid hand
+    if GameState:getSelectedCount() == 0 then
+        local allIndices = { 1, 2, 3, 4, 5 }
+        local detectedAll = Scoring.detectBestHand(allIndices, GameState.dice)
+        return detectedAll ~= nil
+    end
+
+    return false
 end
 
 -- ============================================
@@ -366,6 +375,15 @@ function PlayState:onPlayHandClick()
     if scoreAnim:isAnimating() then return end
 
     local detected = self:getDetectedHand()
+
+    -- Auto-select all dice if none are selected
+    if not detected and GameState:getSelectedCount() == 0 then
+        for i = 1, 5 do
+            GameState:toggleDiceSelection(i, true) -- Suppress sound
+        end
+        detected = self:getDetectedHand()
+    end
+
     if not detected then return end
 
     local breakdown = Scoring.getBreakdown(detected.id, GameState.dice)
@@ -799,14 +817,18 @@ function PlayState:keypressed(key)
     end
 
     if key == "space" then
-        -- Roll if possible, otherwise play hand if possible
+        -- Space bar is always the "ROLL" button
         if self:canRoll() then
             self:rollDice()
-        elseif self:canPlayHand() then
+        end
+    elseif key == "return" then
+        -- Enter is "PLAY HAND"
+        if self:canPlayHand() then
             self:onPlayHandClick()
         end
     elseif key == "backspace" then
-        -- Backspace triggers roll
+        -- Backspace triggers roll (keep as alternative?)
+        -- User didn't ask to remove it, so keeping it safe
         if self:canRoll() then
             self:rollDice()
         end

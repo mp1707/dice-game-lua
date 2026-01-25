@@ -442,7 +442,7 @@ function ResultState:mousereleased(x, y, button)
 end
 
 function ResultState:keypressed(key)
-    if key == "space" or key == "return" then
+    if key == "return" then
         if self.timer > 0.5 then
             self:onActionButtonClick()
         else

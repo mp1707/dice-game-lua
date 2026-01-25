@@ -321,7 +321,7 @@ function DiceEditor:keypressed(key)
         return true
     end
 
-    if key == "return" or key == "space" then
+    if key == "return" then
         if self.showingConfirmation then
             self:confirmReplacement()
             return true
@@ -442,7 +442,7 @@ function DiceEditor:drawConfirmationModal()
     local confirmX = modalX + modalWidth - buttonWidth - 30
     local confirmHovered = self:isButtonHovered(confirmX, buttonY, buttonWidth, buttonHeight)
     local confirmColor = confirmHovered and Theme.colors.cyan or
-    { Theme.colors.cyan[1] * 0.85, Theme.colors.cyan[2] * 0.85, Theme.colors.cyan[3] * 0.85, 1 }
+        { Theme.colors.cyan[1] * 0.85, Theme.colors.cyan[2] * 0.85, Theme.colors.cyan[3] * 0.85, 1 }
     nineSlice:draw(confirmX, buttonY, buttonWidth, buttonHeight, confirmColor, Theme.nineSlice.borderScale)
     love.graphics.setColor(Theme.colors.textDark)
     local confirmText = "Confirm"
