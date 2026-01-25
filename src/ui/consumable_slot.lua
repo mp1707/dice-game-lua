@@ -138,7 +138,8 @@ function ConsumableSlot:mousepressed(x, y, button)
     if not self:hasConsumable() then return false end
 
     -- Check if clicking on USE/SELL buttons (stacked below slot)
-    if self.isSelected and self.buttonsAlpha > 0.5 then
+    -- Relaxed alpha check to make it more responsive during animation
+    if self.isSelected and self.buttonsAlpha > 0.1 then
         local buttonWidth = self.size + 20
         local buttonHeight = 38
         local buttonX = self.x - 10
@@ -240,9 +241,18 @@ end
 
 function ConsumableSlot:draw(alphaMult)
     alphaMult = alphaMult or 1
-    local drawX, drawY = self:getDrawPosition()
 
-    -- Calculate center for scaling/rotation
+    -- STATIC VISUALS: Always at self.x, self.y
+    local staticCenterX = self.x + self.size / 2
+    local staticCenterY = self.y + self.size / 2
+
+    -- Draw slot background (Static)
+    local bgColor = self.isHovered and Theme.colors.surface2 or Theme.colors.panelDark
+    local finalBgColor = { bgColor[1], bgColor[2], bgColor[3], (bgColor[4] or 1) * alphaMult }
+    self.nineSlice:draw(self.x, self.y, self.size, self.size, finalBgColor, Theme.nineSlice.borderScale)
+
+    -- DYNAMIC VISUALS: Sprite follows drag
+    local drawX, drawY = self:getDrawPosition()
     local centerX = drawX + self.size / 2
     local centerY = drawY + self.size / 2
 
@@ -251,12 +261,6 @@ function ConsumableSlot:draw(alphaMult)
     love.graphics.rotate(self.rotation)
     love.graphics.scale(self.scale, self.scale)
     love.graphics.translate(-self.size / 2, -self.size / 2)
-
-    -- Draw slot background
-    local bgColor = self.isHovered and Theme.colors.surface2 or Theme.colors.panelDark
-    -- Apply alphaMult to bgColor
-    local finalBgColor = { bgColor[1], bgColor[2], bgColor[3], (bgColor[4] or 1) * alphaMult }
-    self.nineSlice:draw(0, 0, self.size, self.size, finalBgColor, Theme.nineSlice.borderScale)
 
     -- Draw sticker sprite if present
     local consumable = self:getConsumable()

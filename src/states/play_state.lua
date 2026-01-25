@@ -121,10 +121,18 @@ function PlayState:initItemStrip()
             self:onRelicSell(slotIndex)
         end,
         onRelicDragStart = function(slotIndex)
-            -- For now, relics don't have drag zones (just sell from slot)
+            -- Start drag
         end,
         onRelicDragEnd = function(slotIndex, x, y)
-            -- For now, relics don't have drag zones
+            -- Check for swap
+            local targetSlot = self.itemStrip:getSlotAtPosition(x, y)
+            if targetSlot and targetSlot.slotIndex ~= slotIndex then
+                -- Check if target is also a relic slot (indices 1-5)
+                if targetSlot.slotIndex <= 5 then
+                    GameState:swapRelics(slotIndex, targetSlot.slotIndex)
+                    Sound:play("click")
+                end
+            end
         end,
         -- Consumable callbacks
         onConsumableUse = function(slotIndex)
@@ -134,9 +142,7 @@ function PlayState:initItemStrip()
             self:onConsumableSell(slotIndex)
         end,
         onConsumableDragStart = function(slotIndex)
-            local stripIndex = slotIndex + 5 -- Maps to visual slots 6 and 7
-            local slotX = self.itemStrip:getSlotX(stripIndex)
-            self.dragZones:show(slotIndex, slotX, self.itemStrip.y, self.itemStrip.slotSize)
+            -- Start drag
         end,
         onConsumableDragEnd = function(slotIndex, x, y)
             self:onConsumableDragEnd(slotIndex, x, y)
@@ -306,8 +312,6 @@ function PlayState:onRelicSell(slotIndex)
 end
 
 function PlayState:onConsumableDragEnd(slotIndex, x, y)
-    self.dragZones:hide()
-
     -- Check if dropped on a die first (only if dice are visible)
     if GameState.hasRolledThisHand then
         local positions = self:getDicePositions()
@@ -322,15 +326,27 @@ function PlayState:onConsumableDragEnd(slotIndex, x, y)
         end
     end
 
-    -- Fall back to DELETE/SELL zones
-    local zone = self.dragZones:getZoneAtPosition(x, y)
-    if zone == "delete" then
-        -- Delete consumable (no money back)
-        GameState:removeConsumable(slotIndex)
-        Sound:play("click")
-    elseif zone == "sell" then
-        -- Sell consumable
-        self:onConsumableSell(slotIndex)
+    -- Check for swap with another consumable slot
+    local targetSlot = self.itemStrip:getSlotAtPosition(x, y)
+    if targetSlot and targetSlot.slotIndex ~= slotIndex then
+        -- Check if target is also a consumable slot (indices 1-2 passed from ConsumableSlot)
+        -- Wait, ConsumableSlot instances have slotIndex 1 or 2.
+        -- targetSlot returned from getSlotAtPosition is the *instance*.
+        -- We need to check if it's a consumable slot.
+        -- ItemStrip has separate arrays.
+        -- We can just check if targetSlot is in itemStrip.consumableSlots?
+        -- Or check if it has onUse/onSell?
+        -- Actually, slotIndex in dragEnd comes from the slot itself.
+        -- ConsumableSlot instances are independent.
+        -- Let's check class or properties?
+        -- Easier: check if slotIndex matches logic.
+        -- But targetSlot.slotIndex is local to the type (1-5 for relic, 1-2 for consumable).
+        -- getSlotAtPosition returns specific slot instance.
+        -- We can check if it has 'getConsumable' method?
+        if targetSlot.getConsumable then
+            GameState:swapConsumables(slotIndex, targetSlot.slotIndex)
+            Sound:play("click")
+        end
     end
 end
 
@@ -616,14 +632,14 @@ function PlayState:update(dt)
     -- Update settings modal
     self.settingsModal:update(dt)
 
-    -- Update drag zones
-    local dragSlot = self.itemStrip:getDraggingSlot()
-    if dragSlot then
-        local dragX, dragY = dragSlot:getDragPosition()
-        self.dragZones:update(dt, dragX, dragY)
-    else
-        self.dragZones:update(dt, nil, nil)
-    end
+    -- Update drag zones (Removed)
+    -- local dragSlot = self.itemStrip:getDraggingSlot()
+    -- if dragSlot then
+    --     local dragX, dragY = dragSlot:getDragPosition()
+    --     self.dragZones:update(dt, dragX, dragY)
+    -- else
+    --     self.dragZones:update(dt, nil, nil)
+    -- end
 
     -- Update dice editor
     self.diceEditor:update(dt)
@@ -729,8 +745,8 @@ function PlayState:draw()
         self.diceTooltip:draw()
     end
 
-    -- Draw drag zones (on top when dragging)
-    self.dragZones:draw()
+    -- Draw drag zones (Removed)
+    -- self.dragZones:draw()
 
     -- Draw item strip on top if dragging
     if self.itemStrip:isDragging() then

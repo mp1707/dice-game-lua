@@ -27,8 +27,8 @@ local GameState = {
     relics = { nil, nil, nil, nil, nil }, -- Max 5 relic slots
 
     -- Dice editor state
-    editorMode = false,      -- True when editing dice faces
-    activeSticker = nil,     -- Currently selected sticker for editing
+    editorMode = false,  -- True when editing dice faces
+    activeSticker = nil, -- Currently selected sticker for editing
 
     -- Used hands this level (set of hand IDs)
 
@@ -338,6 +338,17 @@ function GameState:removeConsumable(index)
     return removed
 end
 
+-- Swap two consumables
+function GameState:swapConsumables(index1, index2)
+    if index1 < 1 or index1 > 2 then return false end
+    if index2 < 1 or index2 > 2 then return false end
+
+    local temp = self.consumables[index1]
+    self.consumables[index1] = self.consumables[index2]
+    self.consumables[index2] = temp
+    return true
+end
+
 -- Get consumable at index
 function GameState:getConsumable(index)
     if index < 1 or index > 2 then return nil end
@@ -460,6 +471,17 @@ function GameState:removeRelic(index)
     local removed = self.relics[index]
     self.relics[index] = nil
     return removed
+end
+
+-- Swap two relics
+function GameState:swapRelics(index1, index2)
+    if index1 < 1 or index1 > 5 then return false end
+    if index2 < 1 or index2 > 5 then return false end
+
+    local temp = self.relics[index1]
+    self.relics[index1] = self.relics[index2]
+    self.relics[index2] = temp
+    return true
 end
 
 -- Get relic at index

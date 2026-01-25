@@ -154,6 +154,25 @@ function ShopState:initItemStrip()
     self.itemStrip = ItemStrip.new({
         x = stripX,
         y = layout.itemStripY,
+        -- Relic callbacks
+        onRelicSell = function(slotIndex)
+            -- Can't sell relics in shop, but can swap
+        end,
+        onRelicDragStart = function(slotIndex)
+            -- Start drag
+        end,
+        onRelicDragEnd = function(slotIndex, x, y)
+            -- Check for swap
+            local targetSlot = self.itemStrip:getSlotAtPosition(x, y)
+            if targetSlot and targetSlot.slotIndex ~= slotIndex then
+                -- Check if target is also a relic slot (indices 1-5)
+                if targetSlot.slotIndex <= 5 then
+                    GameState:swapRelics(slotIndex, targetSlot.slotIndex)
+                    Sound:play("click")
+                end
+            end
+        end,
+        -- Consumable callbacks
         onConsumableUse = function(slotIndex)
             self:onConsumableUse(slotIndex)
         end,
@@ -161,9 +180,7 @@ function ShopState:initItemStrip()
             self:onConsumableSell(slotIndex)
         end,
         onConsumableDragStart = function(slotIndex)
-            local stripIndex = slotIndex + 5 -- Maps to visual slots 6 and 7
-            local slotX = self.itemStrip:getSlotX(stripIndex)
-            self.dragZones:show(slotIndex, slotX, self.itemStrip.y, self.itemStrip.slotSize)
+            -- Start drag
         end,
         onConsumableDragEnd = function(slotIndex, x, y)
             self:onConsumableDragEnd(slotIndex, x, y)
@@ -556,14 +573,13 @@ function ShopState:onConsumableSell(slotIndex)
 end
 
 function ShopState:onConsumableDragEnd(slotIndex, x, y)
-    self.dragZones:hide()
-
-    local zone = self.dragZones:getZoneAtPosition(x, y)
-    if zone == "delete" then
-        GameState:removeConsumable(slotIndex)
-        Sound:play("click")
-    elseif zone == "sell" then
-        self:onConsumableSell(slotIndex)
+    -- Check for swap with another consumable slot
+    local targetSlot = self.itemStrip:getSlotAtPosition(x, y)
+    if targetSlot and targetSlot.slotIndex ~= slotIndex then
+        if targetSlot.getConsumable then
+            GameState:swapConsumables(slotIndex, targetSlot.slotIndex)
+            Sound:play("click")
+        end
     end
 end
 
@@ -597,14 +613,14 @@ function ShopState:update(dt)
         self:updateSelectingSticker(dt)
     end
 
-    -- Update drag zones
-    local dragSlot = self.itemStrip and self.itemStrip:getDraggingSlot()
-    if dragSlot then
-        local dragX, dragY = dragSlot:getDragPosition()
-        self.dragZones:update(dt, dragX, dragY)
-    else
-        self.dragZones:update(dt, nil, nil)
-    end
+    -- Update drag zones (Removed)
+    -- local dragSlot = self.itemStrip and self.itemStrip:getDraggingSlot()
+    -- if dragSlot then
+    --     local dragX, dragY = dragSlot:getDragPosition()
+    --     self.dragZones:update(dt, dragX, dragY)
+    -- else
+    --     self.dragZones:update(dt, nil, nil)
+    -- end
 
     -- Update dice editor
     self.diceEditor:update(dt)
@@ -696,8 +712,8 @@ function ShopState:draw()
         self.shopTooltip:draw()
     end
 
-    -- Draw drag zones
-    self.dragZones:draw()
+    -- Draw drag zones (Removed)
+    -- self.dragZones:draw()
 
     -- Draw item strip again if dragging
     if self.itemStrip and self.itemStrip:isDragging() then
@@ -717,7 +733,17 @@ function ShopState:draw()
         self.editorCancelButton:draw()
     end
 
+    if self.editorCancelButton and not self.diceEditor.showingConfirmation then
+        self.editorCancelButton:draw()
+    end
+
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+function ShopState:mousemoved(x, y, dx, dy)
+    if self.itemStrip then
+        self.itemStrip:mousemoved(x, y, dx, dy)
+    end
 end
 
 function ShopState:drawShopItems(alpha)
@@ -799,6 +825,11 @@ function ShopState:mousepressed(x, y, button)
         end
     end
 
+    -- Check item strip (consumables/relics) - PREVENTS MOUSE SELECTION TRIGGER
+    if self.itemStrip and self.itemStrip:mousepressed(x, y, button) then
+        return true
+    end
+
     -- Editor cancel button
     if self.editorCancelButton and not self.diceEditor.showingConfirmation then
         if self.editorCancelButton:mousepressed(x, y, button) then
@@ -813,7 +844,7 @@ function ShopState:mousepressed(x, y, button)
 
     -- Item strip (consumables)
     if self.itemStrip and self.itemStrip:mousepressed(x, y, button) then
-        return
+        return true
     end
 
     -- Handle based on phase
@@ -868,12 +899,6 @@ function ShopState:mousereleased(x, y, button)
 
     if self.infoPanel then
         self.infoPanel:mousereleased(x, y, button)
-    end
-end
-
-function ShopState:mousemoved(x, y, dx, dy)
-    if self.itemStrip then
-        self.itemStrip:mousemoved(x, y, dx, dy)
     end
 end
 

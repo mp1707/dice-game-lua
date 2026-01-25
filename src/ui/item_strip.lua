@@ -207,26 +207,50 @@ function ItemStrip:getDraggingSlot()
     return nil
 end
 
-function ItemStrip:draw()
-    local isDragging = self:isDragging()
-    local fadeAlpha = isDragging and 0.0 or 1.0
-
-    -- Draw relic slots (1-5)
+function ItemStrip:getSlotAtPosition(x, y)
+    -- Check relic slots
     for _, slot in ipairs(self.relicSlots) do
-        local slotAlpha = fadeAlpha
-        if slot:isDraggingRelic() then
-            slotAlpha = 1.0
+        local sx, sy = slot.x, slot.y
+        if x >= sx and x < sx + slot.size and
+            y >= sy and y < sy + slot.size then
+            return slot
         end
-        slot:draw(slotAlpha)
+    end
+    -- Check consumable slots
+    for _, slot in ipairs(self.consumableSlots) do
+        local sx, sy = slot.x, slot.y
+        if x >= sx and x < sx + slot.size and
+            y >= sy and y < sy + slot.size then
+            return slot
+        end
+    end
+    return nil
+end
+
+function ItemStrip:draw()
+    local draggingSlot = nil
+
+    -- Draw non-dragging relic slots (1-5)
+    for _, slot in ipairs(self.relicSlots) do
+        if slot:isDraggingRelic() then
+            draggingSlot = slot
+        else
+            slot:draw(1.0)
+        end
     end
 
-    -- Draw consumable slots (6-7)
+    -- Draw non-dragging consumable slots (6-7)
     for _, slot in ipairs(self.consumableSlots) do
-        local slotAlpha = fadeAlpha
         if slot:isDraggingSticker() then
-            slotAlpha = 1.0
+            draggingSlot = slot
+        else
+            slot:draw(1.0)
         end
-        slot:draw(slotAlpha)
+    end
+
+    -- Draw the dragging slot last (on top)
+    if draggingSlot then
+        draggingSlot:draw(1.0)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
