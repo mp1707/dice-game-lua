@@ -156,7 +156,14 @@ function ShopState:initItemStrip()
         y = layout.itemStripY,
         -- Relic callbacks
         onRelicSell = function(slotIndex)
-            -- Can't sell relics in shop, but can swap
+            local relic = GameState:getRelic(slotIndex)
+            if not relic then return end
+
+            local sellPrice = Relics:getSellPrice(relic.relicId)
+            GameState:addMoney(sellPrice)
+            GameState:removeRelic(slotIndex)
+
+            Sound:play("cash")
         end,
         onRelicDragStart = function(slotIndex)
             -- Start drag
