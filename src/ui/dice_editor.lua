@@ -49,8 +49,8 @@ function DiceEditor.new()
     self.confirmModalVelocity = 0
 
     -- Callbacks
-    self.onComplete = nil    -- Called when editing is complete
-    self.onCancel = nil      -- Called when editing is cancelled
+    self.onComplete = nil       -- Called when editing is complete
+    self.onCancel = nil         -- Called when editing is cancelled
     self.getDicePositions = nil -- Function to get dice positions for tooltip
 
     -- Tooltip
@@ -61,7 +61,7 @@ function DiceEditor.new()
 
     -- Hover time tracking for tooltip
     self.hoverTime = 0
-    self.tooltipDelay = 0.3 -- Show tooltip after 0.3 seconds (faster in editor mode)
+    self.tooltipDelay = 0.1 -- Show tooltip after 0.1 seconds
 
     return self
 end
@@ -441,7 +441,8 @@ function DiceEditor:drawConfirmationModal()
     -- Confirm button
     local confirmX = modalX + modalWidth - buttonWidth - 30
     local confirmHovered = self:isButtonHovered(confirmX, buttonY, buttonWidth, buttonHeight)
-    local confirmColor = confirmHovered and Theme.colors.cyan or { Theme.colors.cyan[1] * 0.85, Theme.colors.cyan[2] * 0.85, Theme.colors.cyan[3] * 0.85, 1 }
+    local confirmColor = confirmHovered and Theme.colors.cyan or
+    { Theme.colors.cyan[1] * 0.85, Theme.colors.cyan[2] * 0.85, Theme.colors.cyan[3] * 0.85, 1 }
     nineSlice:draw(confirmX, buttonY, buttonWidth, buttonHeight, confirmColor, Theme.nineSlice.borderScale)
     love.graphics.setColor(Theme.colors.textDark)
     local confirmText = "Confirm"
@@ -459,7 +460,8 @@ function DiceEditor:drawModalFace(x, y, size, value)
         local image = Theme.diceSpritesheet:getImage()
 
         love.graphics.setColor(1, 1, 1, 1)
-        local scale = size / 60
+        local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
+        local scale = size / spriteW
         love.graphics.draw(image, quad, x, y, 0, scale, scale)
     else
         local nineSlice = require("src.ui.nine_slice").getInstance()

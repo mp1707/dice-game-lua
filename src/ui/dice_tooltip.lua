@@ -26,12 +26,12 @@ function DiceTooltip.new()
 
     self.nineSlice = NineSlice.getInstance()
 
-    -- Tooltip dimensions
-    self.faceSize = 50
-    self.faceSpacing = 8
-    self.padding = 16
+    -- Tooltip dimensions (compact, no label)
+    self.faceSize = 54
+    self.faceSpacing = Theme.spacing.sm
+    self.padding = Theme.spacing.sm
     self.width = 6 * self.faceSize + 5 * self.faceSpacing + self.padding * 2
-    self.height = self.faceSize + self.padding * 2 + 20 -- Extra for label
+    self.height = self.faceSize + self.padding * 2
 
     -- State
     self.visible = false
@@ -53,7 +53,16 @@ function DiceTooltip.new()
     return self
 end
 
+function DiceTooltip:updateLayout()
+    self.faceSize = 54
+    self.faceSpacing = Theme.spacing.sm
+    self.padding = Theme.spacing.sm
+    self.width = 6 * self.faceSize + 5 * self.faceSpacing + self.padding * 2
+    self.height = self.faceSize + self.padding * 2
+end
+
 function DiceTooltip:show(dieIndex, anchorX, anchorY)
+    self:updateLayout()
     self.visible = true
     self.targetDieIndex = dieIndex
 
@@ -166,18 +175,14 @@ function DiceTooltip:draw()
     }
     self.nineSlice:draw(0, 0, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
 
-    -- Draw "Die X Faces" label
-    local labelY = self.height - self.padding - 4
-    love.graphics.setColor(Theme.colors.textMuted[1], Theme.colors.textMuted[2], Theme.colors.textMuted[3], self.alpha)
-    local font = Theme.fonts.small
-    love.graphics.setFont(font)
-    local label = "Die " .. (self.targetDieIndex or "?") .. " Faces"
-    local labelWidth = font:getWidth(label)
-    love.graphics.print(label, (self.width - labelWidth) / 2, labelY)
-
     -- Draw 6 faces in a horizontal row
     local startX = self.padding
     local startY = self.padding
+
+    -- Center the row horizontally if the container is wider than the dice row
+    -- (Though currently self.width is calculated based on drag row width, so it fits perfectly)
+    local totalDiceWidth = 6 * self.faceSize + 5 * self.faceSpacing
+    startX = (self.width - totalDiceWidth) / 2
 
     for i = 1, 6 do
         local faceX = startX + (i - 1) * (self.faceSize + self.faceSpacing)
@@ -186,7 +191,7 @@ function DiceTooltip:draw()
 
         -- Highlight hovered face
         local isHovered = (i == self.hoveredFaceIndex)
-        local faceScale = isHovered and 1.1 or 1
+        local faceScale = isHovered and 1.05 or 1 -- Reduced scale due to larger size
 
         self:drawFace(faceX, faceY, faceValue, faceScale, isHovered)
     end
@@ -222,7 +227,8 @@ function DiceTooltip:drawFace(x, y, value, scale, isHovered)
         local image = Theme.diceSpritesheet:getImage()
 
         love.graphics.setColor(1, 1, 1, self.alpha)
-        local spriteScale = self.faceSize / 60 -- 60x60 sprite
+        local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
+        local spriteScale = self.faceSize / spriteW
         love.graphics.draw(image, quad, 0, 0, 0, spriteScale, spriteScale)
     else
         -- Fallback: draw value text

@@ -471,7 +471,8 @@ function ShopState:drawShopDice()
             local spriteSize = diceSize * 0.9
             local spriteX = pos.x + (diceSize - spriteSize) / 2
             local spriteY = pos.y + (diceSize - spriteSize) / 2
-            local scale = spriteSize / 60
+            local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
+            local scale = spriteSize / spriteW
             love.graphics.draw(image, quad, spriteX, spriteY, 0, scale, scale)
         end
 
@@ -517,7 +518,8 @@ function ShopState:drawShopItem(x, y, size, item, index)
             local image = Theme.diceSpritesheet:getImage()
 
             love.graphics.setColor(1, 1, 1, 1)
-            local scale = spriteSize / 60
+            local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
+            local scale = spriteSize / spriteW
             love.graphics.draw(image, quad, spriteX, spriteY, 0, scale, scale)
         end
 

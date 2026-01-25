@@ -268,7 +268,8 @@ function ConsumableSlot:draw()
             local image = Theme.diceSpritesheet:getImage()
 
             love.graphics.setColor(1, 1, 1, 1)
-            local scale = spriteSize / 60 -- Assuming 60x60 sprite size
+            local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
+            local scale = spriteSize / spriteW
             love.graphics.draw(image, quad, spriteX, spriteY, 0, scale, scale)
         end
     end

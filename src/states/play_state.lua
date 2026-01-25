@@ -46,7 +46,7 @@ function PlayState.new()
     -- Dice hover tracking for tooltip
     self.hoveredDieIndex = nil
     self.hoverTime = 0
-    self.tooltipDelay = 1.0 -- Show tooltip after 1 second (longer in play mode)
+    self.tooltipDelay = 0.1 -- Show tooltip after 0.1 seconds
 
     -- Reference to state machine (set in enter)
     self.stateMachine = nil
