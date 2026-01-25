@@ -113,6 +113,7 @@ See `src/dice/CLAUDE_DICE_EDITOR.md` for detailed documentation. Core roguelike 
 - **Usage Flow**: Click consumable → USE → Select die → Select face → Confirm replacement
 
 Key files:
+
 - **stickers.lua**: Registry of all sticker definitions
 - **consumable_slot.lua**: Interactive slot component with USE/SELL buttons
 - **dice_editor.lua**: Singleton managing editor mode (dimming, selection, confirmation)
@@ -136,6 +137,10 @@ All in `src/ui/`:
 - **drag_zones.lua**: DELETE and SELL drop zones for consumables
 - **score_animation.lua**: Counting animation when playing a hand
 - **pop_text.lua**: Floating text with spring animation
+
+### Item Trigger System
+
+New event-driven system for item effects. See `src/items/CLAUDE.md` for detailed documentation. Replaces hardcoded item checks.
 
 ### Counting Animation
 

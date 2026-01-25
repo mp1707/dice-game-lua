@@ -2,36 +2,34 @@
 -- Relics are passive items that provide ongoing effects
 -- They are placed in slots 1-5 of the item strip
 
-local Relics = {
-    -- Registry of all relic definitions, keyed by ID
-    definitions = {},
-}
+local ItemRegistry = require("src.items.item_registry")
 
--- Helper to register a relic
-local function register(def)
-    Relics.definitions[def.id] = def
+local Relics = {}
+
+-- Load all definitions
+local function loadDefinitions()
+    -- List of definition modules to load
+    local modules = {
+        "src.items.definitions.prism",
+    }
+
+    for _, modPath in ipairs(modules) do
+        local def = require(modPath)
+        ItemRegistry:register(def)
+    end
 end
 
--- Prism relic
--- When scoring a straight, the rightmost die becomes prismatic
-register({
-    id = "prism",
-    name = "Prism",
-    description = "Scoring a straight turns the rightmost die prismatic",
-    buyPrice = 10,
-    sellPrice = 3,
-    sprite = "assets/icons/items/prism.png",
-    rarity = "uncommon",
-})
+-- Initialize definitions
+loadDefinitions()
 
 -- Get a relic definition by ID
 function Relics:get(relicId)
-    return self.definitions[relicId]
+    return ItemRegistry:get(relicId)
 end
 
 -- Get all relic definitions
 function Relics:getAll()
-    return self.definitions
+    return ItemRegistry:getAll()
 end
 
 -- Get relic's buy price
@@ -49,7 +47,7 @@ end
 -- Get all relics of a specific rarity
 function Relics:getByRarity(rarity)
     local result = {}
-    for id, def in pairs(self.definitions) do
+    for id, def in pairs(ItemRegistry:getAll()) do
         if def.rarity == rarity then
             table.insert(result, def)
         end
@@ -60,7 +58,7 @@ end
 -- Get a random relic ID (for shop generation)
 function Relics:getRandomId()
     local ids = {}
-    for id, _ in pairs(self.definitions) do
+    for id, _ in pairs(ItemRegistry:getAll()) do
         table.insert(ids, id)
     end
     if #ids == 0 then return nil end
@@ -70,7 +68,7 @@ end
 -- Get random relic IDs (for shop, avoiding duplicates)
 function Relics:getRandomIds(count)
     local ids = {}
-    for id, _ in pairs(self.definitions) do
+    for id, _ in pairs(ItemRegistry:getAll()) do
         table.insert(ids, id)
     end
 

@@ -8,6 +8,8 @@ local Scoring = require("src.game.scoring")
 local Stickers = require("src.game.stickers")
 local Relics = require("src.game.relics")
 local Sound = require("src.core.sound")
+local TriggerSystem = require("src.items.trigger_system")
+local Trigger = require("src.items.trigger_types")
 
 local NineSlice = require("src.ui.nine_slice")
 local ItemStrip = require("src.ui.item_strip")
@@ -493,18 +495,12 @@ function PlayState:onPlayHandClick()
             -- Update game state after animation completes
             GameState:useHand(detected.id, breakdown.total)
 
-            -- Check for Prism relic effect: scoring a straight turns the rightmost die prismatic
-            if GameState:hasRelic("prism") and Scoring.isStraightHand(detected.id) then
-                local rightmostIndex = Scoring.getRightmostScoringDieIndex(
-                    scoringIndices,
-                    self.diceContainer.diceVisualOrder
-                )
-                if rightmostIndex and not GameState:isPrismatic(rightmostIndex) then
-                    GameState:setPrismatic(rightmostIndex, true)
-                    -- Play a sound effect for the prismatic trigger
-                    Sound:play("levelup")
-                end
-            end
+            -- Emit HAND_ACCEPTED trigger
+            TriggerSystem:emit(Trigger.HAND_ACCEPTED, {
+                handId = detected.id,
+                scoringIndices = scoringIndices,
+                visualOrder = self.diceContainer.diceVisualOrder,
+            })
 
             self:handlePostScoreTransition()
         end,
