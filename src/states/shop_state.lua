@@ -1,5 +1,5 @@
--- Shop State - Upgrade shop between levels (Landscape layout)
--- Sells stickers that modify dice faces
+-- Shop State - New shop UI with 2x2 item grid
+-- Features booster pack opening animation and sticker selection
 
 local Theme = require("src.ui.theme")
 local GameState = require("src.game.game_state")
@@ -12,83 +12,93 @@ local ItemStrip = require("src.ui.item_strip")
 local DragZones = require("src.ui.drag_zones")
 local DiceEditor = require("src.ui.dice_editor")
 local Sound = require("src.core.sound")
+local ShopItem = require("src.ui.shop_item")
+local ShopTooltip = require("src.ui.shop_tooltip")
+local BoosterAnimation = require("src.ui.booster_animation")
+local StickerSelection = require("src.ui.sticker_selection")
 
 local ShopState = {}
 ShopState.__index = ShopState
+
+-- Shop phases
+ShopState.PHASE = {
+    BROWSING = "browsing",
+    ITEM_SELECTED = "item_selected",
+    OPENING_BOOSTER = "opening_booster",
+    SELECTING_STICKER = "selecting_sticker",
+}
+
+-- Layout constants for 2x2 grid
+local GRID_ITEM_SIZE = 160
+local GRID_SPACING = 40
+local GRID_START_Y = 280
 
 function ShopState.new()
     local self = setmetatable({}, ShopState)
 
     self.nineSlice = NineSlice.getInstance()
-    self.actionButton = nil
     self.stateMachine = nil
     self.infoPanel = nil
     self.itemStrip = nil
 
-    -- Shop inventory (3 sticker offers)
-    self.shopItems = {}
-    self.shopItemButtons = {}
+    -- State machine
+    self.phase = ShopState.PHASE.BROWSING
+    self.selectedItemIndex = nil
 
-    -- Drag zones
+    -- Shop items (4 items in 2x2 grid)
+    self.shopItems = {}
+
+    -- Buttons
+    self.nextLevelButton = nil
+    self.buyButton = nil
+    self.cancelButton = nil
+
+    -- Tooltip
+    self.shopTooltip = ShopTooltip.getInstance()
+    self.hoveredItemIndex = nil
+    self.hoverTimer = 0
+
+    -- Booster animation
+    self.boosterAnimation = BoosterAnimation.getInstance()
+
+    -- Sticker selection
+    self.stickerSelection = StickerSelection.getInstance()
+
+    -- Drag zones (for consumable management)
     self.dragZones = DragZones.getInstance()
 
-    -- Dice editor
+    -- Dice editor (for consumable use)
     self.diceEditor = DiceEditor.getInstance()
-
-    -- Shop dice display (for sticker use)
     self.showingDiceForEditor = false
-    self.shopDiceValues = {} -- 5 random face values for display
+    self.editorCancelButton = nil
 
-    -- Cancel button for dice editor
-    self.cancelButton = nil
+    -- Mouse position
+    self.mouseX = 0
+    self.mouseY = 0
 
     return self
 end
 
 function ShopState:enter(params)
     self.stateMachine = params.stateMachine
+    self.phase = ShopState.PHASE.BROWSING
+    self.selectedItemIndex = nil
+
     self:initInfoPanel()
-    self:initActionButton()
     self:initItemStrip()
-    self:generateShopItems()
+    self:initShopItems()
+    self:initButtons()
+
+    -- Reset animation states
+    self.boosterAnimation:reset()
+    self.stickerSelection:hide()
+    self.shopTooltip:hide()
 end
 
 function ShopState:exit()
     self.diceEditor:deactivate()
-end
-
-function ShopState:initActionButton()
-    local buttonWidth = Theme.layout.ctaWidth
-    local buttonHeight = Theme.layout.ctaHeight
-
-    local buttonText
-    if Levels:isLastLevel(GameState.currentLevel) and GameState:hasReachedGoal() then
-        buttonText = "VICTORY! NEW RUN"
-    else
-        buttonText = "NEXT LEVEL"
-    end
-
-    -- Center button in the center area (same as DualCta)
-    local centerX = Theme.layout.centerX
-    local centerWidth = Theme.layout.centerWidth
-    local buttonX = centerX + (centerWidth - buttonWidth) / 2
-
-    self.actionButton = Button.new({
-        x = buttonX,
-        y = Theme.layout.ctaY,
-        width = buttonWidth,
-        height = buttonHeight,
-        text = buttonText,
-        bgColor = Theme.colors.cyan,
-        textColor = Theme.colors.text,
-        hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
-        disabledBgColor = Theme.colors.surface,
-        disabledTextColor = Theme.colors.textMuted,
-        font = Theme.fonts.large,
-        onClick = function()
-            self:onActionButtonClick()
-        end,
-    })
+    self.boosterAnimation:reset()
+    self.stickerSelection:hide()
 end
 
 function ShopState:initInfoPanel()
@@ -104,7 +114,7 @@ function ShopState:initInfoPanel()
             return GameState.currentLevel
         end,
         getRound = function()
-            return 1 -- Not relevant in shop
+            return 1
         end,
         getMoney = function()
             return GameState.money
@@ -136,9 +146,7 @@ end
 function ShopState:initItemStrip()
     local layout = Theme.layout
 
-    -- Calculate centered position for item strip
-    local totalWidth = 7 * layout.itemSlotSize + 4 * layout.itemSlotSpacing + layout.itemSlotGap + layout
-        .itemSlotSpacing
+    local totalWidth = 7 * layout.itemSlotSize + 4 * layout.itemSlotSpacing + layout.itemSlotGap + layout.itemSlotSpacing
     local stripX = layout.centerX + (layout.centerWidth - totalWidth) / 2
 
     self.itemStrip = ItemStrip.new({
@@ -159,72 +167,270 @@ function ShopState:initItemStrip()
     })
 end
 
-function ShopState:generateShopItems()
-    -- Generate 3 random sticker offers
-    local stickerIds = Stickers:getRandomIds(3)
+function ShopState:initShopItems()
     self.shopItems = {}
-    self.shopItemButtons = {}
 
-    for i, stickerId in ipairs(stickerIds) do
-        self.shopItems[i] = {
-            stickerId = stickerId,
-            sold = false,
-        }
+    -- Calculate grid position (centered in center area)
+    local totalWidth = 2 * GRID_ITEM_SIZE + GRID_SPACING
+    local startX = Theme.layout.centerX + (Theme.layout.centerWidth - totalWidth) / 2
+
+    -- Item positions in 2x2 grid:
+    -- [1] [2]   <- Top row: placeholder, booster (gift)
+    -- [3] [4]   <- Bottom row: placeholder, placeholder
+    local positions = {
+        { x = startX, y = GRID_START_Y },                                          -- Top-left
+        { x = startX + GRID_ITEM_SIZE + GRID_SPACING, y = GRID_START_Y },          -- Top-right (gift)
+        { x = startX, y = GRID_START_Y + GRID_ITEM_SIZE + GRID_SPACING },          -- Bottom-left
+        { x = startX + GRID_ITEM_SIZE + GRID_SPACING, y = GRID_START_Y + GRID_ITEM_SIZE + GRID_SPACING }, -- Bottom-right
+    }
+
+    -- Create items
+    for i = 1, 4 do
+        local isBooster = (i == 2) -- Top-right is the gift booster
+        local itemType = isBooster and "booster" or "placeholder"
+        local spriteImage = isBooster and Theme.images.gift or Theme.images.silverKey
+        local price = isBooster and 8 or nil
+        local name = isBooster and "Random Basic Sticker" or ""
+
+        self.shopItems[i] = ShopItem.new({
+            x = positions[i].x,
+            y = positions[i].y,
+            size = GRID_ITEM_SIZE,
+            index = i,
+            itemType = itemType,
+            spriteImage = spriteImage,
+            price = price,
+            name = name,
+            onClick = function(index)
+                self:onItemClick(index)
+            end,
+            onHoverStart = function(index)
+                self:onItemHoverStart(index)
+            end,
+            onHoverEnd = function(index)
+                self:onItemHoverEnd(index)
+            end,
+        })
     end
 end
 
-function ShopState:purchaseItem(index)
+function ShopState:initButtons()
+    local buttonWidth = Theme.layout.ctaWidth
+    local buttonHeight = Theme.layout.ctaHeight
+    local centerX = Theme.layout.centerX + Theme.layout.centerWidth / 2
+
+    -- Determine button text based on game state
+    local nextLevelText
+    if Levels:isLastLevel(GameState.currentLevel) and GameState:hasReachedGoal() then
+        nextLevelText = "VICTORY! NEW RUN"
+    else
+        nextLevelText = "NEXT LEVEL"
+    end
+
+    -- Next Level button (shown in BROWSING phase)
+    self.nextLevelButton = Button.new({
+        x = centerX - buttonWidth / 2,
+        y = Theme.layout.ctaY,
+        width = buttonWidth,
+        height = buttonHeight,
+        text = nextLevelText,
+        bgColor = Theme.colors.cyan,
+        textColor = Theme.colors.textDark,
+        hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
+        font = Theme.fonts.large,
+        onClick = function()
+            self:onNextLevelClick()
+        end,
+    })
+
+    -- BUY button (shown in ITEM_SELECTED phase)
+    local halfWidth = (buttonWidth - 20) / 2
+    self.buyButton = Button.new({
+        x = centerX - halfWidth - 10,
+        y = Theme.layout.ctaY,
+        width = halfWidth,
+        height = buttonHeight,
+        text = "BUY",
+        bgColor = Theme.colors.cyan,
+        textColor = Theme.colors.textDark,
+        hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
+        font = Theme.fonts.large,
+        onClick = function()
+            self:onBuyClick()
+        end,
+    })
+
+    -- CANCEL button (shown in ITEM_SELECTED phase)
+    self.cancelButton = Button.new({
+        x = centerX + 10,
+        y = Theme.layout.ctaY,
+        width = halfWidth,
+        height = buttonHeight,
+        text = "CANCEL",
+        bgColor = Theme.colors.surface2,
+        textColor = Theme.colors.text,
+        hoverBgColor = Theme.colors.surfaceHighlight,
+        font = Theme.fonts.large,
+        onClick = function()
+            self:onCancelClick()
+        end,
+    })
+end
+
+function ShopState:onItemClick(index)
+    if self.phase ~= ShopState.PHASE.BROWSING then return end
+
     local item = self.shopItems[index]
-    if not item or item.sold then return false end
+    if not item or item.sold then return end
+    if not item.isInteractive then return end
 
-    local sticker = Stickers:get(item.stickerId)
-    if not sticker then return false end
+    -- Select this item
+    self.selectedItemIndex = index
+    self.phase = ShopState.PHASE.ITEM_SELECTED
+    item:setSelected(true)
 
-    -- Check if player has enough money
-    if GameState.money < sticker.buyPrice then
-        Sound:play("click") -- Error sound
-        return false
+    -- Hide tooltip
+    self.shopTooltip:hide()
+    self.hoveredItemIndex = nil
+
+    Sound:play("click")
+end
+
+function ShopState:onItemHoverStart(index)
+    self.hoveredItemIndex = index
+    self.hoverTimer = 0
+end
+
+function ShopState:onItemHoverEnd(index)
+    if self.hoveredItemIndex == index then
+        self.hoveredItemIndex = nil
+        self.hoverTimer = 0
+        self.shopTooltip:hide()
+    end
+end
+
+function ShopState:onNextLevelClick()
+    if Levels:isLastLevel(GameState.currentLevel) and GameState:hasReachedGoal() then
+        GameState:reset()
+        self.stateMachine:change("play", {
+            stateMachine = self.stateMachine,
+        })
+    else
+        GameState:advanceLevel()
+        self.stateMachine:change("play", {
+            stateMachine = self.stateMachine,
+        })
+    end
+end
+
+function ShopState:onBuyClick()
+    if self.phase ~= ShopState.PHASE.ITEM_SELECTED then return end
+    if not self.selectedItemIndex then return end
+
+    local item = self.shopItems[self.selectedItemIndex]
+    if not item or item.sold then return end
+
+    -- Check if player can afford
+    if item.price and GameState.money < item.price then
+        Sound:play("click")
+        return
     end
 
     -- Check if there's room for consumable
     if not GameState:hasConsumableRoom() then
-        Sound:play("click") -- Error sound
-        return false
+        Sound:play("click")
+        return
     end
 
-    -- Make purchase
-    GameState:addMoney(-sticker.buyPrice)
-    GameState:addConsumable(item.stickerId)
-    item.sold = true
+    -- Deduct money
+    if item.price then
+        GameState:addMoney(-item.price)
+    end
 
     Sound:play("cash")
-    return true
+
+    -- Start booster animation
+    self:startBoosterAnimation()
 end
 
+function ShopState:onCancelClick()
+    if self.phase ~= ShopState.PHASE.ITEM_SELECTED then return end
+
+    -- Deselect item
+    if self.selectedItemIndex then
+        local item = self.shopItems[self.selectedItemIndex]
+        if item then
+            item:setSelected(false)
+        end
+    end
+
+    self.selectedItemIndex = nil
+    self.phase = ShopState.PHASE.BROWSING
+
+    Sound:play("click")
+end
+
+function ShopState:startBoosterAnimation()
+    self.phase = ShopState.PHASE.OPENING_BOOSTER
+
+    local item = self.shopItems[self.selectedItemIndex]
+    local centerX, centerY = item:getCenterPosition()
+
+    self.boosterAnimation:start(centerX, centerY, function()
+        self:showStickerSelection()
+    end)
+end
+
+function ShopState:showStickerSelection()
+    self.phase = ShopState.PHASE.SELECTING_STICKER
+
+    -- Get 3 random stickers
+    local stickerIds = Stickers:getRandomIds(3)
+
+    self.stickerSelection:show(stickerIds, function(stickerId)
+        self:onStickerSelected(stickerId)
+    end)
+end
+
+function ShopState:onStickerSelected(stickerId)
+    -- Add sticker to consumable slot
+    GameState:addConsumable(stickerId)
+
+    -- Mark the booster as sold
+    if self.selectedItemIndex then
+        local item = self.shopItems[self.selectedItemIndex]
+        if item then
+            item.sold = true
+            item:setSelected(false)
+        end
+    end
+
+    -- Return to browsing
+    self.phase = ShopState.PHASE.BROWSING
+    self.selectedItemIndex = nil
+    self.stickerSelection:hide()
+    self.boosterAnimation:reset()
+end
+
+-- Consumable management (reused from original)
 function ShopState:onConsumableUse(slotIndex)
-    -- Show dice for editing in shop
     self.showingDiceForEditor = true
 
-    -- Generate random dice display and set up dice state for editing
-    -- Each die shows a random face, and that becomes the "rolled" face
+    -- Set up random dice values for the editor
     for i = 1, 5 do
         local randomFaceIndex = math.random(1, 6)
-        self.shopDiceValues[i] = randomFaceIndex
-
-        -- Set up the die's rolled state so the sticker can be applied
         local faces = GameState:getDieFaces(i)
         local faceValue = faces[randomFaceIndex]
         GameState.dice[i].rolledFaceIndex = randomFaceIndex
         GameState.dice[i].value = faceValue
     end
 
-    -- Create cancel button
     local buttonWidth = 200
     local buttonHeight = 60
     local centerX = Theme.layout.centerX + Theme.layout.centerWidth / 2
     local buttonY = Theme.layout.diceHomeY + 150
 
-    self.cancelButton = Button.new({
+    self.editorCancelButton = Button.new({
         x = centerX - buttonWidth / 2,
         y = buttonY,
         width = buttonWidth,
@@ -239,17 +445,14 @@ function ShopState:onConsumableUse(slotIndex)
         end,
     })
 
-    -- Activate dice editor
     self.diceEditor:activate("shop", slotIndex, {
         onComplete = function()
-            -- Editor completed - hide dice display
             self.showingDiceForEditor = false
-            self.cancelButton = nil
+            self.editorCancelButton = nil
         end,
         onCancel = function()
-            -- Editor cancelled
             self.showingDiceForEditor = false
-            self.cancelButton = nil
+            self.editorCancelButton = nil
         end,
         getDicePositions = function()
             return self:getShopDicePositions()
@@ -260,7 +463,7 @@ end
 function ShopState:cancelDiceEditor()
     self.diceEditor:cancel()
     self.showingDiceForEditor = false
-    self.cancelButton = nil
+    self.editorCancelButton = nil
 end
 
 function ShopState:getShopDicePositions()
@@ -299,44 +502,41 @@ function ShopState:onConsumableDragEnd(slotIndex, x, y)
 
     local zone = self.dragZones:getZoneAtPosition(x, y)
     if zone == "delete" then
-        -- Delete consumable (no money back)
         GameState:removeConsumable(slotIndex)
         Sound:play("click")
     elseif zone == "sell" then
-        -- Sell consumable
         self:onConsumableSell(slotIndex)
     end
 end
 
-function ShopState:onActionButtonClick()
-    -- Check if game is won
-    if Levels:isLastLevel(GameState.currentLevel) and GameState:hasReachedGoal() then
-        -- Game complete! Start new run
-        GameState:reset()
-        self.stateMachine:change("play", {
-            stateMachine = self.stateMachine,
-        })
-    else
-        -- Advance to next level
-        GameState:advanceLevel()
-        self.stateMachine:change("play", {
-            stateMachine = self.stateMachine,
-        })
-    end
-end
-
 function ShopState:update(dt)
-    self.actionButton:update(dt)
+    -- Get mouse position
+    local mx, my = love.mouse.getPosition()
+    if _G.screenToGame then
+        mx, my = _G.screenToGame(mx, my)
+    end
+    self.mouseX = mx or 0
+    self.mouseY = my or 0
+
+    -- Update info panel
     if self.infoPanel then
         self.infoPanel:update(dt)
     end
+
+    -- Update item strip
     if self.itemStrip then
         self.itemStrip:update(dt)
     end
 
-    -- Update cancel button if showing dice
-    if self.cancelButton then
-        self.cancelButton:update(dt)
+    -- Update based on phase
+    if self.phase == ShopState.PHASE.BROWSING then
+        self:updateBrowsing(dt)
+    elseif self.phase == ShopState.PHASE.ITEM_SELECTED then
+        self:updateItemSelected(dt)
+    elseif self.phase == ShopState.PHASE.OPENING_BOOSTER then
+        self:updateOpeningBooster(dt)
+    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
+        self:updateSelectingSticker(dt)
     end
 
     -- Update drag zones
@@ -350,94 +550,99 @@ function ShopState:update(dt)
 
     -- Update dice editor
     self.diceEditor:update(dt)
+
+    -- Update editor cancel button
+    if self.editorCancelButton then
+        self.editorCancelButton:update(dt)
+    end
+end
+
+function ShopState:updateBrowsing(dt)
+    -- Update shop items
+    for _, item in ipairs(self.shopItems) do
+        item:updateMouse(self.mouseX, self.mouseY)
+        item:update(dt)
+    end
+
+    -- Update tooltip hover timer
+    if self.hoveredItemIndex then
+        self.hoverTimer = self.hoverTimer + dt
+        if self.hoverTimer >= 1.0 then -- 1 second delay
+            local item = self.shopItems[self.hoveredItemIndex]
+            if item and item.name and item.name ~= "" and not item.sold then
+                local centerX, centerY = item:getCenterPosition()
+                self.shopTooltip:show(item.name, centerX, centerY - GRID_ITEM_SIZE / 2)
+            end
+        end
+    end
+
+    -- Update tooltip
+    self.shopTooltip:update(dt)
+
+    -- Update next level button
+    self.nextLevelButton:update(dt)
+end
+
+function ShopState:updateItemSelected(dt)
+    -- Update shop items (for animation)
+    for _, item in ipairs(self.shopItems) do
+        item:updateMouse(self.mouseX, self.mouseY)
+        item:update(dt)
+    end
+
+    -- Update buttons
+    self.buyButton:update(dt)
+    self.cancelButton:update(dt)
+end
+
+function ShopState:updateOpeningBooster(dt)
+    self.boosterAnimation:update(dt)
+end
+
+function ShopState:updateSelectingSticker(dt)
+    self.stickerSelection:updateMouse(self.mouseX, self.mouseY)
+    self.stickerSelection:update(dt)
 end
 
 function ShopState:draw()
-    -- Draw item strip at top
-    if self.itemStrip and not self.itemStrip:isDragging() then
-        self.itemStrip:draw()
-    end
-
-    -- If showing dice for editor, draw dice instead of shop panel
-    if self.showingDiceForEditor then
-        self:drawShopDice()
-    else
-        -- Center content panel (aligned with Center Area and above CTA)
-        local panelWidth = 600
-        local panelHeight = 480
-
-        local centerAreaX = Theme.layout.centerX
-        local centerAreaWidth = Theme.layout.centerWidth
-
-        local panelX = centerAreaX + (centerAreaWidth - panelWidth) / 2
-        local panelY = 150
-
-        self.nineSlice:draw(panelX, panelY, panelWidth, panelHeight, Theme.colors.surface, Theme.nineSlice.borderScale)
-
-        -- Title
-        Theme:drawTextCenteredWithShadow("SHOP", panelX, panelY + 25, panelWidth, Theme.fonts.display, Theme.colors.cyan)
-
-        -- Current money
-        local moneyText = "$" .. tostring(GameState.money)
-        Theme:drawTextCenteredWithShadow(moneyText, panelX, panelY + 80, panelWidth, Theme.fonts.large, Theme.colors
-            .gold)
-
-        -- Stickers section label
-        Theme:drawTextCenteredWithShadow("Stickers", panelX, panelY + 130, panelWidth, Theme.fonts.normal,
-            Theme.colors.textMuted)
-
-        -- Draw shop items (3 stickers)
-        local itemSize = 100
-        local itemSpacing = 30
-        local totalItemsWidth = 3 * itemSize + 2 * itemSpacing
-        local startX = panelX + (panelWidth - totalItemsWidth) / 2
-        local itemY = panelY + 160
-
-        for i, item in ipairs(self.shopItems) do
-            local itemX = startX + (i - 1) * (itemSize + itemSpacing)
-            self:drawShopItem(itemX, itemY, itemSize, item, i)
-        end
-
-        -- Level info
-        local levelText = "Level " .. tostring(GameState.currentLevel) .. " / " .. tostring(Levels.totalLevels)
-        Theme:drawTextCenteredWithShadow(levelText, panelX, panelY + 340, panelWidth, Theme.fonts.normal,
-            Theme.colors.text)
-
-        -- Next goal preview
-        if not Levels:isLastLevel(GameState.currentLevel) then
-            local nextGoal = Levels:getGoal(GameState.currentLevel + 1)
-            local nextText = "Next Goal: " .. tostring(nextGoal)
-            Theme:drawTextCenteredWithShadow(nextText, panelX, panelY + 370, panelWidth, Theme.fonts.normal,
-                Theme.colors.textMuted)
-        else
-            Theme:drawTextCenteredWithShadow("LAST LEVEL CLEARED!", panelX, panelY + 370, panelWidth,
-                Theme.fonts.normal, Theme.colors.mint)
-        end
-
-        -- Consumables full warning
-        if not GameState:hasConsumableRoom() then
-            Theme:drawTextCenteredWithShadow("Consumable slots full!", panelX, panelY + 410, panelWidth,
-                Theme.fonts.small, Theme.colors.coral)
-        end
-
-        -- Action button
-        self.actionButton:draw()
-    end
-
-    -- Draw info panel (left side)
+    -- Always draw info panel
     if self.infoPanel then
         self.infoPanel:draw()
     end
 
-    -- Draw drag zones (on top)
+    -- Draw item strip (unless dragging)
+    if self.itemStrip and not self.itemStrip:isDragging() then
+        self.itemStrip:draw()
+    end
+
+    -- Draw based on phase
+    if self.showingDiceForEditor then
+        self:drawShopDice()
+    elseif self.phase == ShopState.PHASE.OPENING_BOOSTER then
+        -- Draw shop items with fade
+        local alpha = self.boosterAnimation:getShopAlpha()
+        self:drawShopItems(alpha)
+
+        -- Draw booster animation on top
+        self.boosterAnimation:draw()
+    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
+        self.stickerSelection:draw()
+    else
+        -- Normal browsing or item selected
+        self:drawShopItems(1)
+        self:drawButtons()
+        self.shopTooltip:draw()
+    end
+
+    -- Draw drag zones
     self.dragZones:draw()
 
-    -- Draw item strip again if dragging (so dragged item is on top)
+    -- Draw item strip again if dragging
     if self.itemStrip and self.itemStrip:isDragging() then
         self.itemStrip:draw()
     end
 
-    -- Draw dice editor overlay if active
+    -- Draw dice editor overlay
     if self.diceEditor.isActive then
         self.diceEditor:drawOverlay()
         self.diceEditor:drawInstructions()
@@ -445,12 +650,32 @@ function ShopState:draw()
         self.diceEditor:drawConfirmationModal()
     end
 
-    -- Draw cancel button if showing dice
-    if self.cancelButton and not self.diceEditor.showingConfirmation then
-        self.cancelButton:draw()
+    -- Draw editor cancel button
+    if self.editorCancelButton and not self.diceEditor.showingConfirmation then
+        self.editorCancelButton:draw()
     end
 
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+function ShopState:drawShopItems(alpha)
+    love.graphics.setColor(1, 1, 1, alpha)
+
+    for _, item in ipairs(self.shopItems) do
+        item:draw()
+    end
+
+    love.graphics.setColor(1, 1, 1, 1)
+end
+
+function ShopState:drawButtons()
+    if self.phase == ShopState.PHASE.ITEM_SELECTED then
+        self.buyButton:draw()
+        self.cancelButton:draw()
+    elseif self.phase == ShopState.PHASE.BROWSING then
+        self.nextLevelButton:draw()
+    end
+    -- No buttons during OPENING_BOOSTER or SELECTING_STICKER phases
 end
 
 function ShopState:drawShopDice()
@@ -459,13 +684,10 @@ function ShopState:drawShopDice()
 
     for i = 1, 5 do
         local pos = positions[i]
-        -- Use the die's current value (set up in onConsumableUse)
         local faceValue = GameState.dice[i].value
 
-        -- Draw die background
         self.nineSlice:draw(pos.x, pos.y, diceSize, diceSize, Theme.colors.surface2, Theme.nineSlice.borderScale)
 
-        -- Draw die face sprite
         if Theme.diceSpritesheet then
             local quad = Theme.diceSpritesheet:getQuad(faceValue)
             local image = Theme.diceSpritesheet:getImage()
@@ -479,74 +701,12 @@ function ShopState:drawShopDice()
             love.graphics.draw(image, quad, spriteX, spriteY, 0, scale, scale)
         end
 
-        -- Draw die number label below
         love.graphics.setColor(Theme.colors.textMuted)
         local font = Theme.fonts.small
         love.graphics.setFont(font)
         local label = "Die " .. i
         local labelWidth = font:getWidth(label)
         love.graphics.print(label, pos.x + (diceSize - labelWidth) / 2, pos.y + diceSize + 5)
-    end
-
-    love.graphics.setColor(1, 1, 1, 1)
-end
-
-function ShopState:drawShopItem(x, y, size, item, index)
-    local sticker = Stickers:get(item.stickerId)
-    if not sticker then return end
-
-    -- Check if hovered
-    local mx, my = love.mouse.getPosition()
-    if _G.screenToGame then
-        mx, my = _G.screenToGame(mx, my)
-    end
-    local isHovered = mx and my and mx >= x and mx < x + size and my >= y and my < size + 60 + y
-
-    -- Background
-    local bgColor = item.sold and Theme.colors.panelDark or
-        (isHovered and Theme.colors.surfaceHighlight or Theme.colors.surface2)
-    self.nineSlice:draw(x, y, size, size + 60, bgColor, Theme.nineSlice.borderScale)
-
-    if item.sold then
-        -- SOLD label
-        Theme:drawTextCenteredWithShadow("SOLD", x, y + size / 2, size, Theme.fonts.large, Theme.colors.textMuted)
-    else
-        -- Draw sticker sprite
-        if Theme.diceSpritesheet then
-            local spriteSize = size * 0.85
-            local spriteX = x + (size - spriteSize) / 2
-            local spriteY = y + 5
-
-            local quad = Theme.diceSpritesheet:getQuad(sticker.spriteId)
-            local image = Theme.diceSpritesheet:getImage()
-
-            love.graphics.setColor(1, 1, 1, 1)
-            local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
-            local scale = spriteSize / spriteW
-            love.graphics.draw(image, quad, spriteX, spriteY, 0, scale, scale)
-        end
-
-        -- Sticker name
-        Theme:drawTextCenteredWithShadow(sticker.name, x, y + size - 15, size, Theme.fonts.small, Theme.colors.text)
-
-        -- Price
-        local canAfford = GameState.money >= sticker.buyPrice
-        local priceColor = canAfford and Theme.colors.gold or Theme.colors.coral
-        local priceText = "$" .. sticker.buyPrice
-        Theme:drawTextCenteredWithShadow(priceText, x, y + size + 15, size, Theme.fonts.normal, priceColor)
-
-        -- BUY button
-        local buttonY = y + size + 35
-        local buttonHeight = 22
-        local buttonColor = canAfford and Theme.colors.cyan or Theme.colors.surface
-        self.nineSlice:draw(x + 10, buttonY, size - 20, buttonHeight, buttonColor, Theme.nineSlice.borderScale)
-
-        local buyTextColor = canAfford and Theme.colors.textDark or Theme.colors.textMuted
-        love.graphics.setColor(buyTextColor)
-        love.graphics.setFont(Theme.fonts.small)
-        local buyText = "BUY"
-        local buyTextWidth = Theme.fonts.small:getWidth(buyText)
-        love.graphics.print(buyText, x + (size - buyTextWidth) / 2, buttonY + 3)
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -559,7 +719,6 @@ function ShopState:mousepressed(x, y, button)
             return
         end
 
-        -- In editor mode in shop, clicking on a die should select it
         if self.showingDiceForEditor and button == 1 then
             local positions = self:getShopDicePositions()
             for i = 1, 5 do
@@ -573,25 +732,16 @@ function ShopState:mousepressed(x, y, button)
         end
     end
 
-    -- Cancel button when showing dice
-    if self.cancelButton and not self.diceEditor.showingConfirmation then
-        if self.cancelButton:mousepressed(x, y, button) then
+    -- Editor cancel button
+    if self.editorCancelButton and not self.diceEditor.showingConfirmation then
+        if self.editorCancelButton:mousepressed(x, y, button) then
             return
         end
     end
 
-    -- Don't process shop clicks when showing dice
+    -- Don't process other clicks when showing dice editor
     if self.showingDiceForEditor then
         return
-    end
-
-    -- Check shop item clicks
-    if button == 1 then
-        local clickedItem = self:getShopItemAtPosition(x, y)
-        if clickedItem then
-            self:purchaseItem(clickedItem)
-            return
-        end
     end
 
     -- Item strip (consumables)
@@ -599,22 +749,56 @@ function ShopState:mousepressed(x, y, button)
         return
     end
 
-    self.actionButton:mousepressed(x, y, button)
+    -- Handle based on phase
+    if self.phase == ShopState.PHASE.BROWSING then
+        -- Shop items
+        for _, item in ipairs(self.shopItems) do
+            if item:mousepressed(x, y, button) then
+                return
+            end
+        end
+
+        -- Next level button
+        if self.nextLevelButton:mousepressed(x, y, button) then
+            return
+        end
+    elseif self.phase == ShopState.PHASE.ITEM_SELECTED then
+        -- BUY/CANCEL buttons
+        if self.buyButton:mousepressed(x, y, button) then
+            return
+        end
+        if self.cancelButton:mousepressed(x, y, button) then
+            return
+        end
+    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
+        if self.stickerSelection:mousepressed(x, y, button) then
+            return
+        end
+    end
+
+    -- Info panel
     if self.infoPanel then
         self.infoPanel:mousepressed(x, y, button)
     end
 end
 
 function ShopState:mousereleased(x, y, button)
-    if self.cancelButton then
-        self.cancelButton:mousereleased(x, y, button)
+    if self.editorCancelButton then
+        self.editorCancelButton:mousereleased(x, y, button)
     end
 
     if self.itemStrip then
         self.itemStrip:mousereleased(x, y, button)
     end
 
-    self.actionButton:mousereleased(x, y, button)
+    self.nextLevelButton:mousereleased(x, y, button)
+    self.buyButton:mousereleased(x, y, button)
+    self.cancelButton:mousereleased(x, y, button)
+
+    if self.phase == ShopState.PHASE.SELECTING_STICKER then
+        self.stickerSelection:mousereleased(x, y, button)
+    end
+
     if self.infoPanel then
         self.infoPanel:mousereleased(x, y, button)
     end
@@ -635,43 +819,21 @@ function ShopState:keypressed(key)
     end
 
     if key == "escape" then
-        -- If item strip has selection, deselect
-        if self.itemStrip then
+        if self.phase == ShopState.PHASE.ITEM_SELECTED then
+            self:onCancelClick()
+        elseif self.itemStrip then
             self.itemStrip:deselectAll()
         end
         return
     end
 
     if key == "return" then
-        self:onActionButtonClick()
-    end
-end
-
-function ShopState:getShopItemAtPosition(x, y)
-    local panelWidth = 600
-    local panelX = Theme.layout.centerX + (Theme.layout.centerWidth - panelWidth) / 2
-    local panelY = 150
-
-    local itemSize = 100
-    local itemSpacing = 30
-    local totalItemsWidth = 3 * itemSize + 2 * itemSpacing
-    local startX = panelX + (panelWidth - totalItemsWidth) / 2
-    local itemY = panelY + 160
-
-    for i, item in ipairs(self.shopItems) do
-        if not item.sold then
-            local itemX = startX + (i - 1) * (itemSize + itemSpacing)
-            -- Check if click is on the BUY button
-            local buttonY = itemY + itemSize + 35
-            local buttonHeight = 22
-            if x >= itemX + 10 and x < itemX + itemSize - 10 and
-                y >= buttonY and y < buttonY + buttonHeight then
-                return i
-            end
+        if self.phase == ShopState.PHASE.BROWSING then
+            self:onNextLevelClick()
+        elseif self.phase == ShopState.PHASE.ITEM_SELECTED then
+            self:onBuyClick()
         end
     end
-
-    return nil
 end
 
 return ShopState

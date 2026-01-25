@@ -103,6 +103,8 @@ Theme.images = {
     glove = nil,
     die = nil,
     lock = nil,
+    gift = nil,
+    silverKey = nil,
 }
 
 -- Dice spritesheet (loaded in Theme:load())
@@ -188,7 +190,12 @@ function Theme:load()
     self.images.lock = love.graphics.newImage("assets/icons/ui/lock.png")
     self.images.lock:setFilter("nearest", "nearest")
 
+    -- Shop item images
+    self.images.gift = love.graphics.newImage("assets/icons/items/gift.png")
+    self.images.gift:setFilter("nearest", "nearest")
 
+    self.images.silverKey = love.graphics.newImage("assets/icons/items/silverKey.png")
+    self.images.silverKey:setFilter("nearest", "nearest")
 
     -- Load dice spritesheet for animated dice rendering
     local Spritesheet = require("src.dice.spritesheet")
