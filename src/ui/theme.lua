@@ -105,6 +105,7 @@ Theme.images = {
     lock = nil,
     gift = nil,
     silverKey = nil,
+    prism = nil,
 }
 
 -- Dice spritesheet (loaded in Theme:load())
@@ -196,6 +197,9 @@ function Theme:load()
 
     self.images.silverKey = love.graphics.newImage("assets/icons/items/silverKey.png")
     self.images.silverKey:setFilter("nearest", "nearest")
+
+    self.images.prism = love.graphics.newImage("assets/icons/items/prism.png")
+    self.images.prism:setFilter("nearest", "nearest")
 
     -- Load dice spritesheet for animated dice rendering
     local Spritesheet = require("src.dice.spritesheet")

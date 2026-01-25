@@ -23,6 +23,9 @@ local GameState = {
     -- Consumables (stickers in slots 6-7 of item strip)
     consumables = { nil, nil }, -- Max 2 consumable slots
 
+    -- Relics (passive items in slots 1-5 of item strip)
+    relics = { nil, nil, nil, nil, nil }, -- Max 5 relic slots
+
     -- Dice editor state
     editorMode = false,      -- True when editing dice faces
     activeSticker = nil,     -- Currently selected sticker for editing
@@ -38,7 +41,7 @@ local GameState = {
     selectedHandId = nil, -- Currently selected hand card for playing
 }
 
--- Initialize dice (preserves custom faces if they exist)
+-- Initialize dice (preserves custom faces and prismatic state if they exist)
 function GameState:initDice()
     for i = 1, 5 do
         if not self.dice[i] then
@@ -47,15 +50,20 @@ function GameState:initDice()
                 locked = false,
                 faces = { 1, 2, 3, 4, 5, 6 }, -- Default standard faces
                 rolledFaceIndex = nil,        -- Which face index was rolled
+                prismatic = false,            -- Prismatic state (from Prism relic)
             }
         else
-            -- Reset per-hand state but preserve faces
+            -- Reset per-hand state but preserve faces and prismatic
             self.dice[i].value = 1
             self.dice[i].locked = false
             self.dice[i].rolledFaceIndex = nil
             -- Ensure faces array exists (for backwards compatibility)
             if not self.dice[i].faces then
                 self.dice[i].faces = { 1, 2, 3, 4, 5, 6 }
+            end
+            -- Ensure prismatic field exists (for backwards compatibility)
+            if self.dice[i].prismatic == nil then
+                self.dice[i].prismatic = false
             end
         end
     end
@@ -65,10 +73,12 @@ end
 function GameState:reset()
     self.currentLevel = 1
     self.money = 0
-    -- Reset dice to default faces
+    -- Reset dice to default faces (clears prismatic state)
     self.dice = {}
     -- Clear consumables
     self.consumables = { nil, nil }
+    -- Clear relics
+    self.relics = { nil, nil, nil, nil, nil }
     self.editorMode = false
     self.activeSticker = nil
     self:resetForLevel()
@@ -425,6 +435,104 @@ end
 -- Get active sticker info
 function GameState:getActiveSticker()
     return self.activeSticker
+end
+
+-- ============================================
+-- Relic System
+-- ============================================
+
+-- Add a relic to inventory
+-- Returns slot index (1-5) if successful, nil if no room
+function GameState:addRelic(relicId)
+    for i = 1, 5 do
+        if not self.relics[i] then
+            self.relics[i] = { relicId = relicId }
+            return i
+        end
+    end
+    return nil -- No room
+end
+
+-- Remove a relic from inventory
+-- Returns the removed relic data or nil
+function GameState:removeRelic(index)
+    if index < 1 or index > 5 then return nil end
+    local removed = self.relics[index]
+    self.relics[index] = nil
+    return removed
+end
+
+-- Get relic at index
+function GameState:getRelic(index)
+    if index < 1 or index > 5 then return nil end
+    return self.relics[index]
+end
+
+-- Check if player has a specific relic (by ID)
+function GameState:hasRelic(relicId)
+    for i = 1, 5 do
+        if self.relics[i] and self.relics[i].relicId == relicId then
+            return true
+        end
+    end
+    return false
+end
+
+-- Check if there's room for another relic
+function GameState:hasRelicRoom()
+    for i = 1, 5 do
+        if not self.relics[i] then
+            return true
+        end
+    end
+    return false
+end
+
+-- Get count of relics
+function GameState:getRelicCount()
+    local count = 0
+    for i = 1, 5 do
+        if self.relics[i] then
+            count = count + 1
+        end
+    end
+    return count
+end
+
+-- ============================================
+-- Prismatic Dice System
+-- ============================================
+
+-- Set prismatic state on a die
+function GameState:setPrismatic(dieIndex, isPrismatic)
+    if dieIndex < 1 or dieIndex > 5 then return false end
+    if not self.dice[dieIndex] then return false end
+    self.dice[dieIndex].prismatic = isPrismatic
+    return true
+end
+
+-- Check if a die is prismatic
+function GameState:isPrismatic(dieIndex)
+    if dieIndex < 1 or dieIndex > 5 then return false end
+    if not self.dice[dieIndex] then return false end
+    return self.dice[dieIndex].prismatic == true
+end
+
+-- Get all prismatic dice indices
+function GameState:getPrismaticDice()
+    local indices = {}
+    for i = 1, 5 do
+        if self.dice[i] and self.dice[i].prismatic then
+            table.insert(indices, i)
+        end
+    end
+    return indices
+end
+
+-- Get dice data (for use by UI components)
+function GameState:getDiceData(dieIndex)
+    if dieIndex < 1 or dieIndex > 5 then return nil end
+    return self.dice[dieIndex]
 end
 
 return GameState

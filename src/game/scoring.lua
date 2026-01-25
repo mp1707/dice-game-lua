@@ -160,7 +160,8 @@ function Scoring.calculateScore(handId, dice)
 end
 
 -- Get detailed score breakdown for display
-function Scoring.getBreakdown(handId, dice)
+-- Now includes prismatic multiplier support
+function Scoring.getBreakdown(handId, dice, selectedIndices, prismaticDice)
     local handDef = Hands:get(handId)
     if not handDef then
         return nil
@@ -178,12 +179,31 @@ function Scoring.getBreakdown(handId, dice)
         pips = sumAll(dice)
     end
 
-    local total = isValid and ((basePoints + pips) * mult) or 0
+    -- Calculate prismatic multiplier (for scoring dice that are prismatic)
+    local prismaticMult = 1
+    local prismaticDiceInScoring = {}
+
+    if prismaticDice and selectedIndices then
+        for _, dieIndex in ipairs(selectedIndices) do
+            if prismaticDice[dieIndex] and dice[dieIndex] then
+                local dieValue = dice[dieIndex].value
+                prismaticMult = prismaticMult * dieValue
+                table.insert(prismaticDiceInScoring, {
+                    index = dieIndex,
+                    value = dieValue
+                })
+            end
+        end
+    end
+
+    local total = isValid and ((basePoints + pips) * mult * prismaticMult) or 0
 
     return {
         basePoints = basePoints,
         pips = pips,
         mult = mult,
+        prismaticMult = prismaticMult,
+        prismaticDice = prismaticDiceInScoring,
         total = total,
         isValid = isValid,
     }
@@ -462,6 +482,65 @@ function Scoring.getScoringDiceForHand(handId, selectedIndices, dice)
     end
 
     return scoringValues
+end
+
+-- ============================================
+-- Prismatic (Prism Relic) Support Functions
+-- ============================================
+
+-- Check if a hand is a straight (for Prism relic trigger)
+function Scoring.isStraightHand(handId)
+    return handId == "smallStraight" or handId == "largeStraight"
+end
+
+-- Find the rightmost scoring die index by visual order
+-- visualOrder is an array where index = visual position, value = dice index
+-- selectedIndices is the array of dice indices that were selected for scoring
+-- Returns the dice index (1-5) of the rightmost scoring die, or nil
+function Scoring.getRightmostScoringDieIndex(selectedIndices, visualOrder)
+    if not selectedIndices or #selectedIndices == 0 then
+        return nil
+    end
+    if not visualOrder or #visualOrder == 0 then
+        return nil
+    end
+
+    -- Create a set of selected indices for quick lookup
+    local selectedSet = {}
+    for _, idx in ipairs(selectedIndices) do
+        selectedSet[idx] = true
+    end
+
+    -- Find the rightmost visual position that is in the selected set
+    -- visualOrder[visualPos] = diceIndex
+    -- Higher visual position = further right
+    local rightmostIndex = nil
+    local rightmostVisualPos = 0
+
+    for visualPos, diceIndex in ipairs(visualOrder) do
+        if selectedSet[diceIndex] then
+            if visualPos > rightmostVisualPos then
+                rightmostVisualPos = visualPos
+                rightmostIndex = diceIndex
+            end
+        end
+    end
+
+    return rightmostIndex
+end
+
+-- Calculate the prismatic multiplier for a set of dice
+-- prismaticIndices is a table where keys are dice indices that are prismatic
+-- scoringIndices is an array of dice indices that are scoring
+-- dice is the dice array from GameState
+function Scoring.calculatePrismaticMult(prismaticIndices, scoringIndices, dice)
+    local mult = 1
+    for _, dieIndex in ipairs(scoringIndices) do
+        if prismaticIndices[dieIndex] and dice[dieIndex] then
+            mult = mult * dice[dieIndex].value
+        end
+    end
+    return mult
 end
 
 return Scoring

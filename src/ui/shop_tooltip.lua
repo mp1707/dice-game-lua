@@ -27,6 +27,7 @@ function ShopTooltip.new()
     -- State
     self.visible = false
     self.text = ""
+    self.description = nil -- Optional description for relics
     self.x = 0
     self.y = 0
 
@@ -43,14 +44,26 @@ function ShopTooltip.new()
     return self
 end
 
-function ShopTooltip:show(text, anchorX, anchorY)
+function ShopTooltip:show(text, anchorX, anchorY, description)
     self.visible = true
     self.text = text
+    self.description = description
 
     -- Calculate dimensions
-    local font = Theme.fonts.normal
-    local textWidth = font:getWidth(text)
-    local textHeight = font:getHeight()
+    local titleFont = Theme.fonts.normal
+    local textWidth = titleFont:getWidth(text)
+    local textHeight = titleFont:getHeight()
+
+    -- If we have a description, make the tooltip wider and taller
+    if description then
+        local descFont = Theme.fonts.small
+        local descWidth = descFont:getWidth(description)
+        local descHeight = descFont:getHeight()
+
+        -- Use the wider of title or description
+        textWidth = math.max(textWidth, descWidth)
+        textHeight = textHeight + 4 + descHeight -- 4px gap between title and description
+    end
 
     self.width = textWidth + self.padding * 2
     self.height = textHeight + self.padding * 2
@@ -108,16 +121,31 @@ function ShopTooltip:draw()
     }
     self.nineSlice:draw(0, 0, self.width, self.height, bgColor, Theme.nineSlice.borderScale)
 
-    -- Draw text
-    local font = Theme.fonts.normal
-    love.graphics.setFont(font)
+    -- Draw title
+    local titleFont = Theme.fonts.normal
+    love.graphics.setFont(titleFont)
 
     local textX = self.padding
     local textY = self.padding
 
-    -- Text with alpha
-    love.graphics.setColor(1, 1, 1, self.alpha)
+    -- Title with gold color (for relics) or white
+    if self.description then
+        love.graphics.setColor(Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], self.alpha)
+    else
+        love.graphics.setColor(1, 1, 1, self.alpha)
+    end
     love.graphics.print(self.text, textX, textY)
+
+    -- Draw description if present
+    if self.description then
+        local descFont = Theme.fonts.small
+        love.graphics.setFont(descFont)
+        local descY = textY + titleFont:getHeight() + 4
+
+        -- Description in muted color
+        love.graphics.setColor(Theme.colors.textMuted[1], Theme.colors.textMuted[2], Theme.colors.textMuted[3], self.alpha)
+        love.graphics.print(self.description, textX, descY)
+    end
 
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)

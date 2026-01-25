@@ -53,16 +53,31 @@ function DiceTooltip.new()
     return self
 end
 
-function DiceTooltip:updateLayout()
+function DiceTooltip:updateLayout(isPrismatic)
     self.faceSize = 54
     self.faceSpacing = Theme.spacing.sm
     self.padding = Theme.spacing.sm
     self.width = 6 * self.faceSize + 5 * self.faceSpacing + self.padding * 2
-    self.height = self.faceSize + self.padding * 2
+
+    -- Base height for faces
+    local baseHeight = self.faceSize + self.padding * 2
+
+    -- Add extra height for prismatic section if applicable
+    if isPrismatic then
+        -- Prismatic section: divider + title + description
+        local prismaticSectionHeight = 8 + 24 + 20 -- divider gap + title + description
+        self.height = baseHeight + prismaticSectionHeight
+    else
+        self.height = baseHeight
+    end
 end
 
 function DiceTooltip:show(dieIndex, anchorX, anchorY)
-    self:updateLayout()
+    -- Check if die is prismatic
+    local dieData = GameState:getDiceData(dieIndex)
+    local isPrismatic = dieData and dieData.prismatic == true
+
+    self:updateLayout(isPrismatic)
     self.visible = true
     self.targetDieIndex = dieIndex
 
@@ -157,6 +172,10 @@ function DiceTooltip:draw()
     local faces = GameState:getDieFaces(self.targetDieIndex)
     if not faces then return end
 
+    -- Check if die is prismatic
+    local dieData = GameState:getDiceData(self.targetDieIndex)
+    local isPrismatic = dieData and dieData.prismatic == true
+
     -- Calculate center for scaling
     local centerX = self.x + self.width / 2
     local centerY = self.y + self.height / 2
@@ -196,8 +215,41 @@ function DiceTooltip:draw()
         self:drawFace(faceX, faceY, faceValue, faceScale, isHovered)
     end
 
+    -- Draw prismatic section if applicable
+    if isPrismatic then
+        self:drawPrismaticSection(startY + self.faceSize)
+    end
+
     love.graphics.pop()
     love.graphics.setColor(1, 1, 1, 1)
+end
+
+function DiceTooltip:drawPrismaticSection(startY)
+    local sectionY = startY + 8 -- Gap after faces
+
+    -- Draw divider line
+    local dividerY = sectionY
+    love.graphics.setColor(Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], self.alpha * 0.5)
+    love.graphics.setLineWidth(1)
+    love.graphics.line(self.padding, dividerY, self.width - self.padding, dividerY)
+
+    -- Draw "Prismatic" title (gold color)
+    local titleY = dividerY + 6
+    love.graphics.setColor(Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], self.alpha)
+    local titleFont = Theme.fonts.normal
+    love.graphics.setFont(titleFont)
+    local titleText = "Prismatic"
+    local titleWidth = titleFont:getWidth(titleText)
+    love.graphics.print(titleText, (self.width - titleWidth) / 2, titleY)
+
+    -- Draw description
+    local descY = titleY + titleFont:getHeight() + 2
+    love.graphics.setColor(Theme.colors.textMuted[1], Theme.colors.textMuted[2], Theme.colors.textMuted[3], self.alpha)
+    local descFont = Theme.fonts.small
+    love.graphics.setFont(descFont)
+    local descText = "Multiplies your current mult by this die's pips"
+    local descWidth = descFont:getWidth(descText)
+    love.graphics.print(descText, (self.width - descWidth) / 2, descY)
 end
 
 function DiceTooltip:drawFace(x, y, value, scale, isHovered)

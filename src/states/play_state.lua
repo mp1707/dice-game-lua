@@ -6,6 +6,7 @@ local Timer = require("src.core.timer")
 local GameState = require("src.game.game_state")
 local Scoring = require("src.game.scoring")
 local Stickers = require("src.game.stickers")
+local Relics = require("src.game.relics")
 local Sound = require("src.core.sound")
 
 local NineSlice = require("src.ui.nine_slice")
@@ -115,6 +116,17 @@ function PlayState:initItemStrip()
     self.itemStrip = ItemStrip.new({
         x = stripX,
         y = layout.itemStripY,
+        -- Relic callbacks
+        onRelicSell = function(slotIndex)
+            self:onRelicSell(slotIndex)
+        end,
+        onRelicDragStart = function(slotIndex)
+            -- For now, relics don't have drag zones (just sell from slot)
+        end,
+        onRelicDragEnd = function(slotIndex, x, y)
+            -- For now, relics don't have drag zones
+        end,
+        -- Consumable callbacks
         onConsumableUse = function(slotIndex)
             self:onConsumableUse(slotIndex)
         end,
@@ -275,6 +287,17 @@ function PlayState:onConsumableSell(slotIndex)
     Sound:play("cash")
 end
 
+function PlayState:onRelicSell(slotIndex)
+    local relic = GameState:getRelic(slotIndex)
+    if not relic then return end
+
+    local sellPrice = Relics:getSellPrice(relic.relicId)
+    GameState:addMoney(sellPrice)
+    GameState:removeRelic(slotIndex)
+
+    Sound:play("cash")
+end
+
 function PlayState:onConsumableDragEnd(slotIndex, x, y)
     self.dragZones:hide()
 
@@ -406,6 +429,20 @@ function PlayState:onPlayHandClick()
         onComplete = function()
             -- Update game state after animation completes
             GameState:useHand(detected.id, breakdown.total)
+
+            -- Check for Prism relic effect: scoring a straight turns the rightmost die prismatic
+            if GameState:hasRelic("prism") and Scoring.isStraightHand(detected.id) then
+                local rightmostIndex = Scoring.getRightmostScoringDieIndex(
+                    scoringIndices,
+                    self.diceContainer.diceVisualOrder
+                )
+                if rightmostIndex and not GameState:isPrismatic(rightmostIndex) then
+                    GameState:setPrismatic(rightmostIndex, true)
+                    -- Play a sound effect for the prismatic trigger
+                    Sound:play("levelup")
+                end
+            end
+
             self:handlePostScoreTransition()
         end,
     })

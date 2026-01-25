@@ -6,6 +6,7 @@ local Theme = require("src.ui.theme")
 local Juice = require("src.ui.juice")
 local PopText = require("src.ui.pop_text")
 local Sound = require("src.core.sound")
+local GameState = require("src.game.game_state")
 
 local ScoreAnimation = {}
 ScoreAnimation.__index = ScoreAnimation
@@ -191,6 +192,19 @@ function ScoreAnimation:updateCounting(dt)
                     font = Theme.fonts.huge, -- Bigger font!
                 })
                 table.insert(self.popTexts, popText)
+
+                -- Check if this die is prismatic and add multiplier text below
+                if GameState:isPrismatic(dieIndex) then
+                    local multPopY = display.y + display.size + 20 -- Below the die
+                    local multPopText = PopText.new({
+                        text = "x" .. pipValue,
+                        x = popX,
+                        y = multPopY,
+                        color = Theme.colors.coral, -- Red multiplier color
+                        font = Theme.fonts.huge,
+                    })
+                    table.insert(self.popTexts, multPopText)
+                end
 
                 -- Add to accumulated chips
                 self.accumulatedChips = self.accumulatedChips + pipValue

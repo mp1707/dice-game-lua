@@ -18,14 +18,15 @@ function ShopItem.new(config)
     self.index = config.index or 1
 
     -- Item properties
-    self.itemType = config.itemType or "placeholder" -- "booster" | "placeholder"
-    self.spriteImage = config.spriteImage            -- Theme.images.gift or Theme.images.silverKey
+    self.itemType = config.itemType or "placeholder" -- "booster" | "placeholder" | "relic"
+    self.spriteImage = config.spriteImage            -- Theme.images.gift, Theme.images.silverKey, or Theme.images.prism
     self.price = config.price                        -- number or nil
     self.name = config.name or ""                    -- For tooltip
+    self.relicId = config.relicId                    -- For relic items (e.g., "prism")
     self.sold = false
 
     -- Interactive state
-    self.isInteractive = (self.itemType == "booster")
+    self.isInteractive = (self.itemType == "booster" or self.itemType == "relic")
     self.isSelected = false
     self.isHovered = false
 

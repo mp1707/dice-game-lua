@@ -10,6 +10,7 @@ local Physics = require("src.dice.physics")
 local Shadow = require("src.dice.shadow")
 local Juice = require("src.ui.juice")
 local Sound = require("src.core.sound")
+local ShaderPrismatic = require("src.core.shader_prismatic")
 
 local DiceDisplay = {}
 DiceDisplay.__index = DiceDisplay
@@ -411,13 +412,22 @@ end
 function DiceDisplay:draw()
     local data = self.getDiceData()
     local locked = data.locked
+    local isPrismatic = data.prismatic == true
 
     -- During roll animation, delegate to die
     if self.isAnimating then
+        -- Apply prismatic shader if die is prismatic
+        if isPrismatic then
+            ShaderPrismatic.apply()
+        end
         -- Draw shadow
         self.die:drawShadow()
         -- Draw die
         self.die:draw()
+        -- Clear shader if applied
+        if isPrismatic then
+            ShaderPrismatic.clear()
+        end
     else
         -- Static rendering (not animating) using spritesheet
         local value = data.value
@@ -451,6 +461,11 @@ function DiceDisplay:draw()
             -- Combine rotation (hover tilt + count pulse)
             local finalRotation = self.hoverRotation + self.countPulseRotation
 
+            -- Apply prismatic shader if die is prismatic
+            if isPrismatic then
+                ShaderPrismatic.apply()
+            end
+
             -- No tint - dice are distinguished by position only
             love.graphics.setColor(1, 1, 1, 1)
 
@@ -462,6 +477,11 @@ function DiceDisplay:draw()
                 finalScaleX, finalScaleY,
                 spriteW / 2, spriteH / 2
             )
+
+            -- Clear shader if applied
+            if isPrismatic then
+                ShaderPrismatic.clear()
+            end
         end
     end
 

@@ -1,6 +1,7 @@
 local Theme = require("src.ui.theme")
 local ShaderBackground = require("src.core.shader_background")
 local ShaderCRT = require("src.core.shader_crt")
+local ShaderPrismatic = require("src.core.shader_prismatic")
 
 ---@class Scaling
 local Scaling = {
@@ -56,6 +57,8 @@ function Scaling.init()
     ShaderBackground.init()
     -- Initialize CRT shader
     ShaderCRT.init()
+    -- Initialize prismatic shader (for prismatic dice)
+    ShaderPrismatic.init()
 
     Scaling.calculateScale()
     Scaling.initialized = true
@@ -71,6 +74,7 @@ end
 function Scaling.updateShader(dt)
     ShaderBackground.update(dt)
     ShaderCRT.update(dt)
+    ShaderPrismatic.update(dt)
 end
 
 function Scaling.toggleDebug()

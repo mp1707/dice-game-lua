@@ -5,6 +5,7 @@ local Theme = require("src.ui.theme")
 local GameState = require("src.game.game_state")
 local Levels = require("src.game.levels")
 local Stickers = require("src.game.stickers")
+local Relics = require("src.game.relics")
 local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
 local InfoPanel = require("src.ui.info_panel")
@@ -189,11 +190,26 @@ function ShopState:initShopItems()
 
     -- Create items
     for i = 1, 4 do
-        local isBooster = (i == 2) -- Top-right is the gift booster
-        local itemType = isBooster and "booster" or "placeholder"
-        local spriteImage = isBooster and Theme.images.gift or Theme.images.silverKey
-        local price = isBooster and 8 or nil
-        local name = isBooster and "Random Basic Sticker" or ""
+        local itemType = "placeholder"
+        local spriteImage = Theme.images.silverKey
+        local price = nil
+        local name = ""
+        local relicId = nil
+
+        if i == 1 then
+            -- Top-left: Prism relic
+            itemType = "relic"
+            spriteImage = Theme.images.prism
+            price = 10
+            name = "Prism"
+            relicId = "prism"
+        elseif i == 2 then
+            -- Top-right: Booster gift
+            itemType = "booster"
+            spriteImage = Theme.images.gift
+            price = 8
+            name = "Random Basic Sticker"
+        end
 
         self.shopItems[i] = ShopItem.new({
             x = positions[i].x,
@@ -204,6 +220,7 @@ function ShopState:initShopItems()
             spriteImage = spriteImage,
             price = price,
             name = name,
+            relicId = relicId,
             onClick = function(index)
                 self:onItemClick(index)
             end,
@@ -339,21 +356,59 @@ function ShopState:onBuyClick()
         return
     end
 
-    -- Check if there's room for consumable
-    if not GameState:hasConsumableRoom() then
-        Sound:play("click")
-        return
+    -- Handle different item types
+    if item.itemType == "relic" then
+        -- Check if there's room for relic
+        if not GameState:hasRelicRoom() then
+            Sound:play("click")
+            return
+        end
+
+        -- Deduct money
+        if item.price then
+            GameState:addMoney(-item.price)
+        end
+
+        Sound:play("cash")
+
+        -- Add relic directly (no animation needed)
+        self:onRelicPurchased(item.relicId)
+    else
+        -- Booster purchase
+        -- Check if there's room for consumable
+        if not GameState:hasConsumableRoom() then
+            Sound:play("click")
+            return
+        end
+
+        -- Deduct money
+        if item.price then
+            GameState:addMoney(-item.price)
+        end
+
+        Sound:play("cash")
+
+        -- Start booster animation
+        self:startBoosterAnimation()
+    end
+end
+
+function ShopState:onRelicPurchased(relicId)
+    -- Add relic to inventory
+    GameState:addRelic(relicId)
+
+    -- Mark the item as sold
+    if self.selectedItemIndex then
+        local item = self.shopItems[self.selectedItemIndex]
+        if item then
+            item.sold = true
+            item:setSelected(false)
+        end
     end
 
-    -- Deduct money
-    if item.price then
-        GameState:addMoney(-item.price)
-    end
-
-    Sound:play("cash")
-
-    -- Start booster animation
-    self:startBoosterAnimation()
+    -- Return to browsing
+    self.phase = ShopState.PHASE.BROWSING
+    self.selectedItemIndex = nil
 end
 
 function ShopState:onCancelClick()
@@ -574,7 +629,15 @@ function ShopState:updateBrowsing(dt)
             local item = self.shopItems[self.hoveredItemIndex]
             if item and item.name and item.name ~= "" and not item.sold then
                 local centerX, centerY = item:getCenterPosition()
-                self.shopTooltip:show(item.name, centerX, centerY - GRID_ITEM_SIZE / 2)
+                -- Get description for relics
+                local description = nil
+                if item.itemType == "relic" and item.relicId then
+                    local relicDef = Relics:get(item.relicId)
+                    if relicDef then
+                        description = relicDef.description
+                    end
+                end
+                self.shopTooltip:show(item.name, centerX, centerY - GRID_ITEM_SIZE / 2, description)
             end
         end
     end

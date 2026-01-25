@@ -1,11 +1,13 @@
 -- Item Strip component
--- Container for 5 item slots + 2 consumable slots at the top center
+-- Container for 5 relic slots + 2 consumable slots at the top center
 -- Layout: [1][2][3][4][5]   GAP   [6][7]
+-- Slots 1-5 are interactive relic slots for passive items
 -- Slots 6-7 are interactive consumable slots for stickers
 
 local Theme = require("src.ui.theme")
 local NineSlice = require("src.ui.nine_slice")
 local ConsumableSlot = require("src.ui.consumable_slot")
+local RelicSlot = require("src.ui.relic_slot")
 
 local ItemStrip = {}
 ItemStrip.__index = ItemStrip
@@ -22,11 +24,37 @@ function ItemStrip.new(config)
 
     self.nineSlice = NineSlice.getInstance()
 
+    -- Callbacks for relic actions
+    self.onRelicSell = config.onRelicSell or function() end
+    self.onRelicDragStart = config.onRelicDragStart or function() end
+    self.onRelicDragEnd = config.onRelicDragEnd or function() end
+
     -- Callbacks for consumable actions
     self.onConsumableUse = config.onConsumableUse or function() end
     self.onConsumableSell = config.onConsumableSell or function() end
     self.onConsumableDragStart = config.onConsumableDragStart or function() end
     self.onConsumableDragEnd = config.onConsumableDragEnd or function() end
+
+    -- Create relic slots for positions 1-5
+    self.relicSlots = {}
+    for i = 1, 5 do
+        local slotX = self:getSlotX(i)
+        self.relicSlots[i] = RelicSlot.new({
+            x = slotX,
+            y = self.y,
+            size = self.slotSize,
+            slotIndex = i,
+            onSell = function(slotIndex)
+                self.onRelicSell(slotIndex)
+            end,
+            onDragStart = function(slotIndex)
+                self.onRelicDragStart(slotIndex)
+            end,
+            onDragEnd = function(slotIndex, x, y)
+                self.onRelicDragEnd(slotIndex, x, y)
+            end,
+        })
+    end
 
     -- Create consumable slots for positions 6 and 7
     self.consumableSlots = {}
@@ -74,6 +102,10 @@ function ItemStrip:getSlotX(index)
 end
 
 function ItemStrip:update(dt)
+    -- Update relic slots
+    for _, slot in ipairs(self.relicSlots) do
+        slot:update(dt)
+    end
     -- Update consumable slots
     for _, slot in ipairs(self.consumableSlots) do
         slot:update(dt)
@@ -81,10 +113,29 @@ function ItemStrip:update(dt)
 end
 
 function ItemStrip:mousepressed(x, y, button)
-    -- Check consumable slots first
+    -- Check relic slots first
+    for _, slot in ipairs(self.relicSlots) do
+        if slot:mousepressed(x, y, button) then
+            -- Deselect other slots (both relic and consumable)
+            for _, otherSlot in ipairs(self.relicSlots) do
+                if otherSlot ~= slot then
+                    otherSlot:deselect()
+                end
+            end
+            for _, otherSlot in ipairs(self.consumableSlots) do
+                otherSlot:deselect()
+            end
+            return true
+        end
+    end
+
+    -- Check consumable slots
     for _, slot in ipairs(self.consumableSlots) do
         if slot:mousepressed(x, y, button) then
-            -- Deselect other slots
+            -- Deselect other slots (both relic and consumable)
+            for _, otherSlot in ipairs(self.relicSlots) do
+                otherSlot:deselect()
+            end
             for _, otherSlot in ipairs(self.consumableSlots) do
                 if otherSlot ~= slot then
                     otherSlot:deselect()
@@ -97,6 +148,11 @@ function ItemStrip:mousepressed(x, y, button)
 end
 
 function ItemStrip:mousereleased(x, y, button)
+    for _, slot in ipairs(self.relicSlots) do
+        if slot:mousereleased(x, y, button) then
+            return true
+        end
+    end
     for _, slot in ipairs(self.consumableSlots) do
         if slot:mousereleased(x, y, button) then
             return true
@@ -106,18 +162,29 @@ function ItemStrip:mousereleased(x, y, button)
 end
 
 function ItemStrip:mousemoved(x, y, dx, dy)
+    for _, slot in ipairs(self.relicSlots) do
+        slot:mousemoved(x, y, dx, dy)
+    end
     for _, slot in ipairs(self.consumableSlots) do
         slot:mousemoved(x, y, dx, dy)
     end
 end
 
 function ItemStrip:deselectAll()
+    for _, slot in ipairs(self.relicSlots) do
+        slot:deselect()
+    end
     for _, slot in ipairs(self.consumableSlots) do
         slot:deselect()
     end
 end
 
 function ItemStrip:isDragging()
+    for _, slot in ipairs(self.relicSlots) do
+        if slot:isDraggingRelic() then
+            return true
+        end
+    end
     for _, slot in ipairs(self.consumableSlots) do
         if slot:isDraggingSticker() then
             return true
@@ -127,6 +194,11 @@ function ItemStrip:isDragging()
 end
 
 function ItemStrip:getDraggingSlot()
+    for _, slot in ipairs(self.relicSlots) do
+        if slot:isDraggingRelic() then
+            return slot
+        end
+    end
     for _, slot in ipairs(self.consumableSlots) do
         if slot:isDraggingSticker() then
             return slot
@@ -139,23 +211,13 @@ function ItemStrip:draw()
     local isDragging = self:isDragging()
     local fadeAlpha = isDragging and 0.0 or 1.0
 
-    -- Draw first 5 slots (passive items - visual only for now)
-    local passiveColor = { Theme.colors.panelDark[1], Theme.colors.panelDark[2], Theme.colors.panelDark[3], (Theme.colors.panelDark[4] or 1) *
-    fadeAlpha }
-
-    for i = 1, 5 do
-        local slotX = self:getSlotX(i)
-        local slotY = self.y
-
-        -- Draw dark slot background
-        self.nineSlice:draw(
-            slotX,
-            slotY,
-            self.slotSize,
-            self.slotSize,
-            passiveColor,
-            Theme.nineSlice.borderScale
-        )
+    -- Draw relic slots (1-5)
+    for _, slot in ipairs(self.relicSlots) do
+        local slotAlpha = fadeAlpha
+        if slot:isDraggingRelic() then
+            slotAlpha = 1.0
+        end
+        slot:draw(slotAlpha)
     end
 
     -- Draw consumable slots (6-7)
