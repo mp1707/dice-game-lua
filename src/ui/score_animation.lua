@@ -46,7 +46,9 @@ function ScoreAnimation:reset()
     self.data = nil
 
     -- Animation state
+    -- Animation state
     self.accumulatedChips = 0
+    self.accumulatedMult = 0
     self.popTexts = {}
     self.displayedScore = 0
 
@@ -58,6 +60,10 @@ function ScoreAnimation:reset()
     self.chipsTextScale = 1
     self.chipsTextScaleVelocity = 0
 
+    -- Mult text animation
+    self.multTextScale = 1
+    self.multTextScaleVelocity = 0
+
     -- Hand score animation state
     self.handScoreVisible = false
     self.handScoreScale = 0
@@ -67,6 +73,10 @@ function ScoreAnimation:reset()
     self.totalCountProgress = 0
     self.totalCountDuration = 0
     self.totalScoreScale = 1 -- Scale for punching the total score
+
+    -- Sequence state
+    self.sequence = {}
+    self.currentStepIndex = 0
 end
 
 function ScoreAnimation:start(config)
@@ -84,23 +94,61 @@ function ScoreAnimation:start(config)
         onComplete = config.onComplete,
     }
 
-    -- Initialize accumulated chips to basePoints
+    -- Initialize accumulated values
     self.accumulatedChips = self.data.breakdown.basePoints
+    self.accumulatedMult = self.data.breakdown.mult
 
-    -- Start with counting phase (or skip if no dice to count)
-    if #self.data.scoringDiceIndices > 0 then
+    -- Build the animation sequence from scoring dice
+    self:buildSequence()
+
+    -- Start with counting phase (or skip if no steps)
+    if #self.sequence > 0 then
         self.state = "COUNTING"
-        self.currentDieIndex = 0
-        -- Start with timer = 0 to wait full countDelay before first die
+        self.currentStepIndex = 0
+        -- Start with timer = 0 to wait full countDelay before first step
         self.timer = 0
 
-        -- Prime the tick sound to avoid first-sound-not-playing bug
-        -- Playing at zero volume initializes the audio source
+        -- Prime the tick sound
         Sound:play("tick", { volume = 0 })
     else
-        -- No scoring dice, skip to calculating
+        -- No scoring steps, skip to calculating
         self.state = "CALCULATING"
         self.timer = 0
+    end
+end
+
+function ScoreAnimation:buildSequence()
+    self.sequence = {}
+    local prismaticDice = self.data.breakdown.prismaticDice or {}
+
+    -- Create lookup for prismatic value
+    local prismaticValueMap = {}
+    for _, pd in ipairs(prismaticDice) do
+        prismaticValueMap[pd.index] = pd.value
+    end
+
+    for _, dieIndex in ipairs(self.data.scoringDiceIndices) do
+        -- Get the die value from the display (or data)
+        local value = 0
+        if self.data.diceDisplays[dieIndex] then
+            value = self.data.diceDisplays[dieIndex].getDiceData().value
+        end
+
+        -- Step 1: Count Pips
+        table.insert(self.sequence, {
+            type = "PIPS",
+            dieIndex = dieIndex,
+            value = value
+        })
+
+        -- Step 2: Count Mult (only if Prismatic)
+        if prismaticValueMap[dieIndex] then
+            table.insert(self.sequence, {
+                type = "MULT",
+                dieIndex = dieIndex,
+                value = value -- The mult added is the die value
+            })
+        end
     end
 end
 
@@ -119,9 +167,15 @@ function ScoreAnimation:update(dt)
         end
     end
 
-    -- Update chips text scale spring (subtle pulse, not the box)
+    -- Update chips text scale spring
     self.chipsTextScale, self.chipsTextScaleVelocity = Juice.updateSpring(
         self.chipsTextScale, 1, self.chipsTextScaleVelocity,
+        SPRINGS.boxPop.stiffness, SPRINGS.boxPop.damping, dt
+    )
+
+    -- Update mult text scale spring
+    self.multTextScale, self.multTextScaleVelocity = Juice.updateSpring(
+        self.multTextScale, 1, self.multTextScaleVelocity,
         SPRINGS.boxPop.stiffness, SPRINGS.boxPop.damping, dt
     )
 
@@ -133,7 +187,7 @@ function ScoreAnimation:update(dt)
         )
     end
 
-    -- Update total score scale spring (punch effect)
+    -- Update total score scale spring
     self.totalScoreScale, self.totalScoreScaleVelocity = Juice.updateSpring(
         self.totalScoreScale, 1, self.totalScoreScaleVelocity or 0,
         SPRINGS.boxPop.stiffness, SPRINGS.boxPop.damping, dt
@@ -152,69 +206,70 @@ function ScoreAnimation:update(dt)
 end
 
 function ScoreAnimation:updateCounting(dt)
-    -- Count each die's pip value - die pulse AND number pop-up happen TOGETHER
+    -- Process sequence steps
     if self.timer >= TIMING.countDelay then
         self.timer = self.timer - TIMING.countDelay
-        self.currentDieIndex = self.currentDieIndex + 1
+        self.currentStepIndex = self.currentStepIndex + 1
 
-        if self.currentDieIndex <= #self.data.scoringDiceIndices then
-            local dieIndex = self.data.scoringDiceIndices[self.currentDieIndex]
-            local display = self.data.diceDisplays[dieIndex]
+        if self.currentStepIndex <= #self.sequence then
+            local step = self.sequence[self.currentStepIndex]
+            local display = self.data.diceDisplays[step.dieIndex]
 
             if display then
-                -- DEBUG: Print which die is being counted
-                print("[ScoreAnimation] Counting die #" ..
-                    tostring(self.currentDieIndex) .. " (dieIndex=" .. tostring(dieIndex) .. ")")
-
-                -- Play tick sound for this die being counted
+                -- Play tick sound
                 Sound:play("tick")
 
-                -- Trigger BOTH selection pop AND count pulse at the same time
+                -- Trigger die pulse
                 display.selectionScale = 1.15
                 display.selectionYOffset = -20
                 display.selectionScaleVelocity = 0
                 display.selectionYVelocity = 0
                 display:triggerCountPulse()
 
-                -- Get pip value for this die
-                local diceData = display.getDiceData()
-                local pipValue = diceData.value
-
-                -- Create pop text above die (use huge font for visibility)
                 local popX = display.x + display.size / 2
-                local popY = display.y - 60 -- Higher up for bigger text
 
-                local popText = PopText.new({
-                    text = "+" .. pipValue,
-                    x = popX,
-                    y = popY,
-                    color = Theme.colors.text,
-                    font = Theme.fonts.huge, -- Bigger font!
-                })
-                table.insert(self.popTexts, popText)
+                if step.type == "PIPS" then
+                    -- Handle PIPS step
+                    local popY = display.y - 60 -- Above die
 
-                -- Check if this die is prismatic and add multiplier text below
-                if GameState:isPrismatic(dieIndex) then
-                    local multPopY = display.y + display.size + 20 -- Below the die
-                    local multPopText = PopText.new({
-                        text = "x" .. pipValue,
+                    local popText = PopText.new({
+                        text = "+" .. step.value,
                         x = popX,
-                        y = multPopY,
+                        y = popY,
+                        color = Theme.colors.text,
+                        font = Theme.fonts.huge,
+                    })
+                    table.insert(self.popTexts, popText)
+
+                    -- Update chips
+                    self.accumulatedChips = self.accumulatedChips + step.value
+
+                    -- Pulse chips text (Blue)
+                    self.chipsTextScale = 1.12
+                    self.chipsTextScaleVelocity = 0
+                elseif step.type == "MULT" then
+                    -- Handle MULT step
+                    local popY = display.y + display.size + 30 -- Below die
+
+                    local popText = PopText.new({
+                        text = "x" .. step.value,
+                        x = popX,
+                        y = popY,
                         color = Theme.colors.coral, -- Red multiplier color
                         font = Theme.fonts.huge,
                     })
-                    table.insert(self.popTexts, multPopText)
+                    table.insert(self.popTexts, popText)
+
+                    -- Update mult
+                    self.accumulatedMult = self.accumulatedMult * step.value
+
+                    -- Pulse mult text (Red)
+                    self.multTextScale = 1.12
+                    self.multTextScaleVelocity = 0
                 end
-
-                -- Add to accumulated chips
-                self.accumulatedChips = self.accumulatedChips + pipValue
-
-                -- Trigger subtle text pulse animation (not the box)
-                self.chipsTextScale = 1.12
-                self.chipsTextScaleVelocity = 0
             end
         else
-            -- All dice counted, move to calculating
+            -- Sequence complete, move to calculating
             self.state = "CALCULATING"
             self.timer = 0
         end
@@ -315,8 +370,19 @@ function ScoreAnimation:getAnimatedChips()
     return math.floor(self.accumulatedChips)
 end
 
+function ScoreAnimation:getAnimatedMult()
+    if self.state == "IDLE" then
+        return nil
+    end
+    return math.floor(self.accumulatedMult)
+end
+
 function ScoreAnimation:getChipsTextScale()
     return self.chipsTextScale
+end
+
+function ScoreAnimation:getMultTextScale()
+    return self.multTextScale
 end
 
 function ScoreAnimation:getBoxAlpha()

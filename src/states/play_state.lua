@@ -182,7 +182,14 @@ function PlayState:initInfoPanel()
         getHandBreakdown = function()
             local detected = self:getDetectedHand()
             if detected then
-                return Scoring.getBreakdown(detected.id, GameState.dice)
+                local selectedIndices = GameState:getSelectedDiceIndices()
+                local prismaticMap = {}
+                for i = 1, 5 do
+                    if GameState:isPrismatic(i) then
+                        prismaticMap[i] = true
+                    end
+                end
+                return Scoring.getBreakdown(detected.id, GameState.dice, selectedIndices, prismaticMap)
             end
             return nil
         end,
@@ -411,7 +418,22 @@ function PlayState:onPlayHandClick()
 
     if not detected then return end
 
-    local breakdown = Scoring.getBreakdown(detected.id, GameState.dice)
+    -- Get prismatic dice map
+    local prismaticMap = {}
+    for i = 1, 5 do
+        if GameState:isPrismatic(i) then
+            prismaticMap[i] = true
+        end
+    end
+    -- selectedIndices are not available directly here if not fetched, but getDetectedHand uses them.
+    -- However, getDetectedHand returns 'detected', not indices.
+    -- We need indices for scoring.
+    -- GameState:getSelectedDiceIndices() is correct because even if auto-selected, they are selected in GameState.
+    -- Wait, auto-selection happens lines 405-408: GameState:toggleDiceSelection(i, true)
+    -- So GameState:getSelectedDiceIndices() will return the correct indices.
+
+    local selectedIndices = GameState:getSelectedDiceIndices()
+    local breakdown = Scoring.getBreakdown(detected.id, GameState.dice, selectedIndices, prismaticMap)
     local oldScore = GameState.currentScore
 
     -- Get scoring dice indices in visual order

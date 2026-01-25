@@ -388,7 +388,6 @@ function InfoPanel:drawHandPreview(x, y, width, height)
             love.graphics.rectangle("fill", formulaX, formulaY, boxWidth, boxHeightInner, 8)
 
             -- During animation use animated chips value, otherwise show BASE formula only
-            -- (dice pips will be added during counting animation)
             local chipsValue
             if isAnimating then
                 local animatedChips = scoreAnim:getAnimatedChips()
@@ -400,12 +399,30 @@ function InfoPanel:drawHandPreview(x, y, width, height)
             local chipsText = tostring(chipsValue)
             local textCenterY = formulaY + (boxHeightInner - Theme.fonts.large:getHeight()) / 2
 
-            -- Draw chips text
+            -- Draw chips text (with pulse if animating)
             local chipsTextWidth = Theme.fonts.large:getWidth(chipsText)
             local chipsTextX = formulaX + (boxWidth - chipsTextWidth) / 2
-            love.graphics.setColor(1, 1, 1, boxAlpha)
-            love.graphics.setFont(Theme.fonts.large)
-            love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textCenterY))
+
+            -- Apply chip text pulse
+            local chipsScale = isAnimating and scoreAnim:getChipsTextScale() or 1
+            if chipsScale ~= 1 then
+                local centerX = chipsTextX + chipsTextWidth / 2
+                local centerY = textCenterY + Theme.fonts.large:getHeight() / 2
+                love.graphics.push()
+                love.graphics.translate(centerX, centerY)
+                love.graphics.scale(chipsScale, chipsScale)
+                love.graphics.translate(-centerX, -centerY)
+
+                love.graphics.setColor(1, 1, 1, boxAlpha)
+                love.graphics.setFont(Theme.fonts.large)
+                love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textCenterY))
+
+                love.graphics.pop()
+            else
+                love.graphics.setColor(1, 1, 1, boxAlpha)
+                love.graphics.setFont(Theme.fonts.large)
+                love.graphics.print(chipsText, math.floor(chipsTextX), math.floor(textCenterY))
+            end
 
             -- "x" symbol
             local xX = formulaX + boxWidth + spacing
@@ -419,11 +436,38 @@ function InfoPanel:drawHandPreview(x, y, width, height)
             love.graphics.setColor(multColor[1], multColor[2], multColor[3], boxAlpha)
             love.graphics.rectangle("fill", multBoxX, formulaY, boxWidth, boxHeightInner, 8)
 
-            local multText = tostring(breakdown.mult)
+            local multValue
+            if isAnimating then
+                local animatedMult = scoreAnim:getAnimatedMult()
+                multValue = animatedMult or breakdown.mult
+            else
+                -- Preview mode: show only base breakdown mult
+                -- Prismatic effects will be revealed during animation
+                multValue = breakdown.mult
+            end
+
+            local multText = tostring(multValue)
             local multTextWidth = Theme.fonts.large:getWidth(multText)
             local multTextX = multBoxX + (boxWidth - multTextWidth) / 2
-            love.graphics.setColor(1, 1, 1, boxAlpha)
-            love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
+
+            -- Apply mult text pulse
+            local multScale = isAnimating and scoreAnim:getMultTextScale() or 1
+            if multScale ~= 1 then
+                local centerX = multTextX + multTextWidth / 2
+                local centerY = textCenterY + Theme.fonts.large:getHeight() / 2
+                love.graphics.push()
+                love.graphics.translate(centerX, centerY)
+                love.graphics.scale(multScale, multScale)
+                love.graphics.translate(-centerX, -centerY)
+
+                love.graphics.setColor(1, 1, 1, boxAlpha)
+                love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
+
+                love.graphics.pop()
+            else
+                love.graphics.setColor(1, 1, 1, boxAlpha)
+                love.graphics.print(multText, math.floor(multTextX), math.floor(textCenterY))
+            end
 
             love.graphics.pop()
         end
