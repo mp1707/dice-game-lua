@@ -664,6 +664,13 @@ end
 function ShopState:updateBrowsing(dt)
     -- Update shop items
     for _, item in ipairs(self.shopItems) do
+        -- Check affordability
+        if item.price then
+            item:setIsAffordable(GameState.money >= item.price)
+        else
+            item:setIsAffordable(true) -- Items without price are considered affordable (or irrelevant)
+        end
+
         item:updateMouse(self.mouseX, self.mouseY)
         item:update(dt)
     end

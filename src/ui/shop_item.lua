@@ -36,6 +36,9 @@ function ShopItem.new(config)
     self.onHoverStart = config.onHoverStart or function() end
     self.onHoverEnd = config.onHoverEnd or function() end
 
+    -- Affordability state
+    self.isAffordable = true
+
     -- 9-slice renderer
     self.nineSlice = NineSlice.getInstance()
 
@@ -91,6 +94,10 @@ function ShopItem:setSelected(selected)
     end
 end
 
+function ShopItem:setIsAffordable(affordable)
+    self.isAffordable = affordable
+end
+
 function ShopItem:containsPoint(px, py)
     return px >= self.x and px < self.x + self.size and
         py >= self.y and py < self.y + self.size
@@ -102,14 +109,23 @@ function ShopItem:update(dt)
     end
 
     -- Update breathing animation
-    self.breathingTime = self.breathingTime + dt
+    if self.isAffordable then
+        self.breathingTime = self.breathingTime + dt
+    else
+        self.breathingTime = 0 -- Reset breathing when unaffordable
+    end
 
     -- Update hover effects
     local centerX = self.x + self.size / 2
     local centerY = self.y + self.size / 2
-    local rotation, scaleX, scaleY, isHovered = Juice.getHoverEffects(
-        self.mouseX, self.mouseY, centerX, centerY, self.size
-    )
+
+    -- Only calculate hover effects if affordable and interactive
+    local rotation, scaleX, scaleY, isHovered = 0, 1, 1, false
+    if self.isAffordable then
+        rotation, scaleX, scaleY, isHovered = Juice.getHoverEffects(
+            self.mouseX, self.mouseY, centerX, centerY, self.size
+        )
+    end
 
     -- Track hover state changes
     local wasHovered = self.isHovered
@@ -156,6 +172,7 @@ function ShopItem:mousepressed(x, y, button)
     if button ~= 1 then return false end
     if not self.isInteractive then return false end
     if self.sold then return false end
+    if not self.isAffordable then return false end -- Prevent clicking if not affordable
     if not self:containsPoint(x, y) then return false end
 
     self.onClick(self.index)
@@ -169,7 +186,7 @@ function ShopItem:draw()
 
     -- Get breathing values (only for interactive items)
     local breathScale, breathY = 1, 0
-    if self.isInteractive and not self.sold then
+    if self.isInteractive and not self.sold and self.isAffordable then
         breathScale, breathY = Juice.getBreathingValues(self.breathingTime, self.index)
     end
 
@@ -196,6 +213,8 @@ function ShopItem:draw()
         bgColor = Theme.colors.surfaceHighlight
     elseif self.isHovered and self.isInteractive then
         bgColor = Theme.colors.surface2
+    elseif not self.isAffordable then
+        bgColor = Theme.colors.surface -- Or a slightly darker color if available, but tint will handle most
     else
         bgColor = Theme.colors.surface
     end
@@ -228,7 +247,11 @@ function ShopItem:drawSprite()
     local drawY = (self.size - drawH) / 2
 
     love.graphics.setColor(1, 1, 1, 1)
+    if not self.isAffordable then
+        love.graphics.setColor(0.5, 0.5, 0.5, 1) -- Gray tint
+    end
     love.graphics.draw(self.spriteImage, drawX, drawY, 0, scale, scale)
+    love.graphics.setColor(1, 1, 1, 1)
 end
 
 function ShopItem:drawPrice()
@@ -247,7 +270,11 @@ function ShopItem:drawPrice()
         love.graphics.print(priceText, textX + 2, priceY + 2)
 
         -- Main text (gold color)
-        love.graphics.setColor(Theme.colors.gold)
+        if self.isAffordable then
+            love.graphics.setColor(Theme.colors.gold)
+        else
+            love.graphics.setColor(Theme.colors.textMuted) -- Red/Muted for unaffordable? Or just muted.
+        end
         love.graphics.print(priceText, textX, priceY)
     else
         -- Placeholder price "-$"
