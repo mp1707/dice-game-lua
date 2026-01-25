@@ -19,7 +19,7 @@ function ShopItem.new(config)
 
     -- Item properties
     self.itemType = config.itemType or "placeholder" -- "booster" | "placeholder"
-    self.spriteImage = config.spriteImage           -- Theme.images.gift or Theme.images.silverKey
+    self.spriteImage = config.spriteImage            -- Theme.images.gift or Theme.images.silverKey
     self.price = config.price                        -- number or nil
     self.name = config.name or ""                    -- For tooltip
     self.sold = false
@@ -217,7 +217,7 @@ function ShopItem:drawSprite()
     local spriteH = self.spriteImage:getHeight()
 
     -- Scale sprite to fit with padding
-    local maxSize = self.size * 0.75
+    local maxSize = self.size * 0.525 -- Reduced by 30% (was 0.75)
     local scale = math.min(maxSize / spriteW, maxSize / spriteH)
 
     local drawW = spriteW * scale

@@ -13,12 +13,12 @@ local StickerSelection = {}
 StickerSelection.__index = StickerSelection
 
 -- Layout constants
-local STICKER_SIZE = 110       -- Same as Theme.layout.diceSize
-local STICKER_SPACING = 60     -- Space between stickers
-local TITLE_Y = 200            -- "Pick a sticker" title Y
-local STICKERS_Y = 400         -- Stickers row Y
-local CONFIRM_Y = 650          -- Confirm button Y
-local SELECTED_OFFSET_Y = -40  -- How far up selected sticker moves
+local STICKER_SIZE = 110      -- Same as Theme.layout.diceSize
+local STICKER_SPACING = 60    -- Space between stickers
+local TITLE_Y = 200           -- "Pick a sticker" title Y
+local STICKERS_Y = 400        -- Stickers row Y
+local CONFIRM_Y = 650         -- Confirm button Y
+local SELECTED_OFFSET_Y = -40 -- How far up selected sticker moves
 
 -- Singleton instance
 local instance = nil
@@ -38,8 +38,8 @@ function StickerSelection.new()
     -- State
     self.visible = false
     self.alpha = 0
-    self.stickers = {}        -- Array of sticker IDs
-    self.selectedIndex = nil  -- nil or 1-3
+    self.stickers = {}       -- Array of sticker IDs
+    self.selectedIndex = nil -- nil or 1-3
 
     -- Per-sticker animation state
     self.stickerStates = {}
@@ -332,40 +332,21 @@ function StickerSelection:drawSticker(index, stickerId)
 
     -- Draw background
     local isSelected = (self.selectedIndex == index)
-    local bgColor
-    if isSelected then
-        bgColor = {
-            Theme.colors.surfaceHighlight[1],
-            Theme.colors.surfaceHighlight[2],
-            Theme.colors.surfaceHighlight[3],
-            self.alpha
-        }
-    elseif state.isHovered then
-        bgColor = {
-            Theme.colors.surface2[1],
-            Theme.colors.surface2[2],
-            Theme.colors.surface2[3],
-            self.alpha
-        }
-    else
-        bgColor = {
-            Theme.colors.surface[1],
-            Theme.colors.surface[2],
-            Theme.colors.surface[3],
-            self.alpha
-        }
-    end
+
+    -- Every sticker has a white background panel now
+    local bgColor = { 1, 1, 1, self.alpha }
     self.nineSlice:draw(0, 0, STICKER_SIZE, STICKER_SIZE, bgColor, Theme.nineSlice.borderScale)
 
-    -- Draw sticker sprite (die face)
+    -- Draw sticker sprite (die face) with less padding
     if Theme.diceSpritesheet then
         local quad = Theme.diceSpritesheet:getQuad(sticker.spriteId)
         local image = Theme.diceSpritesheet:getImage()
 
         love.graphics.setColor(1, 1, 1, self.alpha)
         local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
-        local spriteScale = STICKER_SIZE * 0.9 / spriteW
-        local spriteOffset = STICKER_SIZE * 0.05
+        -- Increase sprite size to reduce padding (was 0.9)
+        local spriteScale = STICKER_SIZE * 0.96 / spriteW
+        local spriteOffset = STICKER_SIZE * 0.02 -- Position adjusted for less padding
         love.graphics.draw(image, quad, spriteOffset, spriteOffset, 0, spriteScale, spriteScale)
     end
 

@@ -112,6 +112,8 @@ function love.keypressed(key)
         Scaling.toggleDebug()
     elseif key == "f10" then
         love.window.setFullscreen(not love.window.getFullscreen())
+    elseif key == "m" then
+        Sound:toggleMusicMute()
     end
     stateMachine:keypressed(key)
 end

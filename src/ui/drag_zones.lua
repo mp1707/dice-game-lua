@@ -27,14 +27,14 @@ function DragZones.new()
     self.deleteZone = {
         width = 160,
         height = 100,
-        x = Theme.screen.width - 160 - 40, -- 40px from right
+        x = Theme.screen.width - 160 - 40,  -- 40px from right
         y = Theme.screen.height - 100 - 40, -- 40px from bottom
     }
 
     self.sellZone = {
         width = 180,
         height = 80,
-        x = (Theme.screen.width - 180) / 2, -- Centered
+        x = (Theme.screen.width - 180) / 2,                           -- Centered
         y = Theme.layout.itemStripY + Theme.layout.itemSlotSize + 20, -- Below item strip
     }
 
@@ -51,9 +51,30 @@ function DragZones.new()
     return self
 end
 
-function DragZones:show(slotIndex)
+function DragZones:show(slotIndex, slotX, slotY, slotSize)
     self.visible = true
     self.dragSlotIndex = slotIndex
+
+    -- Update zone positions based on slot geometry
+    local padding = 20
+    local zoneWidth = 160
+    local zoneHeight = slotSize * 2
+
+    -- Center vertically relative to slot
+    local slotCenterY = slotY + slotSize / 2
+    local zoneY = slotCenterY - zoneHeight / 2
+
+    -- SELL Zone (Left)
+    self.sellZone.width = zoneWidth
+    self.sellZone.height = zoneHeight
+    self.sellZone.y = zoneY
+    self.sellZone.x = slotX - zoneWidth - padding
+
+    -- DELETE Zone (Right)
+    self.deleteZone.width = zoneWidth
+    self.deleteZone.height = zoneHeight
+    self.deleteZone.y = zoneY
+    self.deleteZone.x = slotX + slotSize + padding
 
     -- Get sell price for the dragged consumable
     local consumable = GameState:getConsumable(slotIndex)
@@ -123,14 +144,15 @@ end
 
 function DragZones:drawDeleteZone()
     local z = self.deleteZone
-    local baseColor = { 0.8, 0.2, 0.2 } -- Red
-    local hoverColor = { 1, 0.3, 0.3 }  -- Brighter red
+    -- Dark purple background for zones
+    local baseBg = { 0.15, 0.1, 0.25 }   -- Dark purple
+    local hoverBg = { 0.25, 0.15, 0.35 } -- Slightly lighter purple
 
-    local color = self.deleteHovered and hoverColor or baseColor
-    local finalColor = { color[1], color[2], color[3], self.alpha * 0.9 }
+    local color = self.deleteHovered and hoverBg or baseBg
+    local finalColor = { color[1], color[2], color[3], self.alpha * 0.95 }
 
     -- Scale when hovered
-    local scale = self.deleteHovered and 1.1 or 1
+    local scale = self.deleteHovered and 1.05 or 1
     local scaledWidth = z.width * scale
     local scaledHeight = z.height * scale
     local offsetX = (scaledWidth - z.width) / 2
@@ -146,7 +168,7 @@ function DragZones:drawDeleteZone()
         Theme.nineSlice.borderScale
     )
 
-    -- Draw DELETE text
+    -- Draw DELETE text (WHITE)
     local textColor = { 1, 1, 1, self.alpha }
     love.graphics.setColor(textColor)
     local font = Theme.fonts.large
@@ -161,14 +183,14 @@ end
 
 function DragZones:drawSellZone()
     local z = self.sellZone
-    local baseColor = { Theme.colors.gold[1] * 0.8, Theme.colors.gold[2] * 0.8, Theme.colors.gold[3] * 0.8 }
-    local hoverColor = { Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3] }
+    local baseBg = { 0.15, 0.1, 0.25 }   -- Dark purple
+    local hoverBg = { 0.25, 0.15, 0.35 } -- Slightly lighter purple
 
-    local color = self.sellHovered and hoverColor or baseColor
-    local finalColor = { color[1], color[2], color[3], self.alpha * 0.9 }
+    local color = self.sellHovered and hoverBg or baseBg
+    local finalColor = { color[1], color[2], color[3], self.alpha * 0.95 }
 
     -- Scale when hovered
-    local scale = self.sellHovered and 1.1 or 1
+    local scale = self.sellHovered and 1.05 or 1
     local scaledWidth = z.width * scale
     local scaledHeight = z.height * scale
     local offsetX = (scaledWidth - z.width) / 2
@@ -184,8 +206,8 @@ function DragZones:drawSellZone()
         Theme.nineSlice.borderScale
     )
 
-    -- Draw SELL text with price
-    local textColor = { Theme.colors.textDark[1], Theme.colors.textDark[2], Theme.colors.textDark[3], self.alpha }
+    -- Draw SELL text with price (GOLD)
+    local textColor = { Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], self.alpha }
     love.graphics.setColor(textColor)
     local font = Theme.fonts.large
     love.graphics.setFont(font)

@@ -122,7 +122,9 @@ function PlayState:initItemStrip()
             self:onConsumableSell(slotIndex)
         end,
         onConsumableDragStart = function(slotIndex)
-            self.dragZones:show(slotIndex)
+            local stripIndex = slotIndex + 5 -- Maps to visual slots 6 and 7
+            local slotX = self.itemStrip:getSlotX(stripIndex)
+            self.dragZones:show(slotIndex, slotX, self.itemStrip.y, self.itemStrip.slotSize)
         end,
         onConsumableDragEnd = function(slotIndex, x, y)
             self:onConsumableDragEnd(slotIndex, x, y)

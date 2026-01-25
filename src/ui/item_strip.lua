@@ -136,7 +136,13 @@ function ItemStrip:getDraggingSlot()
 end
 
 function ItemStrip:draw()
+    local isDragging = self:isDragging()
+    local fadeAlpha = isDragging and 0.0 or 1.0
+
     -- Draw first 5 slots (passive items - visual only for now)
+    local passiveColor = { Theme.colors.panelDark[1], Theme.colors.panelDark[2], Theme.colors.panelDark[3], (Theme.colors.panelDark[4] or 1) *
+    fadeAlpha }
+
     for i = 1, 5 do
         local slotX = self:getSlotX(i)
         local slotY = self.y
@@ -147,14 +153,18 @@ function ItemStrip:draw()
             slotY,
             self.slotSize,
             self.slotSize,
-            Theme.colors.panelDark,
+            passiveColor,
             Theme.nineSlice.borderScale
         )
     end
 
     -- Draw consumable slots (6-7)
     for _, slot in ipairs(self.consumableSlots) do
-        slot:draw()
+        local slotAlpha = fadeAlpha
+        if slot:isDraggingSticker() then
+            slotAlpha = 1.0
+        end
+        slot:draw(slotAlpha)
     end
 
     love.graphics.setColor(1, 1, 1, 1)

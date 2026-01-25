@@ -3,10 +3,11 @@
 -- See assets/soundfx/CLAUDE.md for documentation
 
 local Sound = {
-    sources = {},      -- Preloaded audio sources
-    volume = 1.0,      -- Master volume (0.0 to 1.0)
-    music = nil,       -- Background music source
-    musicVolume = 0.3, -- Music volume (0.0 to 1.0)
+    sources = {},       -- Preloaded audio sources
+    volume = 1.0,       -- Master volume (0.0 to 1.0)
+    music = nil,        -- Background music source
+    musicVolume = 0.3,  -- Music volume (0.0 to 1.0)
+    musicMuted = false, -- Whether music is muted
 }
 
 -- Sound configuration
@@ -29,6 +30,7 @@ local soundConfig = {
     lost = { file = "assets/soundfx/lost.wav", volume = 0.7 },
     gameboy = { file = "assets/soundfx/gameboy.wav", volume = 0.7 },
     bling = { file = "assets/soundfx/bling.wav", volume = 0.7 },
+    boxOpening = { file = "assets/soundfx/boxOpening.wav", volume = 0.8 },
 }
 
 -- Initialize and preload all sounds
@@ -121,6 +123,17 @@ function Sound:stopMusic()
     end
 end
 
+-- Toggle music mute state
+function Sound:toggleMusicMute()
+    self.musicMuted = not self.musicMuted
+    if self.music then
+        local targetVol = self.musicMuted and 0 or self.musicVolume
+        self.music:setVolume(targetVol)
+        print("[Sound] Music " .. (self.musicMuted and "muted" or "unmuted"))
+    end
+    return self.musicMuted
+end
+
 -- Set master volume
 function Sound:setVolume(vol)
     self.volume = math.max(0, math.min(1, vol))
@@ -135,7 +148,8 @@ end
 function Sound:setMusicVolume(vol)
     self.musicVolume = math.max(0, math.min(1, vol))
     if self.music then
-        self.music:setVolume(self.musicVolume)
+        local targetVol = self.musicMuted and 0 or self.musicVolume
+        self.music:setVolume(targetVol)
     end
 end
 

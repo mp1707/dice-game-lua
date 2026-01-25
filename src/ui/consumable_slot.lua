@@ -28,7 +28,7 @@ function ConsumableSlot.new(config)
 
     -- State
     self.isHovered = false
-    self.isSelected = false -- Shows USE/SELL buttons
+    self.isSelected = false      -- Shows USE/SELL buttons
     self.isDragging = false
     self.mouseDownOnSlot = false -- Track if mouse was pressed on this slot
     self.dragOffsetX = 0
@@ -238,7 +238,8 @@ function ConsumableSlot:deselect()
     self.isSelected = false
 end
 
-function ConsumableSlot:draw()
+function ConsumableSlot:draw(alphaMult)
+    alphaMult = alphaMult or 1
     local drawX, drawY = self:getDrawPosition()
 
     -- Calculate center for scaling/rotation
@@ -253,23 +254,32 @@ function ConsumableSlot:draw()
 
     -- Draw slot background
     local bgColor = self.isHovered and Theme.colors.surface2 or Theme.colors.panelDark
-    self.nineSlice:draw(0, 0, self.size, self.size, bgColor, Theme.nineSlice.borderScale)
+    -- Apply alphaMult to bgColor
+    local finalBgColor = { bgColor[1], bgColor[2], bgColor[3], (bgColor[4] or 1) * alphaMult }
+    self.nineSlice:draw(0, 0, self.size, self.size, finalBgColor, Theme.nineSlice.borderScale)
 
     -- Draw sticker sprite if present
     local consumable = self:getConsumable()
     if consumable then
+        -- Draw white sticker background panel (matches selection screen)
+        local stickerBgSize = self.size * 0.94
+        local stickerBgX = (self.size - stickerBgSize) / 2
+        local stickerBgY = (self.size - stickerBgSize) / 2
+        self.nineSlice:draw(stickerBgX, stickerBgY, stickerBgSize, stickerBgSize, { 1, 1, 1, alphaMult },
+            Theme.nineSlice.borderScale)
+
         local sticker = Stickers:get(consumable.stickerId)
         if sticker and Theme.diceSpritesheet then
-            local spriteSize = self.size * 0.9
-            local spriteX = (self.size - spriteSize) / 2
-            local spriteY = (self.size - spriteSize) / 2
-
             local quad = Theme.diceSpritesheet:getQuad(sticker.spriteId)
             local image = Theme.diceSpritesheet:getImage()
 
-            love.graphics.setColor(1, 1, 1, 1)
+            love.graphics.setColor(1, 1, 1, alphaMult)
             local spriteW, _ = Theme.diceSpritesheet:getSpriteSize()
+            -- Increased sprite size to reduce padding (matches selection screen)
+            local spriteSize = stickerBgSize * 0.96
             local scale = spriteSize / spriteW
+            local spriteX = (self.size - spriteSize) / 2
+            local spriteY = (self.size - spriteSize) / 2
             love.graphics.draw(image, quad, spriteX, spriteY, 0, scale, scale)
         end
     end
@@ -299,14 +309,16 @@ function ConsumableSlot:drawButtons()
 
     -- USE shadow
     local shadowColor = { 0, 0, 0, 0.4 * self.buttonsAlpha }
-    self.nineSlice:draw(buttonX, useY + shadowOffset, buttonWidth, buttonHeight, shadowColor, Theme.nineSlice.borderScale)
+    self.nineSlice:draw(buttonX, useY + shadowOffset, buttonWidth, buttonHeight, shadowColor, Theme.nineSlice
+        .borderScale)
 
     -- USE button
     local useColor = { Theme.colors.cyan[1], Theme.colors.cyan[2], Theme.colors.cyan[3], self.buttonsAlpha }
     self.nineSlice:draw(buttonX, useY, buttonWidth, buttonHeight, useColor, Theme.nineSlice.borderScale)
 
     -- USE text
-    love.graphics.setColor(Theme.colors.textDark[1], Theme.colors.textDark[2], Theme.colors.textDark[3], self.buttonsAlpha)
+    love.graphics.setColor(Theme.colors.textDark[1], Theme.colors.textDark[2], Theme.colors.textDark[3],
+        self.buttonsAlpha)
     local useText = "USE"
     local useTextWidth = font:getWidth(useText)
     love.graphics.print(useText,
@@ -324,14 +336,16 @@ function ConsumableSlot:drawButtons()
     end
 
     -- SELL shadow
-    self.nineSlice:draw(buttonX, sellY + shadowOffset, buttonWidth, buttonHeight, shadowColor, Theme.nineSlice.borderScale)
+    self.nineSlice:draw(buttonX, sellY + shadowOffset, buttonWidth, buttonHeight, shadowColor,
+        Theme.nineSlice.borderScale)
 
     -- SELL button
     local sellColor = { Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], self.buttonsAlpha }
     self.nineSlice:draw(buttonX, sellY, buttonWidth, buttonHeight, sellColor, Theme.nineSlice.borderScale)
 
     -- SELL text with price
-    love.graphics.setColor(Theme.colors.textDark[1], Theme.colors.textDark[2], Theme.colors.textDark[3], self.buttonsAlpha)
+    love.graphics.setColor(Theme.colors.textDark[1], Theme.colors.textDark[2], Theme.colors.textDark[3],
+        self.buttonsAlpha)
     local sellText = "SELL $" .. sellPrice
     local sellTextWidth = font:getWidth(sellText)
     love.graphics.print(sellText,

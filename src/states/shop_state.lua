@@ -146,7 +146,8 @@ end
 function ShopState:initItemStrip()
     local layout = Theme.layout
 
-    local totalWidth = 7 * layout.itemSlotSize + 4 * layout.itemSlotSpacing + layout.itemSlotGap + layout.itemSlotSpacing
+    local totalWidth = 7 * layout.itemSlotSize + 4 * layout.itemSlotSpacing + layout.itemSlotGap + layout
+        .itemSlotSpacing
     local stripX = layout.centerX + (layout.centerWidth - totalWidth) / 2
 
     self.itemStrip = ItemStrip.new({
@@ -159,7 +160,9 @@ function ShopState:initItemStrip()
             self:onConsumableSell(slotIndex)
         end,
         onConsumableDragStart = function(slotIndex)
-            self.dragZones:show(slotIndex)
+            local stripIndex = slotIndex + 5 -- Maps to visual slots 6 and 7
+            local slotX = self.itemStrip:getSlotX(stripIndex)
+            self.dragZones:show(slotIndex, slotX, self.itemStrip.y, self.itemStrip.slotSize)
         end,
         onConsumableDragEnd = function(slotIndex, x, y)
             self:onConsumableDragEnd(slotIndex, x, y)
@@ -178,9 +181,9 @@ function ShopState:initShopItems()
     -- [1] [2]   <- Top row: placeholder, booster (gift)
     -- [3] [4]   <- Bottom row: placeholder, placeholder
     local positions = {
-        { x = startX, y = GRID_START_Y },                                          -- Top-left
-        { x = startX + GRID_ITEM_SIZE + GRID_SPACING, y = GRID_START_Y },          -- Top-right (gift)
-        { x = startX, y = GRID_START_Y + GRID_ITEM_SIZE + GRID_SPACING },          -- Bottom-left
+        { x = startX,                                 y = GRID_START_Y },                                 -- Top-left
+        { x = startX + GRID_ITEM_SIZE + GRID_SPACING, y = GRID_START_Y },                                 -- Top-right (gift)
+        { x = startX,                                 y = GRID_START_Y + GRID_ITEM_SIZE + GRID_SPACING }, -- Bottom-left
         { x = startX + GRID_ITEM_SIZE + GRID_SPACING, y = GRID_START_Y + GRID_ITEM_SIZE + GRID_SPACING }, -- Bottom-right
     }
 
@@ -619,11 +622,7 @@ function ShopState:draw()
     if self.showingDiceForEditor then
         self:drawShopDice()
     elseif self.phase == ShopState.PHASE.OPENING_BOOSTER then
-        -- Draw shop items with fade
-        local alpha = self.boosterAnimation:getShopAlpha()
-        self:drawShopItems(alpha)
-
-        -- Draw booster animation on top
+        -- Draw booster animation on top (no shop items visible)
         self.boosterAnimation:draw()
     elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
         self.stickerSelection:draw()
@@ -661,8 +660,13 @@ end
 function ShopState:drawShopItems(alpha)
     love.graphics.setColor(1, 1, 1, alpha)
 
-    for _, item in ipairs(self.shopItems) do
-        item:draw()
+    for i, item in ipairs(self.shopItems) do
+        -- If opening booster, don't draw the selected item (it's being animated in center)
+        if self.phase == ShopState.PHASE.OPENING_BOOSTER and i == self.selectedItemIndex then
+            -- Skip
+        else
+            item:draw()
+        end
     end
 
     love.graphics.setColor(1, 1, 1, 1)
