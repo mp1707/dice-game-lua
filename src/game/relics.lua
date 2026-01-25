@@ -11,6 +11,8 @@ local function loadDefinitions()
     -- List of definition modules to load
     local modules = {
         "src.items.definitions.prism",
+        "src.items.definitions.some_spice",
+        "src.items.definitions.first_aid",
     }
 
     for _, modPath in ipairs(modules) do

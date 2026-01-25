@@ -368,6 +368,11 @@ function RelicSlot:isDraggingRelic()
     return self.isDragging
 end
 
+function RelicSlot:triggerPulse()
+    self.scale = 1.3
+    self.scaleVelocity = 0
+end
+
 function RelicSlot:getDragPosition()
     return self.dragX + self.size / 2, self.dragY + self.size / 2
 end

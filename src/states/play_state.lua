@@ -491,6 +491,7 @@ function PlayState:onPlayHandClick()
         diceDisplays = self.diceContainer.diceDisplays,
         diceVisualOrder = self.diceContainer.diceVisualOrder,
         infoPanel = self.infoPanel,
+        itemStrip = self.itemStrip,
         onComplete = function()
             -- Update game state after animation completes
             GameState:useHand(detected.id, breakdown.total)

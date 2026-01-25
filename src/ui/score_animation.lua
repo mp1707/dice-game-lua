@@ -90,7 +90,9 @@ function ScoreAnimation:start(config)
         scoringDiceIndices = config.scoringDiceIndices or {},
         diceDisplays = config.diceDisplays,
         diceVisualOrder = config.diceVisualOrder,
+        diceVisualOrder = config.diceVisualOrder,
         infoPanel = config.infoPanel,
+        itemStrip = config.itemStrip,
         onComplete = config.onComplete,
     }
 
@@ -196,6 +198,8 @@ function ScoreAnimation:update(dt)
     -- State machine
     if self.state == "COUNTING" then
         self:updateCounting(dt)
+    elseif self.state == "ANIMATING_TRIGGERS" then
+        self:updateAnimatingTriggers(dt)
     elseif self.state == "CALCULATING" then
         self:updateCalculating(dt)
     elseif self.state == "UPDATING_TOTAL" then
@@ -207,6 +211,7 @@ end
 
 function ScoreAnimation:updateCounting(dt)
     -- Process sequence steps
+
     if self.timer >= TIMING.countDelay then
         self.timer = self.timer - TIMING.countDelay
         self.currentStepIndex = self.currentStepIndex + 1
@@ -269,9 +274,99 @@ function ScoreAnimation:updateCounting(dt)
                 end
             end
         else
-            -- Sequence complete, move to calculating
+            -- Sequence complete, emit HAND_SCORED trigger
+            local TriggerSystem = require("src.items.trigger_system")
+            local Trigger = require("src.items.trigger_types")
+
+            local triggerContext = {
+                handId = self.data.handId,
+                mult = self.accumulatedMult,
+                chips = self.accumulatedChips,
+                scoringIndices = self.data.scoringDiceIndices,
+                triggeredEffects = {} -- Queue for visual effects
+            }
+
+            TriggerSystem:emit(Trigger.HAND_SCORED, triggerContext)
+
+            -- Update values from context (effects might have changed them)
+            self.accumulatedMult = triggerContext.mult
+            self.accumulatedChips = triggerContext.chips
+
+            -- Check if any effects triggered visuals
+            if #triggerContext.triggeredEffects > 0 then
+                self.state = "ANIMATING_TRIGGERS"
+                self.triggerQueue = triggerContext.triggeredEffects
+                self.currentTriggerIndex = 0
+                self.timer = 0
+            else
+                self.state = "CALCULATING"
+                self.timer = 0
+            end
+        end
+    end
+end
+
+function ScoreAnimation:updateAnimatingTriggers(dt)
+    if self.timer >= TIMING.countDelay then
+        self.timer = 0
+        self.currentTriggerIndex = self.currentTriggerIndex + 1
+
+        if self.currentTriggerIndex <= #self.triggerQueue then
+            local effect = self.triggerQueue[self.currentTriggerIndex]
+
+            -- 1. Trigger Item Strip Animation
+            if self.data.itemStrip then
+                self.data.itemStrip:triggerItemAnim(effect.slotIndex)
+            end
+
+            -- 2. Show Pop Text (centerish or near item strip? usually center top)
+            -- Ideally near the item, but we don't know item position easily without quering itemStrip
+            -- Let's put it near the itemStrip area or center top
+            local popX = Theme.layout.centerX
+            -- Calculate roughly where the slot is if possible, or just center
+            -- Using a generic position for now
+            local layout = Theme.layout
+            if self.data.itemStrip then
+                local slotX = self.data.itemStrip:getSlotX(effect.slotIndex)
+                popX = slotX + layout.itemSlotSize / 2
+            end
+
+            local popY = layout.itemStripY + layout.itemSlotSize + 20
+
+            local color = Theme.colors.text
+            if effect.color == "red" then color = Theme.colors.coral end
+            -- Add others as needed
+
+            local popText = PopText.new({
+                text = effect.text,
+                x = popX,
+                y = popY,
+                color = color,
+                font = Theme.fonts.huge,
+            })
+            table.insert(self.popTexts, popText)
+
+            -- 3. Sound
+            Sound:play("tick") -- Use tick or specific sound
+
+            -- 4. Pulse the Mult/Chips display if relevant
+            -- Since we don't track *which* value changed per effect easily without diffing,
+            -- we assume mult items pulse mult, chip items pulse chips.
+            -- For now, just pulse both slightly or check effect text?
+            -- " Some Spice" is +4 Mult. "First Aid" is +10 Mult.
+            -- Assume Mult pulse for now since that's what we implemented.
+            self.multTextScale = 1.12
+            self.multTextScaleVelocity = 0
+        else
+            -- Done with triggers, move to calculating
             self.state = "CALCULATING"
             self.timer = 0
+
+            -- Update the final total in breakdown so calculating phase uses new total
+            self.data.breakdown.mult = self.accumulatedMult
+            self.data.breakdown.pips = self.accumulatedChips - self.data.breakdown.basePoints -- Approx
+            -- Actually we just need to update total for the count up
+            self.data.breakdown.total = self.accumulatedChips * self.accumulatedMult
         end
     end
 end

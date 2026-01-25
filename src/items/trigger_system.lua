@@ -26,15 +26,15 @@ function TriggerSystem:emit(trigger, context)
 
             -- Structure: handler can be a function OR a table { condition=..., action=... }
             if type(handler) == "function" then
-                handler(context, relicInstance)
+                handler(context, relicInstance, i)
             elseif type(handler) == "table" then
                 local conditionMet = true
                 if handler.condition then
-                    conditionMet = handler.condition(context, relicInstance)
+                    conditionMet = handler.condition(context, relicInstance, i)
                 end
 
                 if conditionMet and handler.action then
-                    handler.action(context, relicInstance)
+                    handler.action(context, relicInstance, i)
                 end
             end
         end

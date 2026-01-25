@@ -233,12 +233,24 @@ function ShopState:initShopItems()
             spriteImage = Theme.images.gift
             price = 8
             name = "Random Basic Sticker"
-            -- Description will be handled in update loop like relics, or we can add a property
-            -- Since ShopTooltip logic in updateBrowsing checks for description, let's look there first.
-            -- Actually, ShopItem doesn't hold 'description' property directly, updateBrowsing fetches it for relics.
-            -- We should add a 'description' field to ShopItem handling in updateBrowsing or add it here and pass it.
-            -- Let's check updateBrowsing. It only fetches for relics.
-            -- We should add a generic description field to ShopItem and use that if present.
+        elseif i == 3 then
+            -- Bottom-left: Some Spice
+            itemType = "relic"
+            price = 4
+            name = "Some Spice"
+            relicId = "some_spice"
+            -- Lazy load sprite since it might not be in Theme.images yet
+            -- Using RelicSlot's method or just loading it here
+            local def = Relics:get(relicId)
+            if def then spriteImage = love.graphics.newImage(def.sprite) end
+        elseif i == 4 then
+            -- Bottom-right: First Aid
+            itemType = "relic"
+            price = 6
+            name = "First Aid"
+            relicId = "first_aid"
+            local def = Relics:get(relicId)
+            if def then spriteImage = love.graphics.newImage(def.sprite) end
         end
 
         self.shopItems[i] = ShopItem.new({

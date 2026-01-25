@@ -227,6 +227,15 @@ function ItemStrip:getSlotAtPosition(x, y)
     return nil
 end
 
+function ItemStrip:triggerItemAnim(slotIndex)
+    if slotIndex <= 5 then
+        local slot = self.relicSlots[slotIndex]
+        if slot and slot:hasRelic() then
+            slot:triggerPulse()
+        end
+    end
+end
+
 function ItemStrip:draw()
     local draggingSlot = nil
 
