@@ -88,6 +88,14 @@ end
 function GameState:resetForLevel()
     self.currentScore = 0
     self.handsRemaining = Levels.handsPerLevel
+
+    -- Reset prismatic status at start of level (per user request: Prism effect lasts only for the round)
+    for i = 1, 5 do
+        if self.dice[i] then
+            self.dice[i].prismatic = false
+        end
+    end
+
     self:resetForHand()
 end
 
