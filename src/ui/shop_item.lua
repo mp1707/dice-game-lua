@@ -22,6 +22,7 @@ function ShopItem.new(config)
     self.spriteImage = config.spriteImage            -- Theme.images.gift, Theme.images.silverKey, or Theme.images.prism
     self.price = config.price                        -- number or nil
     self.name = config.name or ""                    -- For tooltip
+    self.description = config.description            -- Optional tooltip description
     self.relicId = config.relicId                    -- For relic items (e.g., "prism")
     self.sold = false
 

@@ -44,7 +44,7 @@ function ShopTooltip.new()
     return self
 end
 
-function ShopTooltip:show(text, anchorX, anchorY, description)
+function ShopTooltip:show(text, anchorX, anchorY, description, position)
     self.visible = true
     self.text = text
     self.description = description
@@ -68,9 +68,15 @@ function ShopTooltip:show(text, anchorX, anchorY, description)
     self.width = textWidth + self.padding * 2
     self.height = textHeight + self.padding * 2
 
-    -- Position above anchor
+    -- Position based on requested side (default "above")
     self.x = anchorX - self.width / 2
-    self.y = anchorY - self.height - 15
+
+    if position == "below" then
+        self.y = anchorY + 15
+    else
+        -- "above"
+        self.y = anchorY - self.height - 15
+    end
 
     -- Clamp to screen bounds
     local margin = 20
@@ -143,7 +149,8 @@ function ShopTooltip:draw()
         local descY = textY + titleFont:getHeight() + 4
 
         -- Description in muted color
-        love.graphics.setColor(Theme.colors.textMuted[1], Theme.colors.textMuted[2], Theme.colors.textMuted[3], self.alpha)
+        love.graphics.setColor(Theme.colors.textMuted[1], Theme.colors.textMuted[2], Theme.colors.textMuted[3],
+            self.alpha)
         love.graphics.print(self.description, textX, descY)
     end
 

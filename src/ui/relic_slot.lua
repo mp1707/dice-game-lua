@@ -9,6 +9,7 @@ local GameState = require("src.game.game_state")
 local Relics = require("src.game.relics")
 local Sound = require("src.core.sound")
 local Juice = require("src.ui.juice")
+local ShopTooltip = require("src.ui.shop_tooltip")
 
 local RelicSlot = {}
 RelicSlot.__index = RelicSlot
@@ -56,6 +57,8 @@ function RelicSlot.new(config)
 
     -- Load relic sprite image (lazy loaded)
     self.relicImages = {}
+
+    self.shopTooltip = ShopTooltip.getInstance()
 
     return self
 end
@@ -112,11 +115,29 @@ function RelicSlot:update(dt)
         self.isHovered = false
     end
 
+    if wasHovered and not self.isHovered then
+        self.shopTooltip:hide()
+    end
+
     -- Track hover time
     if self.isHovered then
         self.hoverTime = self.hoverTime + dt
+        if self.hoverTime >= 0.1 then
+            local relic = self:getRelic()
+            if relic then
+                local relicDef = Relics:get(relic.relicId)
+                if relicDef then
+                    local drawX, drawY = self:getDrawPosition()
+                    local centerX = drawX + self.size / 2
+                    local bottomY = drawY + self.size
+                    self.shopTooltip:show(relicDef.name, centerX, bottomY, relicDef.description, "below")
+                end
+            end
+        end
     else
         self.hoverTime = 0
+        -- Only hide if we were the one showing it (simplification: just hide if not hovered)
+        -- In a more complex system we might check if we are the current source
     end
 
     -- Update hover scale animation

@@ -20,7 +20,9 @@ local HandsModal = require("src.ui.hands_modal")
 local SettingsModal = require("src.ui.settings_modal")
 local DiceEditor = require("src.ui.dice_editor")
 local DragZones = require("src.ui.drag_zones")
+local DragZones = require("src.ui.drag_zones")
 local DiceTooltip = require("src.ui.dice_tooltip")
+local ShopTooltip = require("src.ui.shop_tooltip")
 
 local PlayState = {}
 PlayState.__index = PlayState
@@ -43,6 +45,7 @@ function PlayState.new()
     self.diceEditor = DiceEditor.getInstance()
     self.dragZones = DragZones.getInstance()
     self.diceTooltip = DiceTooltip.getInstance()
+    self.shopTooltip = ShopTooltip.getInstance()
 
     -- Dice hover tracking for tooltip
     self.hoveredDieIndex = nil
@@ -67,7 +70,10 @@ function PlayState:enter(params)
     self:initHandsModal()
     self:initSettingsModal()
     self:initInfoPanel()
+    self:initInfoPanel()
     self:initDualCta()
+
+    self.shopTooltip:hide()
 end
 
 function PlayState:initHandsModal()
@@ -88,6 +94,7 @@ end
 
 function PlayState:exit()
     self.timer:clear()
+    self.shopTooltip:hide()
 end
 
 function PlayState:initDiceContainer()
@@ -374,6 +381,24 @@ end
 function PlayState:getDicePositions()
     -- Return positions for all 5 dice from diceContainer
     local positions = {}
+
+    -- If container is initialized, use current visual positions (handles selection offsets/animations)
+    if self.diceContainer and self.diceContainer.diceDisplays then
+        for i = 1, 5 do
+            local display = self.diceContainer.diceDisplays[i]
+            if display then
+                positions[i] = {
+                    x = display.x,
+                    y = display.y,
+                    width = display.size,
+                    height = display.size,
+                }
+            end
+        end
+        return positions
+    end
+
+    -- Fallback to default layout if container not ready
     local layout = Theme.layout
     local centerX = layout.centerX + (layout.centerWidth / 2)
     local totalDiceWidth = 5 * layout.diceSize + 4 * layout.diceSpacing
@@ -645,7 +670,7 @@ function PlayState:update(dt)
     self.diceEditor:update(dt)
 
     -- Track hovered die for tooltip (when not in editor mode)
-    if not self.diceEditor.isActive and GameState.hasRolledThisHand then
+    if not self.diceEditor.isActive and GameState.hasRolledThisHand and not GameState.isRolling then
         self:updateDiceHover(dt)
     else
         self.hoveredDieIndex = nil
@@ -654,6 +679,9 @@ function PlayState:update(dt)
             self.diceTooltip:hide()
         end
     end
+    -- Update tooltip
+    self.diceTooltip:update(dt)
+    self.shopTooltip:update(dt)
 end
 
 function PlayState:updateDiceHover(dt)
@@ -744,6 +772,7 @@ function PlayState:draw()
     if not self.diceEditor.isActive then
         self.diceTooltip:draw()
     end
+    self.shopTooltip:draw()
 
     -- Draw drag zones (Removed)
     -- self.dragZones:draw()

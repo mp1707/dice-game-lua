@@ -8,6 +8,7 @@ local GameState = require("src.game.game_state")
 local Stickers = require("src.game.stickers")
 local Sound = require("src.core.sound")
 local Juice = require("src.ui.juice")
+local ShopTooltip = require("src.ui.shop_tooltip")
 
 local ConsumableSlot = {}
 ConsumableSlot.__index = ConsumableSlot
@@ -54,6 +55,8 @@ function ConsumableSlot.new(config)
     -- 9-slice renderer
     self.nineSlice = NineSlice.getInstance()
 
+    self.shopTooltip = ShopTooltip.getInstance()
+
     return self
 end
 
@@ -91,9 +94,25 @@ function ConsumableSlot:update(dt)
         self.isHovered = false
     end
 
+    if wasHovered and not self.isHovered then
+        self.shopTooltip:hide()
+    end
+
     -- Track hover time
     if self.isHovered then
         self.hoverTime = self.hoverTime + dt
+        if self.hoverTime >= 0.1 then
+            local consumable = self:getConsumable()
+            if consumable then
+                local sticker = Stickers:get(consumable.stickerId)
+                if sticker then
+                    local drawX, drawY = self:getDrawPosition()
+                    local centerX = drawX + self.size / 2
+                    local bottomY = drawY + self.size
+                    self.shopTooltip:show(sticker.name, centerX, bottomY, sticker.description, "below")
+                end
+            end
+        end
     else
         self.hoverTime = 0
     end

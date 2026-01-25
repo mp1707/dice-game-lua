@@ -18,7 +18,7 @@ end
 register({
     id = "basic_1",
     name = "One",
-    description = "Replace a face with 1",
+    description = "Drag on a die to replace its current face",
     faceValue = 1,
     buyPrice = 8,
     sellPrice = 2,
@@ -29,7 +29,7 @@ register({
 register({
     id = "basic_2",
     name = "Two",
-    description = "Replace a face with 2",
+    description = "Drag on a die to replace its current face",
     faceValue = 2,
     buyPrice = 8,
     sellPrice = 2,
@@ -40,7 +40,7 @@ register({
 register({
     id = "basic_3",
     name = "Three",
-    description = "Replace a face with 3",
+    description = "Drag on a die to replace its current face",
     faceValue = 3,
     buyPrice = 8,
     sellPrice = 2,
@@ -51,7 +51,7 @@ register({
 register({
     id = "basic_4",
     name = "Four",
-    description = "Replace a face with 4",
+    description = "Drag on a die to replace its current face",
     faceValue = 4,
     buyPrice = 8,
     sellPrice = 2,
@@ -62,7 +62,7 @@ register({
 register({
     id = "basic_5",
     name = "Five",
-    description = "Replace a face with 5",
+    description = "Drag on a die to replace its current face",
     faceValue = 5,
     buyPrice = 8,
     sellPrice = 2,
@@ -73,7 +73,7 @@ register({
 register({
     id = "basic_6",
     name = "Six",
-    description = "Replace a face with 6",
+    description = "Drag on a die to replace its current face",
     faceValue = 6,
     buyPrice = 8,
     sellPrice = 2,

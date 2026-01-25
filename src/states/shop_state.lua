@@ -233,6 +233,12 @@ function ShopState:initShopItems()
             spriteImage = Theme.images.gift
             price = 8
             name = "Random Basic Sticker"
+            -- Description will be handled in update loop like relics, or we can add a property
+            -- Since ShopTooltip logic in updateBrowsing checks for description, let's look there first.
+            -- Actually, ShopItem doesn't hold 'description' property directly, updateBrowsing fetches it for relics.
+            -- We should add a 'description' field to ShopItem handling in updateBrowsing or add it here and pass it.
+            -- Let's check updateBrowsing. It only fetches for relics.
+            -- We should add a generic description field to ShopItem and use that if present.
         end
 
         self.shopItems[i] = ShopItem.new({
@@ -244,6 +250,7 @@ function ShopState:initShopItems()
             spriteImage = spriteImage,
             price = price,
             name = name,
+            description = (i == 2) and "Alters a die-face" or nil, -- Pass description
             relicId = relicId,
             onClick = function(index)
                 self:onItemClick(index)
@@ -322,22 +329,38 @@ function ShopState:initButtons()
 end
 
 function ShopState:onItemClick(index)
-    if self.phase ~= ShopState.PHASE.BROWSING then return end
+    if self.phase ~= ShopState.PHASE.BROWSING and self.phase ~= ShopState.PHASE.ITEM_SELECTED then return end
 
     local item = self.shopItems[index]
     if not item or item.sold then return end
     if not item.isInteractive then return end
 
-    -- Select this item
-    self.selectedItemIndex = index
-    self.phase = ShopState.PHASE.ITEM_SELECTED
-    item:setSelected(true)
+    -- Toggle selection or swap
+    if self.selectedItemIndex == index then
+        -- Deselect if clicking same item
+        item:setSelected(false)
+        self.selectedItemIndex = nil
+        self.phase = ShopState.PHASE.BROWSING
+        Sound:play("click")
+    else
+        -- Deselect previous if exists
+        if self.selectedItemIndex then
+            local prevItem = self.shopItems[self.selectedItemIndex]
+            if prevItem then
+                prevItem:setSelected(false)
+            end
+        end
 
-    -- Hide tooltip
-    self.shopTooltip:hide()
-    self.hoveredItemIndex = nil
+        -- Select new item
+        self.selectedItemIndex = index
+        self.phase = ShopState.PHASE.ITEM_SELECTED
+        item:setSelected(true)
+        Sound:play("click")
+    end
 
-    Sound:play("click")
+    -- Hide tooltip (Removed to keep tooltip visible on selection)
+    -- self.shopTooltip:hide()
+    -- self.hoveredItemIndex = nil -- Keep hovered index to allow tooltip to persist
 end
 
 function ShopState:onItemHoverStart(index)
@@ -645,31 +668,37 @@ function ShopState:updateBrowsing(dt)
         item:update(dt)
     end
 
+    -- Update next level button
+    self.nextLevelButton:update(dt)
+
+    -- Update tooltips (valid in browsing too)
+    self:updateTooltips(dt)
+end
+
+function ShopState:updateTooltips(dt)
     -- Update tooltip hover timer
     if self.hoveredItemIndex then
         self.hoverTimer = self.hoverTimer + dt
-        if self.hoverTimer >= 1.0 then -- 1 second delay
+        if self.hoverTimer >= 0.1 then -- 0.1 second delay for consistency
             local item = self.shopItems[self.hoveredItemIndex]
             if item and item.name and item.name ~= "" and not item.sold then
                 local centerX, centerY = item:getCenterPosition()
-                -- Get description for relics
-                local description = nil
-                if item.itemType == "relic" and item.relicId then
+                -- Get description for relics or use item description
+                local description = item.description
+                if not description and item.itemType == "relic" and item.relicId then
                     local relicDef = Relics:get(item.relicId)
                     if relicDef then
                         description = relicDef.description
                     end
                 end
-                self.shopTooltip:show(item.name, centerX, centerY - GRID_ITEM_SIZE / 2, description)
+                self.shopTooltip:show(item.name, centerX, centerY - self.shopItems[self.hoveredItemIndex].size / 2,
+                    description)
             end
         end
     end
 
     -- Update tooltip
     self.shopTooltip:update(dt)
-
-    -- Update next level button
-    self.nextLevelButton:update(dt)
 end
 
 function ShopState:updateItemSelected(dt)
@@ -682,6 +711,9 @@ function ShopState:updateItemSelected(dt)
     -- Update buttons
     self.buyButton:update(dt)
     self.cancelButton:update(dt)
+
+    -- Update tooltips
+    self:updateTooltips(dt)
 end
 
 function ShopState:updateOpeningBooster(dt)
@@ -874,6 +906,13 @@ function ShopState:mousepressed(x, y, button)
         end
         if self.cancelButton:mousepressed(x, y, button) then
             return
+        end
+
+        -- Shop items (allow switching/deselecting)
+        for _, item in ipairs(self.shopItems) do
+            if item:mousepressed(x, y, button) then
+                return
+            end
         end
     elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
         if self.stickerSelection:mousepressed(x, y, button) then
