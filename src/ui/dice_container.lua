@@ -7,6 +7,7 @@ local DiceDisplay = require("src.ui.dice_display")
 local Juice = require("src.ui.juice")
 local Sound = require("src.core.sound")
 local MouseSelection = require("src.ui.mouse_selection")
+local Stickers = require("src.game.stickers")
 
 local DiceContainer = {}
 DiceContainer.__index = DiceContainer
@@ -106,7 +107,21 @@ end
 function DiceContainer:startRollAnimation(selectedIndices, isFirstRoll)
     for i, display in ipairs(self.diceDisplays) do
         if isFirstRoll or selectedIndices[i] then
-            display:startRollAnimation()
+            -- Check if the current face is a metal sticker (can't be rerolled)
+            -- Skip animation for metal faces unless it's the first roll
+            local dieData = display.getDiceData()
+            local canAnimate = true
+
+            if not isFirstRoll and dieData.faces and dieData.rolledFaceIndex then
+                local stickerId = dieData.faces[dieData.rolledFaceIndex]
+                if stickerId and not Stickers:canReroll(stickerId) then
+                    canAnimate = false
+                end
+            end
+
+            if canAnimate then
+                display:startRollAnimation()
+            end
         end
     end
 end

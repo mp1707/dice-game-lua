@@ -339,7 +339,8 @@ function StickerSelection:drawSticker(index, stickerId)
 
     -- Draw sticker sprite (die face) with less padding
     if Theme.diceSpritesheet then
-        local quad = Theme.diceSpritesheet:getQuad(sticker.spriteId)
+        -- Use sticker's die type for the correct sprite
+        local quad = Theme.diceSpritesheet:getQuad(sticker.spriteId, sticker.dieType)
         local image = Theme.diceSpritesheet:getImage()
 
         love.graphics.setColor(1, 1, 1, self.alpha)

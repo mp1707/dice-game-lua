@@ -43,8 +43,8 @@ function DiceEditor.new()
     self.showingConfirmation = false
     self.confirmDieIndex = nil
     self.confirmFaceIndex = nil
-    self.confirmOldValue = nil
-    self.confirmNewValue = nil
+    self.confirmOldStickerId = nil  -- Old sticker ID for rendering
+    self.confirmNewStickerId = nil  -- New sticker ID for rendering
     self.confirmModalY = -300
     self.confirmModalVelocity = 0
 
@@ -128,10 +128,9 @@ function DiceEditor:selectDie(dieIndex)
     if not die or not die.rolledFaceIndex then return end
 
     local rolledFaceIndex = die.rolledFaceIndex
-    local oldValue = die.value
 
-    -- Apply the sticker directly to the rolled face
-    GameState:setDieFace(dieIndex, rolledFaceIndex, self.newFaceValue)
+    -- Apply the sticker directly to the rolled face (using sticker ID)
+    GameState:setDieFace(dieIndex, rolledFaceIndex, self.stickerId)
 
     -- Remove the consumable
     GameState:removeConsumable(self.consumableIndex)
@@ -151,15 +150,15 @@ function DiceEditor:onFaceSelected(dieIndex, faceIndex)
     if not self.isActive then return end
     if self.showingConfirmation then return end
 
-    -- Get current face value
-    local oldValue = GameState:getDieFace(dieIndex, faceIndex)
-    if not oldValue then return end
+    -- Get current face sticker ID
+    local oldStickerId = GameState:getDieFace(dieIndex, faceIndex)
+    if not oldStickerId then return end
 
     -- Show confirmation modal
     self.confirmDieIndex = dieIndex
     self.confirmFaceIndex = faceIndex
-    self.confirmOldValue = oldValue
-    self.confirmNewValue = self.newFaceValue
+    self.confirmOldStickerId = oldStickerId
+    self.confirmNewStickerId = self.stickerId  -- The new sticker being applied
     self.showingConfirmation = true
     self.confirmModalY = -300
     self.confirmModalVelocity = 0
@@ -171,8 +170,8 @@ end
 function DiceEditor:confirmReplacement()
     if not self.showingConfirmation then return end
 
-    -- Replace the face
-    GameState:setDieFace(self.confirmDieIndex, self.confirmFaceIndex, self.confirmNewValue)
+    -- Replace the face with the new sticker ID
+    GameState:setDieFace(self.confirmDieIndex, self.confirmFaceIndex, self.confirmNewStickerId)
 
     -- Remove the consumable
     GameState:removeConsumable(self.consumableIndex)
@@ -392,8 +391,14 @@ function DiceEditor:drawConfirmationModal()
     local startX = modalX + (modalWidth - totalWidth) / 2
     local faceY = modalY + 70
 
+    -- Get sticker info for labels
+    local oldSticker = Stickers:get(self.confirmOldStickerId)
+    local newSticker = Stickers:get(self.confirmNewStickerId)
+    local oldValue = oldSticker and oldSticker.faceValue or 1
+    local newValue = newSticker and newSticker.faceValue or 1
+
     -- Old face
-    self:drawModalFace(startX, faceY, faceSize, self.confirmOldValue)
+    self:drawModalFace(startX, faceY, faceSize, self.confirmOldStickerId)
 
     -- Arrow
     love.graphics.setColor(Theme.colors.textMuted)
@@ -406,15 +411,15 @@ function DiceEditor:drawConfirmationModal()
         faceY + (faceSize - arrowFont:getHeight()) / 2)
 
     -- New face
-    self:drawModalFace(startX + faceSize + arrowGap, faceY, faceSize, self.confirmNewValue)
+    self:drawModalFace(startX + faceSize + arrowGap, faceY, faceSize, self.confirmNewStickerId)
 
     -- Value labels
     love.graphics.setColor(Theme.colors.textMuted)
     local labelFont = Theme.fonts.normal
     love.graphics.setFont(labelFont)
 
-    local oldLabel = "\"" .. self.confirmOldValue .. "\""
-    local newLabel = "\"" .. self.confirmNewValue .. "\""
+    local oldLabel = "\"" .. oldValue .. "\""
+    local newLabel = "\"" .. newValue .. "\""
     local oldLabelWidth = labelFont:getWidth(oldLabel)
     local newLabelWidth = labelFont:getWidth(newLabel)
 
@@ -454,9 +459,14 @@ function DiceEditor:drawConfirmationModal()
     love.graphics.setColor(1, 1, 1, 1)
 end
 
-function DiceEditor:drawModalFace(x, y, size, value)
+function DiceEditor:drawModalFace(x, y, size, stickerId)
+    -- Get sticker info for rendering
+    local sticker = Stickers:get(stickerId)
+    local faceValue = sticker and sticker.faceValue or 1
+    local dieType = sticker and sticker.dieType or "basic"
+
     if Theme.diceSpritesheet then
-        local quad = Theme.diceSpritesheet:getQuad(value)
+        local quad = Theme.diceSpritesheet:getQuad(faceValue, dieType)
         local image = Theme.diceSpritesheet:getImage()
 
         love.graphics.setColor(1, 1, 1, 1)
@@ -469,7 +479,7 @@ function DiceEditor:drawModalFace(x, y, size, value)
         love.graphics.setColor(1, 1, 1, 1)
         local font = Theme.fonts.huge
         love.graphics.setFont(font)
-        local text = tostring(value)
+        local text = tostring(faceValue)
         love.graphics.print(text,
             x + (size - font:getWidth(text)) / 2,
             y + (size - font:getHeight()) / 2)

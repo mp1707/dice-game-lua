@@ -257,8 +257,8 @@ function ShopState:initShopItems()
             itemType = "booster"
             spriteImage = Theme.images.gift
             price = 8
-            name = "Random Basic Sticker"
-            description = "Alters a die-face"
+            name = "Random Sticker"
+            description = "Can be basic, golden, or metal"
         end
         -- Slot 3 & 4 use defaults (placeholder, silverKey, no price)
 
@@ -850,12 +850,22 @@ function ShopState:drawShopDice()
 
     for i = 1, 5 do
         local pos = positions[i]
-        local faceValue = GameState.dice[i].value
+        local die = GameState.dice[i]
+        local faceValue = die.value
+
+        -- Get sticker type for current face
+        local dieType = "basic"
+        if die.faces and die.rolledFaceIndex then
+            local stickerId = die.faces[die.rolledFaceIndex]
+            if stickerId then
+                dieType = Stickers:getType(stickerId)
+            end
+        end
 
         self.nineSlice:draw(pos.x, pos.y, diceSize, diceSize, Theme.colors.surface2, Theme.nineSlice.borderScale)
 
         if Theme.diceSpritesheet then
-            local quad = Theme.diceSpritesheet:getQuad(faceValue)
+            local quad = Theme.diceSpritesheet:getQuad(faceValue, dieType)
             local image = Theme.diceSpritesheet:getImage()
 
             love.graphics.setColor(1, 1, 1, 1)

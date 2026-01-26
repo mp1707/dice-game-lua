@@ -174,7 +174,13 @@ function PlayState:initInfoPanel()
             return self.currentRound
         end,
         getMoney = function()
-            return GameState.money
+            -- Include accumulated money from golden stickers during score animation
+            local scoreAnim = ScoreAnimation.getInstance()
+            local bonusMoney = 0
+            if scoreAnim:isAnimating() then
+                bonusMoney = scoreAnim:getAccumulatedMoney()
+            end
+            return GameState.money + bonusMoney
         end,
         getGoal = function()
             return GameState:getCurrentGoal()

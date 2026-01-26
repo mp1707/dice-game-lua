@@ -3,6 +3,7 @@
 
 local Levels = require("src.game.levels")
 local Sound = require("src.core.sound")
+local Stickers = require("src.game.stickers")
 
 local GameState = {
     -- Run state (persists across levels)
@@ -42,13 +43,15 @@ local GameState = {
 }
 
 -- Initialize dice (preserves custom faces and prismatic state if they exist)
+-- Faces are now stored as sticker IDs (e.g., "basic_1", "golden_3", "metal_5")
 function GameState:initDice()
     for i = 1, 5 do
         if not self.dice[i] then
             self.dice[i] = {
                 value = 1,
                 locked = false,
-                faces = { 1, 2, 3, 4, 5, 6 }, -- Default standard faces
+                -- Default standard faces using sticker IDs
+                faces = { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" },
                 rolledFaceIndex = nil,        -- Which face index was rolled
                 prismatic = false,            -- Prismatic state (from Prism relic)
             }
@@ -59,7 +62,16 @@ function GameState:initDice()
             self.dice[i].rolledFaceIndex = nil
             -- Ensure faces array exists (for backwards compatibility)
             if not self.dice[i].faces then
-                self.dice[i].faces = { 1, 2, 3, 4, 5, 6 }
+                self.dice[i].faces = { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" }
+            end
+            -- Migrate old numeric faces to sticker IDs if needed
+            if type(self.dice[i].faces[1]) == "number" then
+                local oldFaces = self.dice[i].faces
+                self.dice[i].faces = {}
+                for j = 1, 6 do
+                    local faceValue = oldFaces[j] or j
+                    self.dice[i].faces[j] = "basic_" .. faceValue
+                end
             end
             -- Ensure prismatic field exists (for backwards compatibility)
             if self.dice[i].prismatic == nil then
@@ -118,6 +130,7 @@ function GameState:unlockAllDice()
 end
 
 -- Roll all selected dice (or all dice if first roll)
+-- Metal faces cannot be rerolled (they have canReroll = false)
 function GameState:rollDice()
     if not self:canRoll() then return false end
 
@@ -126,13 +139,24 @@ function GameState:rollDice()
     for i, die in ipairs(self.dice) do
         -- Reroll if it's the first roll OR if the die is selected (locked)
         if isFirstRoll or die.locked then
-            -- Pick a random face from this die's faces array
-            local faceIndex = math.random(1, 6)
-            die.rolledFaceIndex = faceIndex
-            -- Get the value from the faces array (supports custom faces)
-            die.value = die.faces[faceIndex]
-            -- If rerolled, it should be unlocked immediately
-            die.locked = false
+            -- Check if current face can be rerolled (metal faces cannot)
+            local currentFaceId = die.faces[die.rolledFaceIndex or 1]
+            local canRerollFace = Stickers:canReroll(currentFaceId)
+
+            -- Skip reroll for metal faces (unless it's first roll, then we must roll)
+            if not isFirstRoll and not canRerollFace then
+                -- Metal face - skip reroll but still unlock
+                die.locked = false
+            else
+                -- Pick a random face from this die's faces array
+                local faceIndex = math.random(1, 6)
+                die.rolledFaceIndex = faceIndex
+                -- Get the value from the sticker registry
+                local faceStickerId = die.faces[faceIndex]
+                die.value = Stickers:getValue(faceStickerId)
+                -- If rerolled, it should be unlocked immediately
+                die.locked = false
+            end
         end
     end
 
@@ -383,43 +407,58 @@ end
 -- Dice Face Customization
 -- ============================================
 
--- Set a specific face value on a die
+-- Set a specific face on a die using a sticker ID
 -- dieIndex: 1-5 (which die)
 -- faceIndex: 1-6 (which face position)
--- value: the new value for that face (1-6)
-function GameState:setDieFace(dieIndex, faceIndex, value)
+-- stickerId: the sticker ID (e.g., "basic_3", "golden_5", "metal_2")
+function GameState:setDieFace(dieIndex, faceIndex, stickerId)
     if dieIndex < 1 or dieIndex > 5 then return false end
     if faceIndex < 1 or faceIndex > 6 then return false end
     if not self.dice[dieIndex] then return false end
 
-    -- Ensure faces array exists
+    -- Ensure faces array exists with sticker IDs
     if not self.dice[dieIndex].faces then
-        self.dice[dieIndex].faces = { 1, 2, 3, 4, 5, 6 }
+        self.dice[dieIndex].faces = { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" }
     end
 
-    self.dice[dieIndex].faces[faceIndex] = value
+    self.dice[dieIndex].faces[faceIndex] = stickerId
 
     -- If this is the currently rolled face, update the displayed value too
     if self.dice[dieIndex].rolledFaceIndex == faceIndex then
-        self.dice[dieIndex].value = value
+        self.dice[dieIndex].value = Stickers:getValue(stickerId)
     end
 
     return true
 end
 
--- Get all faces for a die
+-- Get all faces for a die (returns array of sticker IDs)
 function GameState:getDieFaces(dieIndex)
     if dieIndex < 1 or dieIndex > 5 then return nil end
     if not self.dice[dieIndex] then return nil end
-    return self.dice[dieIndex].faces or { 1, 2, 3, 4, 5, 6 }
+    return self.dice[dieIndex].faces or { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" }
 end
 
--- Get a specific face value from a die
+-- Get a specific face sticker ID from a die
 function GameState:getDieFace(dieIndex, faceIndex)
     local faces = self:getDieFaces(dieIndex)
     if not faces then return nil end
     if faceIndex < 1 or faceIndex > 6 then return nil end
     return faces[faceIndex]
+end
+
+-- Get the sticker definition for the currently rolled face of a die
+function GameState:getDieFaceSticker(dieIndex)
+    if dieIndex < 1 or dieIndex > 5 then return nil end
+    local die = self.dice[dieIndex]
+    if not die or not die.rolledFaceIndex then return nil end
+    local stickerId = die.faces[die.rolledFaceIndex]
+    return Stickers:get(stickerId)
+end
+
+-- Get the face value (numeric) for a sticker ID
+-- For backwards compatibility and convenience
+function GameState:getFaceValue(stickerId)
+    return Stickers:getValue(stickerId)
 end
 
 -- ============================================

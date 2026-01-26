@@ -7,6 +7,7 @@ local Theme = require("src.ui.theme")
 local NineSlice = require("src.ui.nine_slice")
 local GameState = require("src.game.game_state")
 local Juice = require("src.ui.juice")
+local Stickers = require("src.game.stickers")
 
 local DiceTooltip = {}
 DiceTooltip.__index = DiceTooltip
@@ -57,10 +58,11 @@ function DiceTooltip:updateLayout(isPrismatic)
     self.faceSize = 54
     self.faceSpacing = Theme.spacing.sm
     self.padding = Theme.spacing.sm
+    self.effectLabelHeight = 18  -- Height for effect labels above faces
     self.width = 6 * self.faceSize + 5 * self.faceSpacing + self.padding * 2
 
-    -- Base height for faces
-    local baseHeight = self.faceSize + self.padding * 2
+    -- Base height for faces + effect labels
+    local baseHeight = self.faceSize + self.effectLabelHeight + self.padding * 2
 
     -- Add extra height for prismatic section if applicable
     if isPrismatic then
@@ -196,28 +198,47 @@ function DiceTooltip:draw()
 
     -- Draw 6 faces in a horizontal row
     local startX = self.padding
-    local startY = self.padding
+    local startY = self.padding + self.effectLabelHeight  -- Leave space for effect labels
 
     -- Center the row horizontally if the container is wider than the dice row
-    -- (Though currently self.width is calculated based on drag row width, so it fits perfectly)
     local totalDiceWidth = 6 * self.faceSize + 5 * self.faceSpacing
     startX = (self.width - totalDiceWidth) / 2
+
+    local effectFont = Theme.fonts.small
+    love.graphics.setFont(effectFont)
 
     for i = 1, 6 do
         local faceX = startX + (i - 1) * (self.faceSize + self.faceSpacing)
         local faceY = startY
-        local faceValue = faces[i]
+        local stickerId = faces[i]
+
+        -- Get face value and type from sticker
+        local faceValue = Stickers:getValue(stickerId)
+        local dieType = Stickers:getType(stickerId)
+
+        -- Draw effect label above face (golden = "$X", metal = "xX")
+        if dieType == "golden" then
+            local effectText = "$" .. faceValue
+            local textWidth = effectFont:getWidth(effectText)
+            love.graphics.setColor(Theme.colors.gold[1], Theme.colors.gold[2], Theme.colors.gold[3], self.alpha)
+            love.graphics.print(effectText, faceX + (self.faceSize - textWidth) / 2, faceY - self.effectLabelHeight + 2)
+        elseif dieType == "metal" then
+            local effectText = "x" .. faceValue
+            local textWidth = effectFont:getWidth(effectText)
+            love.graphics.setColor(Theme.colors.coral[1], Theme.colors.coral[2], Theme.colors.coral[3], self.alpha)
+            love.graphics.print(effectText, faceX + (self.faceSize - textWidth) / 2, faceY - self.effectLabelHeight + 2)
+        end
 
         -- Highlight hovered face
         local isHovered = (i == self.hoveredFaceIndex)
         local faceScale = isHovered and 1.05 or 1 -- Reduced scale due to larger size
 
-        self:drawFace(faceX, faceY, faceValue, faceScale, isHovered)
+        self:drawFace(faceX, faceY, faceValue, dieType, faceScale, isHovered)
     end
 
     -- Draw prismatic section if applicable
     if isPrismatic then
-        self:drawPrismaticSection(startY + self.faceSize)
+        self:drawPrismaticSection(self.padding + self.effectLabelHeight + self.faceSize)
     end
 
     love.graphics.pop()
@@ -252,7 +273,7 @@ function DiceTooltip:drawPrismaticSection(startY)
     love.graphics.print(descText, (self.width - descWidth) / 2, descY)
 end
 
-function DiceTooltip:drawFace(x, y, value, scale, isHovered)
+function DiceTooltip:drawFace(x, y, value, dieType, scale, isHovered)
     local centerX = x + self.faceSize / 2
     local centerY = y + self.faceSize / 2
 
@@ -273,9 +294,9 @@ function DiceTooltip:drawFace(x, y, value, scale, isHovered)
             highlightColor, Theme.nineSlice.borderScale)
     end
 
-    -- Draw face sprite
+    -- Draw face sprite with die type
     if Theme.diceSpritesheet then
-        local quad = Theme.diceSpritesheet:getQuad(value)
+        local quad = Theme.diceSpritesheet:getQuad(value, dieType)
         local image = Theme.diceSpritesheet:getImage()
 
         love.graphics.setColor(1, 1, 1, self.alpha)
