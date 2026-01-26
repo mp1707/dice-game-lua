@@ -3,11 +3,11 @@
 -- See assets/soundfx/CLAUDE.md for documentation
 
 local Sound = {
-    sources = {},       -- Preloaded audio sources
-    volume = 1.0,       -- Master volume (0.0 to 1.0)
-    music = nil,        -- Background music source
-    musicVolume = 0.3,  -- Music volume (0.0 to 1.0)
-    musicMuted = false, -- Whether music is muted
+    sources = {},      -- Preloaded audio sources
+    volume = 0.25,     -- Master volume (0.0 to 1.0)
+    music = nil,       -- Background music source
+    musicVolume = 0,   -- Music volume (0.0 to 1.0)
+    musicMuted = true, -- Whether music is muted
 }
 
 -- Sound configuration
