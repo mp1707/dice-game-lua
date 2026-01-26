@@ -288,17 +288,21 @@ function ScoreAnimation:updateCounting(dt)
 
             TriggerSystem:emit(Trigger.HAND_SCORED, triggerContext)
 
-            -- Update values from context (effects might have changed them)
-            self.accumulatedMult = triggerContext.mult
-            self.accumulatedChips = triggerContext.chips
-
             -- Check if any effects triggered visuals
             if #triggerContext.triggeredEffects > 0 then
                 self.state = "ANIMATING_TRIGGERS"
                 self.triggerQueue = triggerContext.triggeredEffects
                 self.currentTriggerIndex = 0
-                self.timer = 0
+                self.timer = TIMING.countDelay
+
+                -- Store final values to snap to at the end
+                self.targetMult = triggerContext.mult
+                self.targetChips = triggerContext.chips
             else
+                -- No visual effects, update values immediately
+                self.accumulatedMult = triggerContext.mult
+                self.accumulatedChips = triggerContext.chips
+
                 self.state = "CALCULATING"
                 self.timer = 0
             end
@@ -355,12 +359,26 @@ function ScoreAnimation:updateAnimatingTriggers(dt)
             -- For now, just pulse both slightly or check effect text?
             -- " Some Spice" is +4 Mult. "First Aid" is +10 Mult.
             -- Assume Mult pulse for now since that's what we implemented.
-            self.multTextScale = 1.12
-            self.multTextScaleVelocity = 0
+            -- 4. Apply Score Changes Incrementally (Score like dice)
+            if effect.multMod then
+                self.accumulatedMult = self.accumulatedMult + effect.multMod
+                self.multTextScale = 1.12
+                self.multTextScaleVelocity = 0
+            end
+
+            if effect.chipsMod then
+                self.accumulatedChips = self.accumulatedChips + effect.chipsMod
+                self.chipsTextScale = 1.12
+                self.chipsTextScaleVelocity = 0
+            end
         else
             -- Done with triggers, move to calculating
             self.state = "CALCULATING"
             self.timer = 0
+
+            -- Snap to target values (handles any silent effects or floating point drift)
+            if self.targetMult then self.accumulatedMult = self.targetMult end
+            if self.targetChips then self.accumulatedChips = self.targetChips end
 
             -- Update the final total in breakdown so calculating phase uses new total
             self.data.breakdown.mult = self.accumulatedMult

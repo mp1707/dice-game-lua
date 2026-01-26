@@ -5,6 +5,7 @@ This document describes the score counting animation that plays when the player 
 ## Overview
 
 Instead of instantly calculating the score, the game plays a satisfying sequential animation that:
+
 1. Highlights scoring dice one by one (left to right)
 2. Shows pip count pop-ups above each die
 3. Accumulates the score in the formula box with visual feedback
@@ -20,6 +21,12 @@ Instead of instantly calculating the score, the game plays a satisfying sequenti
 [COUNTING] --> For each die L->R (0.4s delay between each):
             --> Die pulse animation AND pip number pop-up happen SIMULTANEOUSLY
             --> Pip value added to blue box with pop effect
+     |
+     v
+[TRIGGERS] --> For each triggered item effect (0.6s delay):
+            --> Item visual indicator (pulse/flash)
+            --> Effect text pops up (+10, +4, etc)
+            --> Score values updated incrementally (Mult/Chips added as they trigger)
      |
      v
 [CALCULATING] --> Blue/red boxes fade out, hand score appears (1.0s)
@@ -40,6 +47,7 @@ Instead of instantly calculating the score, the game plays a satisfying sequenti
 Main animation controller singleton. Manages the state machine and animation timing.
 
 **Key Methods:**
+
 - `ScoreAnimation.getInstance()` - Get singleton instance
 - `start(config)` - Begin animation with configuration
 - `update(dt)` - Update animation state
@@ -48,6 +56,7 @@ Main animation controller singleton. Manages the state machine and animation tim
 - `skip()` - Skip to end (for impatient players)
 
 **Animation Values (for info_panel):**
+
 - `getAnimatedChips()` - Current chips value in blue box
 - `getBoxScale()` - Scale multiplier for formula boxes
 - `getBoxAlpha()` - Alpha value for formula boxes (fades to 0)
@@ -61,6 +70,7 @@ Main animation controller singleton. Manages the state machine and animation tim
 Floating text component with spring animation for pip count display.
 
 **Features:**
+
 - Scale pop animation (0 -> 1.35 -> 1.0 with spring overshoot)
 - Horizontal stretch effect (1.5x -> 1.0x)
 - Y offset animation (-20px -> 0)
@@ -69,18 +79,21 @@ Floating text component with spring animation for pip count display.
 ### Modified Files
 
 **`src/ui/dice_display.lua`:**
+
 - Added `triggerCountPulse()` method for die reaction animation
 - Added `countPulseScale` and `countPulseRotation` state variables
 - Scale: 1.0 -> 1.12 -> 1.0
 - Rotation: Random +/-3 degrees impulse
 
 **`src/ui/info_panel.lua`:**
+
 - Modified `drawHandPreview()` to use animation values
 - Modified `drawScoreSection()` to use animated total score
 - Boxes scale/fade during CALCULATING phase
 - Hand score appears with spring animation
 
 **`src/states/play_state.lua`:**
+
 - `onPlayHandClick()` starts animation instead of immediate score update
 - Added `getScoringDiceIndicesInVisualOrder()` helper
 - Added `handlePostScoreTransition()` for post-animation logic
@@ -90,12 +103,13 @@ Floating text component with spring animation for pip count display.
 
 ## Timing Constants
 
-| Phase | Delay | Notes |
-|-------|-------|-------|
-| COUNTING | 0.4s per die | Die pulse + pip pop-up + box update (all together) |
-| CALCULATING | 1.0s | Boxes fade, score appears |
-| UPDATING_TOTAL | 0.6-1.5s | Scales with score difference |
-| COMPLETE | 0.3s | Hold before transition |
+| Phase          | Delay         | Notes                                              |
+| -------------- | ------------- | -------------------------------------------------- |
+| COUNTING       | 0.4s per die  | Die pulse + pip pop-up + box update (all together) |
+| TRIGGERS       | 0.6s per item | Item effect visual + score update                  |
+| CALCULATING    | 1.0s          | Boxes fade, score appears                          |
+| UPDATING_TOTAL | 0.6-1.5s      | Scales with score difference                       |
+| COMPLETE       | 0.3s          | Hold before transition                             |
 
 ## Spring Parameters
 
@@ -125,6 +139,7 @@ Dice are animated in visual order (left to right based on `diceVisualOrder`), no
 ## Skip Functionality
 
 Players can press **Space** or **Enter** during the animation to skip to the end:
+
 - All pop texts are immediately cleared
 - Completion callback is fired
 - Animation state resets to IDLE

@@ -17,6 +17,7 @@ return {
                     slotIndex = slotIndex,
                     text = "+4",
                     color = "red", -- Corresponds to mult color
+                    multMod = 4
                     -- sound can be default or specific
                 })
             end

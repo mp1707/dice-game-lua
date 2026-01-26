@@ -20,6 +20,7 @@ return {
                         slotIndex = slotIndex,
                         text = "+10",
                         color = "red",
+                        multMod = 10
                     })
                 end
             end

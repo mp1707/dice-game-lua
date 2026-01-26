@@ -16,25 +16,27 @@ end
 function TriggerSystem:emit(trigger, context)
     context = context or {}
 
-    -- Iterate over all relics currently owned by the player
-    -- GameState.relics is a list of tables: { {relicId="prism"}, ... }
-    for i, relicInstance in ipairs(GameState.relics) do
-        local def = ItemRegistry:get(relicInstance.relicId)
+    -- Iterate over all 5 slots (handle gaps)
+    for i = 1, 5 do
+        local relicInstance = GameState.relics[i]
+        if relicInstance then
+            local def = ItemRegistry:get(relicInstance.relicId)
 
-        if def and def.triggers and def.triggers[trigger] then
-            local handler = def.triggers[trigger]
+            if def and def.triggers and def.triggers[trigger] then
+                local handler = def.triggers[trigger]
 
-            -- Structure: handler can be a function OR a table { condition=..., action=... }
-            if type(handler) == "function" then
-                handler(context, relicInstance, i)
-            elseif type(handler) == "table" then
-                local conditionMet = true
-                if handler.condition then
-                    conditionMet = handler.condition(context, relicInstance, i)
-                end
+                -- Structure: handler can be a function OR a table { condition=..., action=... }
+                if type(handler) == "function" then
+                    handler(context, relicInstance, i)
+                elseif type(handler) == "table" then
+                    local conditionMet = true
+                    if handler.condition then
+                        conditionMet = handler.condition(context, relicInstance, i)
+                    end
 
-                if conditionMet and handler.action then
-                    handler.action(context, relicInstance, i)
+                    if conditionMet and handler.action then
+                        handler.action(context, relicInstance, i)
+                    end
                 end
             end
         end
