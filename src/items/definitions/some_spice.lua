@@ -5,7 +5,7 @@ return {
     name = "Some Spice",
     sprite = "assets/icons/items/chili.png",
     description = "+4 Mult",
-    price = 4,
+    buyPrice = 4,
     triggers = {
         [Trigger.HAND_SCORED] = function(context, item, slotIndex)
             -- Apply effect

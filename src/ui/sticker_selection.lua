@@ -100,12 +100,12 @@ function StickerSelection:createConfirmButton()
 
     self.confirmButton = Button.new({
         x = centerX - buttonWidth / 2,
-        y = CONFIRM_Y,
+        y = Theme.layout.ctaY,
         width = buttonWidth,
         height = buttonHeight,
         text = "CONFIRM",
         bgColor = Theme.colors.cyan,
-        textColor = Theme.colors.textDark,
+        textColor = Theme.colors.text,
         hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
         font = Theme.fonts.large,
         onClick = function()

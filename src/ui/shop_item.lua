@@ -255,6 +255,11 @@ function ShopItem:drawSprite()
 end
 
 function ShopItem:drawPrice()
+    -- Hide price for placeholders
+    if self.itemType == "placeholder" then
+        return
+    end
+
     -- Draw price above the item (in local coordinates, so above y=0)
     local priceY = -30
 

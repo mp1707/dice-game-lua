@@ -307,7 +307,7 @@ function ShopState:initButtons()
         height = buttonHeight,
         text = nextLevelText,
         bgColor = Theme.colors.cyan,
-        textColor = Theme.colors.textDark,
+        textColor = Theme.colors.text,
         hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
         font = Theme.fonts.large,
         onClick = function()
@@ -324,7 +324,7 @@ function ShopState:initButtons()
         height = buttonHeight,
         text = "BUY",
         bgColor = Theme.colors.cyan,
-        textColor = Theme.colors.textDark,
+        textColor = Theme.colors.text,
         hoverBgColor = { Theme.colors.cyan[1] * 0.9, Theme.colors.cyan[2] * 0.9, Theme.colors.cyan[3] * 0.9, 1 },
         font = Theme.fonts.large,
         onClick = function()
@@ -990,7 +990,7 @@ function ShopState:keypressed(key)
         end
     end
 
-    if key == "escape" then
+    if key == "escape" or key == "backspace" then
         if self.phase == ShopState.PHASE.ITEM_SELECTED then
             self:onCancelClick()
         elseif self.itemStrip then
@@ -1004,6 +1004,22 @@ function ShopState:keypressed(key)
             self:onNextLevelClick()
         elseif self.phase == ShopState.PHASE.ITEM_SELECTED then
             self:onBuyClick()
+        elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
+            self.stickerSelection:onConfirmClick()
+        end
+        return
+    end
+
+    -- Item selection shortcuts
+    if self.phase == ShopState.PHASE.BROWSING or self.phase == ShopState.PHASE.ITEM_SELECTED then
+        local index = tonumber(key)
+        if index and index >= 1 and index <= 4 then
+            self:onItemClick(index)
+        end
+    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
+        local index = tonumber(key)
+        if index and index >= 1 and index <= 3 then
+            self.stickerSelection:selectSticker(index)
         end
     end
 end

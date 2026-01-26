@@ -6,7 +6,7 @@ return {
     name = "First Aid",
     sprite = "assets/icons/items/medikit.png",
     description = "+10 Mult if a number hand is played",
-    price = 6,
+    buyPrice = 6,
     triggers = {
         [Trigger.HAND_SCORED] = function(context, item, slotIndex)
             -- Check condition: Number hand (Upper Section)
