@@ -213,45 +213,54 @@ function ShopState:initShopItems()
     }
 
     -- Create items
+    -- Slot 1: Random unowned item
+    -- Slot 2: Booster (Gift)
+    -- Slot 3 & 4: Empty placeholders
+
+    -- Find unowned relics
+    local unownedRelicIds = {}
+    local allRelics = Relics:getAll()
+    for id, _ in pairs(allRelics) do
+        if not GameState:hasRelic(id) then
+            table.insert(unownedRelicIds, id)
+        end
+    end
+
     for i = 1, 4 do
         local itemType = "placeholder"
         local spriteImage = Theme.images.silverKey
         local price = nil
         local name = ""
         local relicId = nil
+        local description = nil
 
         if i == 1 then
-            -- Top-left: Prism relic
-            itemType = "relic"
-            spriteImage = Theme.images.prism
-            price = 10
-            name = "Prism"
-            relicId = "prism"
+            -- Top-left: Random unowned relic
+            if #unownedRelicIds > 0 then
+                local randomIndex = math.random(1, #unownedRelicIds)
+                relicId = unownedRelicIds[randomIndex]
+                local def = Relics:get(relicId)
+
+                if def then
+                    itemType = "relic"
+                    spriteImage = love.graphics.newImage(def.sprite)
+                    price = def.buyPrice
+                    name = def.name
+                    description = def.description
+
+                    -- Remove from available list (though we only pick one, so doesn't matter much)
+                    table.remove(unownedRelicIds, randomIndex)
+                end
+            end
         elseif i == 2 then
             -- Top-right: Booster gift
             itemType = "booster"
             spriteImage = Theme.images.gift
             price = 8
             name = "Random Basic Sticker"
-        elseif i == 3 then
-            -- Bottom-left: Some Spice
-            itemType = "relic"
-            price = 4
-            name = "Some Spice"
-            relicId = "some_spice"
-            -- Lazy load sprite since it might not be in Theme.images yet
-            -- Using RelicSlot's method or just loading it here
-            local def = Relics:get(relicId)
-            if def then spriteImage = love.graphics.newImage(def.sprite) end
-        elseif i == 4 then
-            -- Bottom-right: First Aid
-            itemType = "relic"
-            price = 6
-            name = "First Aid"
-            relicId = "first_aid"
-            local def = Relics:get(relicId)
-            if def then spriteImage = love.graphics.newImage(def.sprite) end
+            description = "Alters a die-face"
         end
+        -- Slot 3 & 4 use defaults (placeholder, silverKey, no price)
 
         self.shopItems[i] = ShopItem.new({
             x = positions[i].x,
@@ -262,7 +271,7 @@ function ShopState:initShopItems()
             spriteImage = spriteImage,
             price = price,
             name = name,
-            description = (i == 2) and "Alters a die-face" or nil, -- Pass description
+            description = description,
             relicId = relicId,
             onClick = function(index)
                 self:onItemClick(index)
@@ -408,6 +417,12 @@ function ShopState:onBuyClick()
 
     local item = self.shopItems[self.selectedItemIndex]
     if not item or item.sold then return end
+
+    -- Check if player already owns this relic
+    if item.relicId and GameState:hasRelic(item.relicId) then
+        Sound:play("click")
+        return
+    end
 
     -- Check if player can afford
     if item.price and GameState.money < item.price then
