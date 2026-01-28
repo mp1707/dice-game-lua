@@ -11,7 +11,6 @@ local Shadow = require("src.dice.shadow")
 local Juice = require("src.ui.juice")
 local Sound = require("src.core.sound")
 local ShaderPrismatic = require("src.core.shader_prismatic")
-local Stickers = require("src.game.stickers")
 
 local DiceDisplay = {}
 DiceDisplay.__index = DiceDisplay
@@ -164,10 +163,6 @@ function DiceDisplay:startRollAnimation(duration)
     -- Get the target face from game state
     local data = self.getDiceData()
     params.targetFace = data.value
-
-    -- Pass faces data for type-based rendering after settling
-    self.die.faces = data.faces
-    self.die.rolledFaceIndex = data.rolledFaceIndex
 
     -- Start the die animation
     self.die:startRoll(params)
@@ -419,19 +414,6 @@ function DiceDisplay:draw()
     local locked = data.locked
     local isPrismatic = data.prismatic == true
 
-    -- Determine die type from sticker
-    local dieType = "basic"
-    if data.faces and data.rolledFaceIndex then
-        local stickerId = data.faces[data.rolledFaceIndex]
-        if stickerId then
-            dieType = Stickers:getType(stickerId)
-        end
-    end
-
-    -- Sync faces data to die for animation rendering
-    self.die.faces = data.faces
-    self.die.rolledFaceIndex = data.rolledFaceIndex
-
     -- During roll animation, delegate to die
     if self.isAnimating then
         -- Apply prismatic shader if die is prismatic
@@ -452,7 +434,7 @@ function DiceDisplay:draw()
         local Spritesheet = Theme.diceSpritesheet
 
         if Spritesheet then
-            local quad = Spritesheet:getQuad(value, dieType)
+            local quad = Spritesheet:getQuad(value, "basic")
             local image = Spritesheet:getImage()
             local spriteW, spriteH = Spritesheet:getSpriteSize()
 

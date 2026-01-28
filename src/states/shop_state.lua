@@ -1,22 +1,16 @@
 -- Shop State - New shop UI with 2x2 item grid
--- Features booster pack opening animation and sticker selection
 
 local Theme = require("src.ui.theme")
 local GameState = require("src.game.game_state")
 local Levels = require("src.game.levels")
-local Stickers = require("src.game.stickers")
 local Relics = require("src.game.relics")
 local Button = require("src.ui.button")
 local NineSlice = require("src.ui.nine_slice")
 local InfoPanel = require("src.ui.info_panel")
 local ItemStrip = require("src.ui.item_strip")
-local DragZones = require("src.ui.drag_zones")
-local DiceEditor = require("src.ui.dice_editor")
 local Sound = require("src.core.sound")
 local ShopItem = require("src.ui.shop_item")
 local ShopTooltip = require("src.ui.shop_tooltip")
-local BoosterAnimation = require("src.ui.booster_animation")
-local StickerSelection = require("src.ui.sticker_selection")
 
 local ShopState = {}
 ShopState.__index = ShopState
@@ -25,8 +19,6 @@ ShopState.__index = ShopState
 ShopState.PHASE = {
     BROWSING = "browsing",
     ITEM_SELECTED = "item_selected",
-    OPENING_BOOSTER = "opening_booster",
-    SELECTING_STICKER = "selecting_sticker",
 }
 
 -- Layout constants for 2x2 grid
@@ -59,20 +51,6 @@ function ShopState.new()
     self.hoveredItemIndex = nil
     self.hoverTimer = 0
 
-    -- Booster animation
-    self.boosterAnimation = BoosterAnimation.getInstance()
-
-    -- Sticker selection
-    self.stickerSelection = StickerSelection.getInstance()
-
-    -- Drag zones (for consumable management)
-    self.dragZones = DragZones.getInstance()
-
-    -- Dice editor (for consumable use)
-    self.diceEditor = DiceEditor.getInstance()
-    self.showingDiceForEditor = false
-    self.editorCancelButton = nil
-
     -- Mouse position
     self.mouseX = 0
     self.mouseY = 0
@@ -90,16 +68,12 @@ function ShopState:enter(params)
     self:initShopItems()
     self:initButtons()
 
-    -- Reset animation states
-    self.boosterAnimation:reset()
-    self.stickerSelection:hide()
+    -- Reset tooltip
     self.shopTooltip:hide()
 end
 
 function ShopState:exit()
-    self.diceEditor:deactivate()
-    self.boosterAnimation:reset()
-    self.stickerSelection:hide()
+    -- Cleanup
 end
 
 function ShopState:initInfoPanel()
@@ -179,19 +153,6 @@ function ShopState:initItemStrip()
                 end
             end
         end,
-        -- Consumable callbacks
-        onConsumableUse = function(slotIndex)
-            self:onConsumableUse(slotIndex)
-        end,
-        onConsumableSell = function(slotIndex)
-            self:onConsumableSell(slotIndex)
-        end,
-        onConsumableDragStart = function(slotIndex)
-            -- Start drag
-        end,
-        onConsumableDragEnd = function(slotIndex, x, y)
-            self:onConsumableDragEnd(slotIndex, x, y)
-        end,
     })
 end
 
@@ -203,7 +164,7 @@ function ShopState:initShopItems()
     local startX = Theme.layout.centerX + (Theme.layout.centerWidth - totalWidth) / 2
 
     -- Item positions in 2x2 grid:
-    -- [1] [2]   <- Top row: placeholder, booster (gift)
+    -- [1] [2]   <- Top row: relic, placeholder
     -- [3] [4]   <- Bottom row: placeholder, placeholder
     local positions = {
         { x = startX,                                 y = GRID_START_Y },                                 -- Top-left
@@ -213,9 +174,8 @@ function ShopState:initShopItems()
     }
 
     -- Create items
-    -- Slot 1: Random unowned item
-    -- Slot 2: Booster (Gift)
-    -- Slot 3 & 4: Empty placeholders
+    -- Slot 1: Random unowned relic
+    -- Slots 2, 3 & 4: Empty placeholders
 
     -- Find unowned relics
     local unownedRelicIds = {}
@@ -252,15 +212,8 @@ function ShopState:initShopItems()
                     table.remove(unownedRelicIds, randomIndex)
                 end
             end
-        elseif i == 2 then
-            -- Top-right: Booster gift
-            itemType = "booster"
-            spriteImage = Theme.images.gift
-            price = 8
-            name = "Random Sticker"
-            description = "Can be basic, golden, or metal"
         end
-        -- Slot 3 & 4 use defaults (placeholder, silverKey, no price)
+        -- Slots 2, 3 & 4 use defaults (placeholder, silverKey, no price)
 
         self.shopItems[i] = ShopItem.new({
             x = positions[i].x,
@@ -447,23 +400,6 @@ function ShopState:onBuyClick()
 
         -- Add relic directly (no animation needed)
         self:onRelicPurchased(item.relicId)
-    else
-        -- Booster purchase
-        -- Check if there's room for consumable
-        if not GameState:hasConsumableRoom() then
-            Sound:play("click")
-            return
-        end
-
-        -- Deduct money
-        if item.price then
-            GameState:addMoney(-item.price)
-        end
-
-        Sound:play("cash")
-
-        -- Start booster animation
-        self:startBoosterAnimation()
     end
 end
 
@@ -502,144 +438,6 @@ function ShopState:onCancelClick()
     Sound:play("click")
 end
 
-function ShopState:startBoosterAnimation()
-    self.phase = ShopState.PHASE.OPENING_BOOSTER
-
-    local item = self.shopItems[self.selectedItemIndex]
-    local centerX, centerY = item:getCenterPosition()
-
-    self.boosterAnimation:start(centerX, centerY, function()
-        self:showStickerSelection()
-    end)
-end
-
-function ShopState:showStickerSelection()
-    self.phase = ShopState.PHASE.SELECTING_STICKER
-
-    -- Get 3 random stickers
-    local stickerIds = Stickers:getRandomIds(3)
-
-    self.stickerSelection:show(stickerIds, function(stickerId)
-        self:onStickerSelected(stickerId)
-    end)
-end
-
-function ShopState:onStickerSelected(stickerId)
-    -- Add sticker to consumable slot
-    GameState:addConsumable(stickerId)
-
-    -- Mark the booster as sold
-    if self.selectedItemIndex then
-        local item = self.shopItems[self.selectedItemIndex]
-        if item then
-            item.sold = true
-            item:setSelected(false)
-        end
-    end
-
-    -- Return to browsing
-    self.phase = ShopState.PHASE.BROWSING
-    self.selectedItemIndex = nil
-    self.stickerSelection:hide()
-    self.boosterAnimation:reset()
-end
-
--- Consumable management (reused from original)
-function ShopState:onConsumableUse(slotIndex)
-    self.showingDiceForEditor = true
-
-    -- Set up random dice values for the editor
-    for i = 1, 5 do
-        local randomFaceIndex = math.random(1, 6)
-        local faces = GameState:getDieFaces(i)
-        local faceValue = faces[randomFaceIndex]
-        GameState.dice[i].rolledFaceIndex = randomFaceIndex
-        GameState.dice[i].value = faceValue
-    end
-
-    local buttonWidth = 200
-    local buttonHeight = 60
-    local centerX = Theme.layout.centerX + Theme.layout.centerWidth / 2
-    local buttonY = Theme.layout.diceHomeY + 150
-
-    self.editorCancelButton = Button.new({
-        x = centerX - buttonWidth / 2,
-        y = buttonY,
-        width = buttonWidth,
-        height = buttonHeight,
-        text = "CANCEL",
-        bgColor = Theme.colors.surface2,
-        textColor = Theme.colors.text,
-        hoverBgColor = Theme.colors.surfaceHighlight,
-        font = Theme.fonts.large,
-        onClick = function()
-            self:cancelDiceEditor()
-        end,
-    })
-
-    self.diceEditor:activate("shop", slotIndex, {
-        onComplete = function()
-            self.showingDiceForEditor = false
-            self.editorCancelButton = nil
-        end,
-        onCancel = function()
-            self.showingDiceForEditor = false
-            self.editorCancelButton = nil
-        end,
-        getDicePositions = function()
-            return self:getShopDicePositions()
-        end,
-    })
-end
-
-function ShopState:cancelDiceEditor()
-    self.diceEditor:cancel()
-    self.showingDiceForEditor = false
-    self.editorCancelButton = nil
-end
-
-function ShopState:getShopDicePositions()
-    local positions = {}
-    local layout = Theme.layout
-    local diceSize = 110
-    local diceSpacing = 20
-    local totalWidth = 5 * diceSize + 4 * diceSpacing
-    local startX = layout.centerX + (layout.centerWidth - totalWidth) / 2
-    local y = layout.diceHomeY
-
-    for i = 1, 5 do
-        positions[i] = {
-            x = startX + (i - 1) * (diceSize + diceSpacing),
-            y = y,
-            width = diceSize,
-            height = diceSize,
-        }
-    end
-    return positions
-end
-
-function ShopState:onConsumableSell(slotIndex)
-    local consumable = GameState:getConsumable(slotIndex)
-    if not consumable then return end
-
-    local sellPrice = Stickers:getSellPrice(consumable.stickerId)
-    GameState:addMoney(sellPrice)
-    GameState:removeConsumable(slotIndex)
-
-    Sound:play("cash")
-end
-
-function ShopState:onConsumableDragEnd(slotIndex, x, y)
-    -- Check for swap with another consumable slot
-    local targetSlot = self.itemStrip:getSlotAtPosition(x, y)
-    if targetSlot and targetSlot.slotIndex ~= slotIndex then
-        if targetSlot.getConsumable then
-            GameState:swapConsumables(slotIndex, targetSlot.slotIndex)
-            Sound:play("click")
-        end
-    end
-end
-
 function ShopState:update(dt)
     -- Get mouse position
     local mx, my = love.mouse.getPosition()
@@ -664,27 +462,6 @@ function ShopState:update(dt)
         self:updateBrowsing(dt)
     elseif self.phase == ShopState.PHASE.ITEM_SELECTED then
         self:updateItemSelected(dt)
-    elseif self.phase == ShopState.PHASE.OPENING_BOOSTER then
-        self:updateOpeningBooster(dt)
-    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
-        self:updateSelectingSticker(dt)
-    end
-
-    -- Update drag zones (Removed)
-    -- local dragSlot = self.itemStrip and self.itemStrip:getDraggingSlot()
-    -- if dragSlot then
-    --     local dragX, dragY = dragSlot:getDragPosition()
-    --     self.dragZones:update(dt, dragX, dragY)
-    -- else
-    --     self.dragZones:update(dt, nil, nil)
-    -- end
-
-    -- Update dice editor
-    self.diceEditor:update(dt)
-
-    -- Update editor cancel button
-    if self.editorCancelButton then
-        self.editorCancelButton:update(dt)
     end
 end
 
@@ -750,15 +527,6 @@ function ShopState:updateItemSelected(dt)
     self:updateTooltips(dt)
 end
 
-function ShopState:updateOpeningBooster(dt)
-    self.boosterAnimation:update(dt)
-end
-
-function ShopState:updateSelectingSticker(dt)
-    self.stickerSelection:updateMouse(self.mouseX, self.mouseY)
-    self.stickerSelection:update(dt)
-end
-
 function ShopState:draw()
     -- Always draw info panel
     if self.infoPanel then
@@ -770,44 +538,14 @@ function ShopState:draw()
         self.itemStrip:draw()
     end
 
-    -- Draw based on phase
-    if self.showingDiceForEditor then
-        self:drawShopDice()
-    elseif self.phase == ShopState.PHASE.OPENING_BOOSTER then
-        -- Draw booster animation on top (no shop items visible)
-        self.boosterAnimation:draw()
-    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
-        self.stickerSelection:draw()
-    else
-        -- Normal browsing or item selected
-        self:drawShopItems(1)
-        self:drawButtons()
-        self.shopTooltip:draw()
-    end
-
-    -- Draw drag zones (Removed)
-    -- self.dragZones:draw()
+    -- Draw shop items and buttons
+    self:drawShopItems(1)
+    self:drawButtons()
+    self.shopTooltip:draw()
 
     -- Draw item strip again if dragging
     if self.itemStrip and self.itemStrip:isDragging() then
         self.itemStrip:draw()
-    end
-
-    -- Draw dice editor overlay
-    if self.diceEditor.isActive then
-        self.diceEditor:drawOverlay()
-        self.diceEditor:drawInstructions()
-        self.diceEditor:drawTooltip()
-        self.diceEditor:drawConfirmationModal()
-    end
-
-    -- Draw editor cancel button
-    if self.editorCancelButton and not self.diceEditor.showingConfirmation then
-        self.editorCancelButton:draw()
-    end
-
-    if self.editorCancelButton and not self.diceEditor.showingConfirmation then
-        self.editorCancelButton:draw()
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -822,13 +560,8 @@ end
 function ShopState:drawShopItems(alpha)
     love.graphics.setColor(1, 1, 1, alpha)
 
-    for i, item in ipairs(self.shopItems) do
-        -- If opening booster, don't draw the selected item (it's being animated in center)
-        if self.phase == ShopState.PHASE.OPENING_BOOSTER and i == self.selectedItemIndex then
-            -- Skip
-        else
-            item:draw()
-        end
+    for _, item in ipairs(self.shopItems) do
+        item:draw()
     end
 
     love.graphics.setColor(1, 1, 1, 1)
@@ -841,7 +574,6 @@ function ShopState:drawButtons()
     elseif self.phase == ShopState.PHASE.BROWSING then
         self.nextLevelButton:draw()
     end
-    -- No buttons during OPENING_BOOSTER or SELECTING_STICKER phases
 end
 
 function ShopState:drawShopDice()
@@ -853,19 +585,10 @@ function ShopState:drawShopDice()
         local die = GameState.dice[i]
         local faceValue = die.value
 
-        -- Get sticker type for current face
-        local dieType = "basic"
-        if die.faces and die.rolledFaceIndex then
-            local stickerId = die.faces[die.rolledFaceIndex]
-            if stickerId then
-                dieType = Stickers:getType(stickerId)
-            end
-        end
-
         self.nineSlice:draw(pos.x, pos.y, diceSize, diceSize, Theme.colors.surface2, Theme.nineSlice.borderScale)
 
         if Theme.diceSpritesheet then
-            local quad = Theme.diceSpritesheet:getQuad(faceValue, dieType)
+            local quad = Theme.diceSpritesheet:getQuad(faceValue, "basic")
             local image = Theme.diceSpritesheet:getImage()
 
             love.graphics.setColor(1, 1, 1, 1)
@@ -889,43 +612,7 @@ function ShopState:drawShopDice()
 end
 
 function ShopState:mousepressed(x, y, button)
-    -- Dice editor takes priority
-    if self.diceEditor.isActive then
-        if self.diceEditor:mousepressed(x, y, button) then
-            return
-        end
-
-        if self.showingDiceForEditor and button == 1 then
-            local positions = self:getShopDicePositions()
-            for i = 1, 5 do
-                local pos = positions[i]
-                if x >= pos.x and x < pos.x + pos.width and
-                    y >= pos.y and y < pos.y + pos.height then
-                    self.diceEditor:selectDie(i)
-                    return
-                end
-            end
-        end
-    end
-
-    -- Check item strip (consumables/relics) - PREVENTS MOUSE SELECTION TRIGGER
-    if self.itemStrip and self.itemStrip:mousepressed(x, y, button) then
-        return true
-    end
-
-    -- Editor cancel button
-    if self.editorCancelButton and not self.diceEditor.showingConfirmation then
-        if self.editorCancelButton:mousepressed(x, y, button) then
-            return
-        end
-    end
-
-    -- Don't process other clicks when showing dice editor
-    if self.showingDiceForEditor then
-        return
-    end
-
-    -- Item strip (consumables)
+    -- Check item strip (relics)
     if self.itemStrip and self.itemStrip:mousepressed(x, y, button) then
         return true
     end
@@ -958,10 +645,6 @@ function ShopState:mousepressed(x, y, button)
                 return
             end
         end
-    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
-        if self.stickerSelection:mousepressed(x, y, button) then
-            return
-        end
     end
 
     -- Info panel
@@ -971,10 +654,6 @@ function ShopState:mousepressed(x, y, button)
 end
 
 function ShopState:mousereleased(x, y, button)
-    if self.editorCancelButton then
-        self.editorCancelButton:mousereleased(x, y, button)
-    end
-
     if self.itemStrip then
         self.itemStrip:mousereleased(x, y, button)
     end
@@ -983,23 +662,12 @@ function ShopState:mousereleased(x, y, button)
     self.buyButton:mousereleased(x, y, button)
     self.cancelButton:mousereleased(x, y, button)
 
-    if self.phase == ShopState.PHASE.SELECTING_STICKER then
-        self.stickerSelection:mousereleased(x, y, button)
-    end
-
     if self.infoPanel then
         self.infoPanel:mousereleased(x, y, button)
     end
 end
 
 function ShopState:keypressed(key)
-    -- Dice editor takes priority
-    if self.diceEditor.isActive then
-        if self.diceEditor:keypressed(key) then
-            return
-        end
-    end
-
     if key == "escape" or key == "backspace" then
         if self.phase == ShopState.PHASE.ITEM_SELECTED then
             self:onCancelClick()
@@ -1014,8 +682,6 @@ function ShopState:keypressed(key)
             self:onNextLevelClick()
         elseif self.phase == ShopState.PHASE.ITEM_SELECTED then
             self:onBuyClick()
-        elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
-            self.stickerSelection:onConfirmClick()
         end
         return
     end
@@ -1025,11 +691,6 @@ function ShopState:keypressed(key)
         local index = tonumber(key)
         if index and index >= 1 and index <= 4 then
             self:onItemClick(index)
-        end
-    elseif self.phase == ShopState.PHASE.SELECTING_STICKER then
-        local index = tonumber(key)
-        if index and index >= 1 and index <= 3 then
-            self.stickerSelection:selectSticker(index)
         end
     end
 end

@@ -63,7 +63,7 @@ main.lua → StateMachine → PlayState ←→ ResultState ←→ ShopState
 ┌─────────────────────────────────────────────────────┐
 │  LEFT PANEL        │        CENTER AREA             │
 │  (Info Panel)      │  ┌─────────────────────────┐  │
-│  - Level + Round   │  │  Item Strip (5+2 slots) │  │
+│  - Level + Round   │  │  Item Strip (5 slots)   │  │
 │  - Goal            │  └─────────────────────────┘  │
 │  - Score           │                               │
 │  - Hand Preview    │     [Dice Home Area]         │
@@ -103,28 +103,6 @@ Located in `src/dice/`, see `src/dice/CLAUDE.md` for detailed documentation. Key
 - **die.lua**: Individual die with state machine, physics, squash/stretch
 - **dice_manager.lua**: Orchestrates multiple dice with callbacks
 
-### Sticker System & Dice Editor (Roguelike Core)
-
-See `src/game/CLAUDE_STICKERS.md` for comprehensive documentation covering both the sticker system and dice editor. Core roguelike deck-building mechanic:
-
-- **Custom Dice Faces**: Each die has 6 faces storing sticker IDs in `GameState.dice[i].faces`
-- **Three Die Types**:
-  - **Basic** (common, $8): Standard faces, no special effects
-  - **Golden** (uncommon, $12): Adds money equal to face value when scored
-  - **Metal** (rare, $15): x2 multiplier when scored, **cannot be rerolled**
-- **Consumable Slots**: 2 slots in item strip (positions 6-7) for stickers
-- **Spritesheet**: `assets/diceSpriteSheet.png` (168x336, rows for each die type)
-- **Usage Flow**: Click consumable → USE → Select die → Select face → Confirm replacement
-
-Key files:
-
-- **stickers.lua**: Registry of all sticker definitions with effects
-- **consumable_slot.lua**: Interactive slot component with USE/SELL buttons
-- **dice_editor.lua**: Singleton managing editor mode (dimming, selection, confirmation)
-- **dice_tooltip.lua**: Shows all 6 faces on die hover (1 sec delay)
-- **drag_zones.lua**: DELETE (bottom-right) and SELL (top-middle) drop zones
-- **spritesheet.lua**: Manages die type quads for rendering
-
 ### UI Components
 
 All in `src/ui/`:
@@ -135,11 +113,7 @@ All in `src/ui/`:
 - **dice_display.lua**: Wraps Die with animation support
 - **info_panel.lua**: Left panel with level, round, goal, score, hand preview, counters, money
 - **dual_cta.lua**: Two action buttons - "Play Hand" and "Roll"
-- **item_strip.lua**: 5+2 item slots at top center (slots 6-7 are consumable slots)
-- **consumable_slot.lua**: Interactive consumable slot with USE/SELL buttons and drag support
-- **dice_tooltip.lua**: Horizontal tooltip showing all 6 faces of a die
-- **dice_editor.lua**: Singleton managing dice face editing mode
-- **drag_zones.lua**: DELETE and SELL drop zones for consumables
+- **item_strip.lua**: 5 relic item slots at top center
 - **score_animation.lua**: Counting animation when playing a hand
 - **pop_text.lua**: Floating text with spring animation
 
@@ -215,9 +189,8 @@ Singletons use direct table returns with `:method()` syntax.
 - **Icons**: `assets/icons/hands/` (dice faces, hand types), `assets/icons/ui/` (coin, glove, die, lock)
 - **UI**: `assets/ui/pixelSurface.png` (9-slice panel texture)
 - **Dice Spritesheet**: `assets/diceSpriteSheet.png` (168x336, 28x28 sprites)
-  - Row 1: Golden dice faces
-  - Row 2: Metal dice faces
-  - Row 4: Basic dice faces
+  - Row 4: Basic dice faces (currently used)
   - Row 12: Rolling animation frames
+  - Note: Rows 1-2 contain golden/metal dice assets for future features
 
 Graphics use nearest-neighbor filtering for crisp pixel art.

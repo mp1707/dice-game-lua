@@ -5,7 +5,6 @@ local Theme = require("src.ui.theme")
 local Timer = require("src.core.timer")
 local GameState = require("src.game.game_state")
 local Scoring = require("src.game.scoring")
-local Stickers = require("src.game.stickers")
 local Relics = require("src.game.relics")
 local Sound = require("src.core.sound")
 local TriggerSystem = require("src.items.trigger_system")
@@ -20,10 +19,6 @@ local ScoreAnimation = require("src.ui.score_animation")
 local DiceContainer = require("src.ui.dice_container")
 local HandsModal = require("src.ui.hands_modal")
 local SettingsModal = require("src.ui.settings_modal")
-local DiceEditor = require("src.ui.dice_editor")
-local DragZones = require("src.ui.drag_zones")
-local DragZones = require("src.ui.drag_zones")
-local DiceTooltip = require("src.ui.dice_tooltip")
 local ShopTooltip = require("src.ui.shop_tooltip")
 
 local PlayState = {}
@@ -43,16 +38,7 @@ function PlayState.new()
     self.handsModal = nil
     self.settingsModal = nil
 
-    -- Dice Editor components
-    self.diceEditor = DiceEditor.getInstance()
-    self.dragZones = DragZones.getInstance()
-    self.diceTooltip = DiceTooltip.getInstance()
     self.shopTooltip = ShopTooltip.getInstance()
-
-    -- Dice hover tracking for tooltip
-    self.hoveredDieIndex = nil
-    self.hoverTime = 0
-    self.tooltipDelay = 0.1 -- Show tooltip after 0.1 seconds
 
     -- Reference to state machine (set in enter)
     self.stateMachine = nil
@@ -143,19 +129,6 @@ function PlayState:initItemStrip()
                 end
             end
         end,
-        -- Consumable callbacks
-        onConsumableUse = function(slotIndex)
-            self:onConsumableUse(slotIndex)
-        end,
-        onConsumableSell = function(slotIndex)
-            self:onConsumableSell(slotIndex)
-        end,
-        onConsumableDragStart = function(slotIndex)
-            -- Start drag
-        end,
-        onConsumableDragEnd = function(slotIndex, x, y)
-            self:onConsumableDragEnd(slotIndex, x, y)
-        end,
     })
 end
 
@@ -174,13 +147,7 @@ function PlayState:initInfoPanel()
             return self.currentRound
         end,
         getMoney = function()
-            -- Include accumulated money from golden stickers during score animation
-            local scoreAnim = ScoreAnimation.getInstance()
-            local bonusMoney = 0
-            if scoreAnim:isAnimating() then
-                bonusMoney = scoreAnim:getAccumulatedMoney()
-            end
-            return GameState.money + bonusMoney
+            return GameState.money
         end,
         getGoal = function()
             return GameState:getCurrentGoal()
@@ -256,9 +223,6 @@ function PlayState:getDetectedHand()
 end
 
 function PlayState:canPlayHand()
-    -- Block if in editor mode
-    if self.diceEditor.isActive then return false end
-
     if GameState.isRolling then return false end
     if not GameState.hasRolledThisHand then return false end
 
@@ -281,39 +245,8 @@ function PlayState:canPlayHand()
 end
 
 -- ============================================
--- Consumable Handling
+-- Relic Handling
 -- ============================================
-
-function PlayState:onConsumableUse(slotIndex)
-    -- Block during animations
-    if GameState.isRolling then return end
-    local scoreAnim = ScoreAnimation.getInstance()
-    if scoreAnim:isAnimating() then return end
-
-    -- Activate dice editor
-    self.diceEditor:activate("play", slotIndex, {
-        onComplete = function()
-            -- Editor completed - consumable was used
-        end,
-        onCancel = function()
-            -- Editor cancelled
-        end,
-        getDicePositions = function()
-            return self:getDicePositions()
-        end,
-    })
-end
-
-function PlayState:onConsumableSell(slotIndex)
-    local consumable = GameState:getConsumable(slotIndex)
-    if not consumable then return end
-
-    local sellPrice = Stickers:getSellPrice(consumable.stickerId)
-    GameState:addMoney(sellPrice)
-    GameState:removeConsumable(slotIndex)
-
-    Sound:play("cash")
-end
 
 function PlayState:onRelicSell(slotIndex)
     local relic = GameState:getRelic(slotIndex)
@@ -324,66 +257,6 @@ function PlayState:onRelicSell(slotIndex)
     GameState:removeRelic(slotIndex)
 
     Sound:play("cash")
-end
-
-function PlayState:onConsumableDragEnd(slotIndex, x, y)
-    -- Check if dropped on a die first (only if dice are visible)
-    if GameState.hasRolledThisHand then
-        local positions = self:getDicePositions()
-        for i = 1, 5 do
-            local pos = positions[i]
-            if x >= pos.x and x < pos.x + pos.width and
-                y >= pos.y and y < pos.y + pos.height then
-                -- Dropped on die i - activate editor with die pre-selected
-                self:activateEditorForDie(slotIndex, i)
-                return
-            end
-        end
-    end
-
-    -- Check for swap with another consumable slot
-    local targetSlot = self.itemStrip:getSlotAtPosition(x, y)
-    if targetSlot and targetSlot.slotIndex ~= slotIndex then
-        -- Check if target is also a consumable slot (indices 1-2 passed from ConsumableSlot)
-        -- Wait, ConsumableSlot instances have slotIndex 1 or 2.
-        -- targetSlot returned from getSlotAtPosition is the *instance*.
-        -- We need to check if it's a consumable slot.
-        -- ItemStrip has separate arrays.
-        -- We can just check if targetSlot is in itemStrip.consumableSlots?
-        -- Or check if it has onUse/onSell?
-        -- Actually, slotIndex in dragEnd comes from the slot itself.
-        -- ConsumableSlot instances are independent.
-        -- Let's check class or properties?
-        -- Easier: check if slotIndex matches logic.
-        -- But targetSlot.slotIndex is local to the type (1-5 for relic, 1-2 for consumable).
-        -- getSlotAtPosition returns specific slot instance.
-        -- We can check if it has 'getConsumable' method?
-        if targetSlot.getConsumable then
-            GameState:swapConsumables(slotIndex, targetSlot.slotIndex)
-            Sound:play("click")
-        end
-    end
-end
-
-function PlayState:activateEditorForDie(slotIndex, dieIndex)
-    -- Block during animations
-    if GameState.isRolling then return end
-    local scoreAnim = ScoreAnimation.getInstance()
-    if scoreAnim:isAnimating() then return end
-
-    -- Activate dice editor with pre-selected die
-    self.diceEditor:activate("play", slotIndex, {
-        onComplete = function()
-            -- Editor completed - consumable was used
-        end,
-        onCancel = function()
-            -- Editor cancelled
-        end,
-        getDicePositions = function()
-            return self:getDicePositions()
-        end,
-        preSelectedDie = dieIndex,
-    })
 end
 
 function PlayState:getDicePositions()
@@ -640,10 +513,8 @@ function PlayState:update(dt)
     local scoreAnim = ScoreAnimation.getInstance()
     scoreAnim:update(dt)
 
-    -- Update dice container (unless in editor mode)
-    if not self.diceEditor.isActive then
-        self.diceContainer:update(dt)
-    end
+    -- Update dice container
+    self.diceContainer:update(dt)
 
     -- Update item strip
     self.itemStrip:update(dt)
@@ -660,72 +531,8 @@ function PlayState:update(dt)
     -- Update settings modal
     self.settingsModal:update(dt)
 
-    -- Update drag zones (Removed)
-    -- local dragSlot = self.itemStrip:getDraggingSlot()
-    -- if dragSlot then
-    --     local dragX, dragY = dragSlot:getDragPosition()
-    --     self.dragZones:update(dt, dragX, dragY)
-    -- else
-    --     self.dragZones:update(dt, nil, nil)
-    -- end
-
-    -- Update dice editor
-    self.diceEditor:update(dt)
-
-    -- Track hovered die for tooltip (when not in editor mode)
-    if not self.diceEditor.isActive and GameState.hasRolledThisHand and not GameState.isRolling then
-        self:updateDiceHover(dt)
-    else
-        self.hoveredDieIndex = nil
-        self.hoverTime = 0
-        if not self.diceEditor.isActive then
-            self.diceTooltip:hide()
-        end
-    end
     -- Update tooltip
-    self.diceTooltip:update(dt)
     self.shopTooltip:update(dt)
-end
-
-function PlayState:updateDiceHover(dt)
-    local mx, my = love.mouse.getPosition()
-    if _G.screenToGame then
-        mx, my = _G.screenToGame(mx, my)
-    end
-
-    if not mx or not my then
-        self.hoveredDieIndex = nil
-        self.hoverTime = 0
-        return
-    end
-
-    -- Check which die is hovered
-    local positions = self:getDicePositions()
-    local newHoveredDie = nil
-
-    for i = 1, 5 do
-        local pos = positions[i]
-        if mx >= pos.x and mx < pos.x + pos.width and
-            my >= pos.y and my < pos.y + pos.height then
-            newHoveredDie = i
-            break
-        end
-    end
-
-    if newHoveredDie ~= self.hoveredDieIndex then
-        self.hoveredDieIndex = newHoveredDie
-        self.hoverTime = 0
-        self.diceTooltip:hide()
-    elseif self.hoveredDieIndex then
-        self.hoverTime = self.hoverTime + dt
-        if self.hoverTime >= self.tooltipDelay and not self.diceTooltip:isVisible() then
-            local pos = positions[self.hoveredDieIndex]
-            self.diceTooltip:show(self.hoveredDieIndex, pos.x + pos.width / 2, pos.y)
-        end
-    end
-
-    -- Update tooltip
-    self.diceTooltip:update(dt)
 end
 
 function PlayState:draw()
@@ -737,12 +544,8 @@ function PlayState:draw()
     -- Draw info panel (left panel)
     self.infoPanel:draw()
 
-    -- Draw dual CTA buttons (bottom center) - dim if in editor mode
-    if self.diceEditor.isActive then
-        love.graphics.setColor(0.5, 0.5, 0.5, 0.5)
-    end
+    -- Draw dual CTA buttons (bottom center)
     self.dualCta:draw()
-    love.graphics.setColor(1, 1, 1, 1)
 
     local showDice = GameState.hasRolledThisHand or GameState.isRolling
 
@@ -771,26 +574,11 @@ function PlayState:draw()
     local scoreAnim = ScoreAnimation.getInstance()
     scoreAnim:draw()
 
-    -- Draw dice tooltip (normal mode)
-    if not self.diceEditor.isActive then
-        self.diceTooltip:draw()
-    end
     self.shopTooltip:draw()
-
-    -- Draw drag zones (Removed)
-    -- self.dragZones:draw()
 
     -- Draw item strip on top if dragging
     if self.itemStrip:isDragging() then
         self.itemStrip:draw()
-    end
-
-    -- Draw dice editor overlay if active
-    if self.diceEditor.isActive then
-        self.diceEditor:drawOverlay()
-        self.diceEditor:drawInstructions()
-        self.diceEditor:drawTooltip()
-        self.diceEditor:drawConfirmationModal()
     end
 
     -- Draw hands modal (on top of everything)
@@ -806,33 +594,11 @@ function PlayState:mousemoved(x, y)
     -- Forward to item strip for dragging
     self.itemStrip:mousemoved(x, y)
 
-    -- Forward to dice container (unless in editor mode)
-    if not self.diceEditor.isActive then
-        self.diceContainer:mousemoved(x, y)
-    end
+    -- Forward to dice container
+    self.diceContainer:mousemoved(x, y)
 end
 
 function PlayState:mousepressed(x, y, button)
-    -- Dice editor takes priority when active
-    if self.diceEditor.isActive then
-        if self.diceEditor:mousepressed(x, y, button) then
-            return true
-        end
-        -- In editor mode, clicking on a die should select it
-        if GameState.hasRolledThisHand then
-            local positions = self:getDicePositions()
-            for i = 1, 5 do
-                local pos = positions[i]
-                if x >= pos.x and x < pos.x + pos.width and
-                    y >= pos.y and y < pos.y + pos.height then
-                    self.diceEditor:selectDie(i)
-                    return true
-                end
-            end
-        end
-        return true -- Absorb all clicks in editor mode
-    end
-
     -- Check settings modal first when open
     if self.settingsModal.isOpen then
         if self.settingsModal:mousepressed(x, y, button) then
@@ -847,7 +613,7 @@ function PlayState:mousepressed(x, y, button)
         end
     end
 
-    -- Check item strip (consumables)
+    -- Check item strip (relics)
     if self.itemStrip:mousepressed(x, y, button) then
         return true
     end
@@ -893,13 +659,6 @@ function PlayState:mousereleased(x, y, button)
 end
 
 function PlayState:keypressed(key)
-    -- Dice editor takes priority when active
-    if self.diceEditor.isActive then
-        if self.diceEditor:keypressed(key) then
-            return
-        end
-    end
-
     -- Check settings modal first
     if self.settingsModal:keypressed(key) then
         return

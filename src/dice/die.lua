@@ -6,7 +6,6 @@ local Physics = require("src.dice.physics")
 local Shadow = require("src.dice.shadow")
 local Juice = require("src.ui.juice")
 local Theme = require("src.ui.theme")
-local Stickers = require("src.game.stickers")
 
 local Die = {}
 Die.__index = Die
@@ -47,10 +46,6 @@ function Die.new(slotIndex, slotCenterX, groundY, size)
     self.currentFace = 1 -- Which face is showing (1-6)
     self.targetFace = 1  -- Final face to land on
     self.faceChangeTimer = 0
-
-    -- Sticker data (for type-based rendering)
-    self.faces = nil           -- Array of sticker IDs (set by DiceDisplay)
-    self.rolledFaceIndex = nil -- Which face index was rolled
 
     -- Bounce tracking
     self.bounceCount = 0
@@ -209,23 +204,14 @@ function Die:draw()
     local Spritesheet = Theme.diceSpritesheet
     if not Spritesheet then return end
 
-    -- Determine die type from sticker (for static rendering)
-    local dieType = "basic"
-    if self.faces and self.rolledFaceIndex then
-        local stickerId = self.faces[self.rolledFaceIndex]
-        if stickerId then
-            dieType = Stickers:getType(stickerId)
-        end
-    end
-
     -- Choose quad based on animation state
     local quad
     if self.state == AnimStates.DROPPING or self.state == AnimStates.BOUNCING then
         -- During roll animation, use roll animation frames
         quad = Spritesheet:getRollQuad(self.rollFrame)
     else
-        -- Static display (IDLE, SETTLING, LOCKED) - show face value with type
-        quad = Spritesheet:getQuad(self.currentFace, dieType)
+        -- Static display (IDLE, SETTLING, LOCKED) - show face value
+        quad = Spritesheet:getQuad(self.currentFace, "basic")
     end
 
     local image = Spritesheet:getImage()

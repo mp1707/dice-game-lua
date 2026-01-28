@@ -3,7 +3,6 @@
 
 local Levels = require("src.game.levels")
 local Sound = require("src.core.sound")
-local Stickers = require("src.game.stickers")
 
 local GameState = {
     -- Run state (persists across levels)
@@ -18,18 +17,11 @@ local GameState = {
     rollsRemaining = 3,
     hasRolledThisHand = false,
 
-    -- Dice state (5 dice with customizable faces)
+    -- Dice state (5 dice)
     dice = {},
-
-    -- Consumables (stickers in slots 6-7 of item strip)
-    consumables = { nil, nil }, -- Max 2 consumable slots
 
     -- Relics (passive items in slots 1-5 of item strip)
     relics = { nil, nil, nil, nil, nil }, -- Max 5 relic slots
-
-    -- Dice editor state
-    editorMode = false,  -- True when editing dice faces
-    activeSticker = nil, -- Currently selected sticker for editing
 
     -- Used hands this level (set of hand IDs)
 
@@ -42,37 +34,19 @@ local GameState = {
     selectedHandId = nil, -- Currently selected hand card for playing
 }
 
--- Initialize dice (preserves custom faces and prismatic state if they exist)
--- Faces are now stored as sticker IDs (e.g., "basic_1", "golden_3", "metal_5")
+-- Initialize dice (preserves prismatic state if it exists)
 function GameState:initDice()
     for i = 1, 5 do
         if not self.dice[i] then
             self.dice[i] = {
                 value = 1,
                 locked = false,
-                -- Default standard faces using sticker IDs
-                faces = { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" },
-                rolledFaceIndex = nil,        -- Which face index was rolled
                 prismatic = false,            -- Prismatic state (from Prism relic)
             }
         else
-            -- Reset per-hand state but preserve faces and prismatic
+            -- Reset per-hand state but preserve prismatic
             self.dice[i].value = 1
             self.dice[i].locked = false
-            self.dice[i].rolledFaceIndex = nil
-            -- Ensure faces array exists (for backwards compatibility)
-            if not self.dice[i].faces then
-                self.dice[i].faces = { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" }
-            end
-            -- Migrate old numeric faces to sticker IDs if needed
-            if type(self.dice[i].faces[1]) == "number" then
-                local oldFaces = self.dice[i].faces
-                self.dice[i].faces = {}
-                for j = 1, 6 do
-                    local faceValue = oldFaces[j] or j
-                    self.dice[i].faces[j] = "basic_" .. faceValue
-                end
-            end
             -- Ensure prismatic field exists (for backwards compatibility)
             if self.dice[i].prismatic == nil then
                 self.dice[i].prismatic = false
@@ -85,14 +59,10 @@ end
 function GameState:reset()
     self.currentLevel = 1
     self.money = 0
-    -- Reset dice to default faces (clears prismatic state)
+    -- Reset dice (clears prismatic state)
     self.dice = {}
-    -- Clear consumables
-    self.consumables = { nil, nil }
     -- Clear relics
     self.relics = { nil, nil, nil, nil, nil }
-    self.editorMode = false
-    self.activeSticker = nil
     self:resetForLevel()
 end
 
@@ -130,7 +100,6 @@ function GameState:unlockAllDice()
 end
 
 -- Roll all selected dice (or all dice if first roll)
--- Metal faces cannot be rerolled (they have canReroll = false)
 function GameState:rollDice()
     if not self:canRoll() then return false end
 
@@ -139,24 +108,10 @@ function GameState:rollDice()
     for i, die in ipairs(self.dice) do
         -- Reroll if it's the first roll OR if the die is selected (locked)
         if isFirstRoll or die.locked then
-            -- Check if current face can be rerolled (metal faces cannot)
-            local currentFaceId = die.faces[die.rolledFaceIndex or 1]
-            local canRerollFace = Stickers:canReroll(currentFaceId)
-
-            -- Skip reroll for metal faces (unless it's first roll, then we must roll)
-            if not isFirstRoll and not canRerollFace then
-                -- Metal face - skip reroll but still unlock
-                die.locked = false
-            else
-                -- Pick a random face from this die's faces array
-                local faceIndex = math.random(1, 6)
-                die.rolledFaceIndex = faceIndex
-                -- Get the value from the sticker registry
-                local faceStickerId = die.faces[faceIndex]
-                die.value = Stickers:getValue(faceStickerId)
-                -- If rerolled, it should be unlocked immediately
-                die.locked = false
-            end
+            -- Roll a random value 1-6
+            die.value = math.random(1, 6)
+            -- If rerolled, it should be unlocked immediately
+            die.locked = false
         end
     end
 
@@ -343,156 +298,6 @@ end
 -- Get the selected hand
 function GameState:getSelectedHand()
     return self.selectedHandId
-end
-
--- ============================================
--- Consumable System
--- ============================================
-
--- Add a consumable (sticker) to inventory
--- Returns slot index (1 or 2) if successful, nil if no room
-function GameState:addConsumable(stickerId)
-    for i = 1, 2 do
-        if not self.consumables[i] then
-            self.consumables[i] = { stickerId = stickerId }
-            return i
-        end
-    end
-    return nil -- No room
-end
-
--- Remove a consumable from inventory
--- Returns the removed consumable data or nil
-function GameState:removeConsumable(index)
-    if index < 1 or index > 2 then return nil end
-    local removed = self.consumables[index]
-    self.consumables[index] = nil
-    return removed
-end
-
--- Swap two consumables
-function GameState:swapConsumables(index1, index2)
-    if index1 < 1 or index1 > 2 then return false end
-    if index2 < 1 or index2 > 2 then return false end
-
-    local temp = self.consumables[index1]
-    self.consumables[index1] = self.consumables[index2]
-    self.consumables[index2] = temp
-    return true
-end
-
--- Get consumable at index
-function GameState:getConsumable(index)
-    if index < 1 or index > 2 then return nil end
-    return self.consumables[index]
-end
-
--- Check if there's room for another consumable
-function GameState:hasConsumableRoom()
-    return not self.consumables[1] or not self.consumables[2]
-end
-
--- Get count of consumables
-function GameState:getConsumableCount()
-    local count = 0
-    for i = 1, 2 do
-        if self.consumables[i] then
-            count = count + 1
-        end
-    end
-    return count
-end
-
--- ============================================
--- Dice Face Customization
--- ============================================
-
--- Set a specific face on a die using a sticker ID
--- dieIndex: 1-5 (which die)
--- faceIndex: 1-6 (which face position)
--- stickerId: the sticker ID (e.g., "basic_3", "golden_5", "metal_2")
-function GameState:setDieFace(dieIndex, faceIndex, stickerId)
-    if dieIndex < 1 or dieIndex > 5 then return false end
-    if faceIndex < 1 or faceIndex > 6 then return false end
-    if not self.dice[dieIndex] then return false end
-
-    -- Ensure faces array exists with sticker IDs
-    if not self.dice[dieIndex].faces then
-        self.dice[dieIndex].faces = { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" }
-    end
-
-    self.dice[dieIndex].faces[faceIndex] = stickerId
-
-    -- If this is the currently rolled face, update the displayed value too
-    if self.dice[dieIndex].rolledFaceIndex == faceIndex then
-        self.dice[dieIndex].value = Stickers:getValue(stickerId)
-    end
-
-    return true
-end
-
--- Get all faces for a die (returns array of sticker IDs)
-function GameState:getDieFaces(dieIndex)
-    if dieIndex < 1 or dieIndex > 5 then return nil end
-    if not self.dice[dieIndex] then return nil end
-    return self.dice[dieIndex].faces or { "basic_1", "basic_2", "basic_3", "basic_4", "basic_5", "basic_6" }
-end
-
--- Get a specific face sticker ID from a die
-function GameState:getDieFace(dieIndex, faceIndex)
-    local faces = self:getDieFaces(dieIndex)
-    if not faces then return nil end
-    if faceIndex < 1 or faceIndex > 6 then return nil end
-    return faces[faceIndex]
-end
-
--- Get the sticker definition for the currently rolled face of a die
-function GameState:getDieFaceSticker(dieIndex)
-    if dieIndex < 1 or dieIndex > 5 then return nil end
-    local die = self.dice[dieIndex]
-    if not die or not die.rolledFaceIndex then return nil end
-    local stickerId = die.faces[die.rolledFaceIndex]
-    return Stickers:get(stickerId)
-end
-
--- Get the face value (numeric) for a sticker ID
--- For backwards compatibility and convenience
-function GameState:getFaceValue(stickerId)
-    return Stickers:getValue(stickerId)
-end
-
--- ============================================
--- Dice Editor Mode
--- ============================================
-
--- Enter dice editor mode with a sticker
-function GameState:enterEditorMode(consumableIndex)
-    if consumableIndex < 1 or consumableIndex > 2 then return false end
-    local consumable = self.consumables[consumableIndex]
-    if not consumable then return false end
-
-    self.editorMode = true
-    self.activeSticker = {
-        consumableIndex = consumableIndex,
-        stickerId = consumable.stickerId,
-    }
-    return true
-end
-
--- Exit dice editor mode
-function GameState:exitEditorMode()
-    self.editorMode = false
-    self.activeSticker = nil
-end
-
--- Check if in editor mode
-function GameState:isInEditorMode()
-    return self.editorMode
-end
-
--- Get active sticker info
-function GameState:getActiveSticker()
-    return self.activeSticker
 end
 
 -- ============================================

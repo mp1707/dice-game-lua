@@ -89,14 +89,4 @@ function Spritesheet:getSpriteSize()
     return self.spriteWidth, self.spriteHeight
 end
 
--- Get quad for a sticker ID (convenience method)
-function Spritesheet:getQuadForSticker(stickerId)
-    local Stickers = require("src.game.stickers")
-    local def = Stickers:get(stickerId)
-    if not def then
-        return self:getQuad(1, "basic")
-    end
-    return self:getQuad(def.spriteId, def.dieType)
-end
-
 return Spritesheet

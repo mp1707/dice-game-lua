@@ -7,7 +7,6 @@ local Juice = require("src.ui.juice")
 local PopText = require("src.ui.pop_text")
 local Sound = require("src.core.sound")
 local GameState = require("src.game.game_state")
-local Stickers = require("src.game.stickers")
 
 local ScoreAnimation = {}
 ScoreAnimation.__index = ScoreAnimation
@@ -49,7 +48,6 @@ function ScoreAnimation:reset()
     -- Animation state
     self.accumulatedChips = 0
     self.accumulatedMult = 0
-    self.accumulatedMoney = 0  -- Money from golden stickers
     self.popTexts = {}
     self.displayedScore = 0
 
@@ -146,32 +144,7 @@ function ScoreAnimation:buildSequence()
             value = value
         })
 
-        -- Step 2: Check for sticker effects (golden/metal)
-        if dieData and dieData.faces and dieData.rolledFaceIndex then
-            local stickerId = dieData.faces[dieData.rolledFaceIndex]
-            local sticker = Stickers:get(stickerId)
-
-            if sticker and sticker.effects and sticker.effects.onCount then
-                local effect = sticker.effects.onCount
-                if effect.type == "money" then
-                    -- Golden sticker: add money
-                    table.insert(self.sequence, {
-                        type = "MONEY",
-                        dieIndex = dieIndex,
-                        amount = effect.amount,
-                    })
-                elseif effect.type == "mult_x" then
-                    -- Metal sticker: multiply mult
-                    table.insert(self.sequence, {
-                        type = "MULT_X",
-                        dieIndex = dieIndex,
-                        multiplier = effect.multiplier,
-                    })
-                end
-            end
-        end
-
-        -- Step 3: Count Mult (only if Prismatic)
+        -- Step 2: Count Mult (only if Prismatic)
         if prismaticValueMap[dieIndex] then
             table.insert(self.sequence, {
                 type = "MULT",
@@ -249,12 +222,8 @@ function ScoreAnimation:updateCounting(dt)
             local display = self.data.diceDisplays[step.dieIndex]
 
             if display then
-                -- Play tick sound (or cash sound for money)
-                if step.type == "MONEY" then
-                    Sound:play("cash")
-                else
-                    Sound:play("tick")
-                end
+                -- Play tick sound
+                Sound:play("tick")
 
                 -- Trigger die pulse
                 display.selectionScale = 1.15
@@ -299,40 +268,6 @@ function ScoreAnimation:updateCounting(dt)
 
                     -- Update mult
                     self.accumulatedMult = self.accumulatedMult * step.value
-
-                    -- Pulse mult text (Red)
-                    self.multTextScale = 1.12
-                    self.multTextScaleVelocity = 0
-                elseif step.type == "MONEY" then
-                    -- Handle MONEY step (golden sticker)
-                    local popY = display.y + display.size + 30 -- Below die (like mult)
-
-                    local popText = PopText.new({
-                        text = "$" .. step.amount,
-                        x = popX,
-                        y = popY,
-                        color = Theme.colors.gold, -- Gold color for money
-                        font = Theme.fonts.huge,
-                    })
-                    table.insert(self.popTexts, popText)
-
-                    -- Accumulate money (applied at end)
-                    self.accumulatedMoney = self.accumulatedMoney + step.amount
-                elseif step.type == "MULT_X" then
-                    -- Handle MULT_X step (metal sticker)
-                    local popY = display.y + display.size + 30 -- Below die
-
-                    local popText = PopText.new({
-                        text = "x" .. step.multiplier,
-                        x = popX,
-                        y = popY,
-                        color = Theme.colors.coral, -- Red multiplier color
-                        font = Theme.fonts.huge,
-                    })
-                    table.insert(self.popTexts, popText)
-
-                    -- Multiply mult
-                    self.accumulatedMult = self.accumulatedMult * step.multiplier
 
                     -- Pulse mult text (Red)
                     self.multTextScale = 1.12
@@ -517,11 +452,6 @@ end
 
 function ScoreAnimation:updateComplete(dt)
     if self.timer >= TIMING.completeHold then
-        -- Apply accumulated money from golden stickers
-        if self.accumulatedMoney > 0 then
-            GameState:addMoney(self.accumulatedMoney)
-        end
-
         -- Fire completion callback
         if self.data.onComplete then
             self.data.onComplete()
@@ -559,10 +489,6 @@ function ScoreAnimation:getAnimatedMult()
         return nil
     end
     return math.floor(self.accumulatedMult)
-end
-
-function ScoreAnimation:getAccumulatedMoney()
-    return self.accumulatedMoney or 0
 end
 
 function ScoreAnimation:getChipsTextScale()
@@ -618,20 +544,6 @@ function ScoreAnimation:skip()
         popText:skip()
     end
     self.popTexts = {}
-
-    -- Calculate any remaining money from steps we skipped
-    -- Process remaining sequence steps for money accumulation
-    for i = self.currentStepIndex + 1, #self.sequence do
-        local step = self.sequence[i]
-        if step.type == "MONEY" then
-            self.accumulatedMoney = self.accumulatedMoney + step.amount
-        end
-    end
-
-    -- Apply accumulated money from golden stickers
-    if self.accumulatedMoney > 0 then
-        GameState:addMoney(self.accumulatedMoney)
-    end
 
     -- Fire completion callback
     if self.data and self.data.onComplete then
