@@ -103,22 +103,27 @@ Located in `src/dice/`, see `src/dice/CLAUDE.md` for detailed documentation. Key
 - **die.lua**: Individual die with state machine, physics, squash/stretch
 - **dice_manager.lua**: Orchestrates multiple dice with callbacks
 
-### Dice Editor System (Roguelike Core)
+### Sticker System & Dice Editor (Roguelike Core)
 
-See `src/dice/CLAUDE_DICE_EDITOR.md` for detailed documentation. Core roguelike mechanic:
+See `src/game/CLAUDE_STICKERS.md` for comprehensive documentation covering both the sticker system and dice editor. Core roguelike deck-building mechanic:
 
-- **Custom Dice Faces**: Each die has 6 customizable faces stored in `GameState.dice[i].faces`
-- **Stickers**: Consumable items that replace die faces (buy $8, sell $2)
+- **Custom Dice Faces**: Each die has 6 faces storing sticker IDs in `GameState.dice[i].faces`
+- **Three Die Types**:
+  - **Basic** (common, $8): Standard faces, no special effects
+  - **Golden** (uncommon, $12): Adds money equal to face value when scored
+  - **Metal** (rare, $15): x2 multiplier when scored, **cannot be rerolled**
 - **Consumable Slots**: 2 slots in item strip (positions 6-7) for stickers
+- **Spritesheet**: `assets/diceSpriteSheet.png` (168x336, rows for each die type)
 - **Usage Flow**: Click consumable → USE → Select die → Select face → Confirm replacement
 
 Key files:
 
-- **stickers.lua**: Registry of all sticker definitions
+- **stickers.lua**: Registry of all sticker definitions with effects
 - **consumable_slot.lua**: Interactive slot component with USE/SELL buttons
 - **dice_editor.lua**: Singleton managing editor mode (dimming, selection, confirmation)
 - **dice_tooltip.lua**: Shows all 6 faces on die hover (1 sec delay)
 - **drag_zones.lua**: DELETE (bottom-right) and SELL (top-middle) drop zones
+- **spritesheet.lua**: Manages die type quads for rendering
 
 ### UI Components
 
@@ -209,5 +214,10 @@ Singletons use direct table returns with `:method()` syntax.
 - **Fonts**: `assets/fonts/m6x11plus.ttf` (pixel font)
 - **Icons**: `assets/icons/hands/` (dice faces, hand types), `assets/icons/ui/` (coin, glove, die, lock)
 - **UI**: `assets/ui/pixelSurface.png` (9-slice panel texture)
+- **Dice Spritesheet**: `assets/diceSpriteSheet.png` (168x336, 28x28 sprites)
+  - Row 1: Golden dice faces
+  - Row 2: Metal dice faces
+  - Row 4: Basic dice faces
+  - Row 12: Rolling animation frames
 
 Graphics use nearest-neighbor filtering for crisp pixel art.
